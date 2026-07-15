@@ -90,6 +90,21 @@ flowchart TD
 | `contest_mode` | ユーザーがコンテスト参加中であることを明示し、すべてのAI機能を止める手動の安全装置 |
 | 実行時確認 | 常時監視せず、AIレビュー要求時に開催状況を確認する方式 |
 
+### 1.3. AtCoderのコンテスト名
+
+ABC・ARC・AGC・AHC・ADT・AWCの正式名称、難度、Rated範囲、ルール、開催頻度は、[AIレビュー安全設計の「AtCoderの主なコンテスト名」](./ai-review-safety-design.md#12-atcoderの主なコンテスト名)にまとめる。
+
+要点は次のとおりである。
+
+| 略称 | 分類 | 開催頻度の公式目安 | AIレビュー上の扱い |
+|---|---|---|---|
+| ABC | Algorithm・初心者～中級者向け | 毎週 | 開催中の対象問題は拒否 |
+| ARC | Algorithm・中級者～上級者向け | 月1回ほど | 開催中の対象問題は拒否 |
+| AGC | Algorithm・世界上位者向け | 年5～6回ほど | 開催中の対象問題は拒否 |
+| AHC | Heuristic・最適化問題 | 短期・長期合わせて月1回ほど | AHC専用ルールで判定 |
+| ADT | ABC過去問の練習 | 平日1日2回 | ADT専用ルールで判定 |
+| AWC | 実験的な平日Algorithmコンテスト | Beta版は日次開催 | 対象回の明示ルールで判定 |
+
 ---
 
 ## 2. 確認できた事実とAlgoLoomの判断
@@ -302,7 +317,7 @@ flowchart TD
 
 したがって、ABC等が開催されているという理由だけで、無関係な終了済み過去問まで一律にレビュー拒否しない。レビュー対象が開催中問題と同じかを正規問題IDで照合する。
 
-AHCには別の生成AIルールがある。ADTは過去のABC問題を再利用する練習用バーチャルコンテストであり、個別コンテストによってルールが変更される可能性もある。コンテスト種別を特定してから適用ルールを決める。
+AHCには別の生成AIルールがある。ADTは過去のABC問題を再利用する練習用バーチャルコンテストである。AWC Betaは対象回のページでAI利用を明示的に許可しているが、Beta終了時のルール変更が予告されている。コンテスト種別と対象回のルールを特定してから適用方針を決める。
 
 ### 7.2. AlgoLoomの実装方針
 
@@ -312,9 +327,10 @@ AHCには別の生成AIルールがある。ADTは過去のABC問題を再利用
 - 問題タイトルやファイル名ではなく、AtCoderの正規問題IDで照合する。
 - ABC・ARC・AGCの開催中問題と一致したら`--review`を拒否する。
 - 開催中問題とは異なる終了済み過去問はレビュー可能とする。
-- Rated / Unratedを区別しない。
+- ABC・ARC・AGCではRated / Unratedを区別しない。
 - 初期版では、開催中AHCの同一問題は保守的に拒否する。
 - ADTは専用ルールで判定し、AIなしの練習には`contest_mode`を推奨する。
+- AWC Betaは、対象回の個別ページでAI利用の明示許可を確認できた場合だけ注意表示付きで許可する。
 - コンテスト種別、問題ID、開催状態、適用ルールを確認できない場合は拒否する。
 - ローカルOllamaであっても生成AI利用であることに変わりはない。
 - ユーザーが自己責任を選択するだけの安易な上書きオプションは設けない。
@@ -331,6 +347,7 @@ AHCには別の生成AIルールがある。ADTは過去のABC問題を再利用
 - [AHC生成AI利用ルール](https://info.atcoder.jp/entry/ahc-llm-rules-ja)
 - [コンテスト中のルール](https://info.atcoder.jp/overview/contest/rules)
 - [AtCoder Daily Training](https://atcoder.jp/contests/adt_top?lang=ja)
+- [AtCoder Weekday Contest 0109 Beta](https://atcoder.jp/contests/awc0109)
 
 ---
 
@@ -560,8 +577,8 @@ algoloom_workspace/
 - [ ] ABC・ARC・AGCの開催中問題と一致した場合はAIレビューを拒否する。
 - [ ] 開催中問題と異なる終了済み過去問を一律拒否しない。
 - [ ] コンテスト種別・問題ID・開催状態・適用ルールを確認できない場合は拒否する。
-- [ ] Rated / Unratedにかかわらず同じ制限を適用する。
-- [ ] AHC、ADT、その他のコンテストをABC系と同一ルールで処理しない。
+- [ ] ABC・ARC・AGCではRated / Unratedにかかわらず同じAI制限を適用する。
+- [ ] AHC、ADT、AWC、その他のコンテストをABC系と同一ルールで処理しない。
 - [ ] AIレビューOFFでは開催確認とOllama呼び出しを行わない。
 - [ ] `contest_mode` ONではすべてのAIレビューを拒否する。
 - [ ] 現行のABC・ARC・AGC・AHCルールへのリンクがある。
@@ -657,6 +674,10 @@ flowchart LR
 ### AtCoder
 
 - [AtCoder利用規約](https://atcoder.jp/tos?lang=ja)
+- [AtCoderのはじめかた](https://info.atcoder.jp/overview/contest/intro)
+- [Algorithm Contest](https://info.atcoder.jp/overview/contest/algorithm)
+- [Heuristic Contest](https://info.atcoder.jp/overview/contest/heuristic)
+- [レーティングのしくみ](https://info.atcoder.jp/overview/contest/rating)
 - [コンテスト中のルール](https://info.atcoder.jp/overview/contest/rules)
 - [AtCoder生成AI対策ルール](https://info.atcoder.jp/entry/llm-rules-ja)
 - [AHC生成AI利用ルール](https://info.atcoder.jp/entry/ahc-llm-rules-ja)
@@ -664,6 +685,7 @@ flowchart LR
 - [AtCoderロゴ利用ガイドライン](https://info.atcoder.jp/logoguide)
 - [AtCoder Problemsの説明](https://info.atcoder.jp/more/contents/problems)
 - [AtCoder Daily Training](https://atcoder.jp/contests/adt_top?lang=ja)
+- [AtCoder Weekday Contest 0109 Beta](https://atcoder.jp/contests/awc0109)
 - [業務直結型コンテスト標準著作権等取扱規約](https://atcoder.jp/posts/384?lang=ja)
 
 ### 著作権
