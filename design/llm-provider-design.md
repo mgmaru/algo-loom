@@ -122,14 +122,22 @@ flowchart LR
 
 ---
 
-## 2. 用語
+## 2. 用語集
+
+本設計では、credentialの「値」と、その値を取得するための「参照情報」を区別する。例えば、API keyそのものはcredential値であり、`ANTHROPIC_API_KEY`という環境変数名は参照情報である。
+
+### 2.1. AIレビューとBackend
 
 | 用語 | 本文書での意味 |
 |---|---|
+| API | application同士が決められた形式でrequestとresponseを交換する接続口 |
+| CLI | terminalからcommandとして操作するapplication。Command Line Interfaceの略 |
+| SDK | 特定ProviderのAPIや機能をapplicationへ組み込むためのlibraryや開発用tool一式 |
+| app-server | 別applicationから接続できるように、agent機能をprotocol経由で提供するprocess |
 | LLM Provider | AlgoLoomからレビュー要求を受け、LLM推論結果を返す実行基盤またはAPIサービス |
 | Review Backend | AlgoLoomの共通review requestを受け、検証対象となるreview responseを返す接続先の総称。Model APIとAgent Bridgeを含む |
 | Model API Backend | HTTP等でモデルへpromptを送りresponseを得るBackend。AlgoLoomからtool権限を付与しない |
-| Agent Bridge Backend | 外部Coding Agentの公式CLI、SDK、app-server等へreviewを委譲するBackend。認証に加えtool認可の制御が必要 |
+| Agent Bridge Backend | 外部Coding Agentの公式CLI、SDK、app-server等へreviewを委譲するBackend。認証に加えてtoolの認可制御が必要 |
 | Provider runtime | Ollama server等、モデルを読み込みAPIを提供するソフトウェアまたはサービス |
 | Provider Adapter | Provider固有APIとAlgoLoom内部契約を相互変換する部品 |
 | Agent Bridge Adapter | Coding Agent固有protocolとAlgoLoom内部契約を相互変換し、sandboxとtool制限を適用する部品 |
@@ -137,16 +145,85 @@ flowchart LR
 | endpoint | AlgoLoomが接続するProvider APIのURL |
 | execution location | 推論と入力データ処理が行われる場所。`local`または`remote` |
 | capability | structured output、streaming、model listing等、Providerが提供する能力 |
-| fallback | 選択したProviderが失敗したとき、別Providerへ切り替えて処理を続けること |
+| structured output | 自由文ではなく、事前に決めたJSON Schema等の構造に従ってresponseを返す方式 |
+| tool | Coding Agentが利用できる追加機能。file操作、shell、browser、MCP等を含む |
+| sandbox | processが利用できるfile、command、network等を制限する隔離環境 |
+| fallback | 選択したProviderが失敗したとき、別Providerへ切り替えて処理を続けること。本設計では暗黙のfallbackを禁止する |
 | Provider未選択 | AlgoLoomがどのLLMにも接続せず、AIレビューを実行できない初期状態 |
 | user-level設定 | OS標準のユーザー設定領域へ保存し、workspaceから変更できない信頼済み設定 |
-| subscription authentication | Claude、Gemini、ChatGPT等の定額契約・workspace entitlementを利用する認証経路 |
-| API authentication | API key、service account、Application Default Credentials等を利用する従量課金またはCloud契約の認証経路 |
-| credential owner | credentialの発行、保存、refresh、失効を担当する主体。AlgoLoom、外部runtime、OS keyring等 |
-| credential source | AlgoLoomがcredentialを得る方法。`external_runtime`、`environment`、`credential_helper`、`keyring`等 |
-| BYOK | Bring Your Own Key。ユーザーが自分のProvider API keyを用意する方式 |
 
 Ollama、LM Studio、Codex等はReview Backendの例である。「AIレビュー」と特定Backendの連携を同義にせず、UI、設定、DB、Application層ではBackend非依存の用語を使用する。
+
+### 2.2. credentialと認証
+
+| 用語 | 平易な説明 |
+|---|---|
+| 認証 | 接続しようとしている利用者やapplicationが誰であるかを確認すること。Authentication |
+| 認可 | 認証済みの主体に、どのAPI、file、tool、操作を許可するか決めること。Authorization |
+| secret | 漏えいすると第三者に権限を使われる可能性がある情報。password、API key、session Cookie、token等 |
+| credential | Providerへ「この利用者またはapplicationは接続を許可されている」と証明する情報の総称 |
+| credential値 | API keyやtokenそのもの。設定画面、log、DB、Cloud同期へ出してはならない |
+| credential参照 | credential値を取得する場所を示す情報。環境変数名、keyringのservice名・account名等 |
+| credential owner | credentialの発行、保存、更新、失効に責任を持つ主体。ユーザー、外部runtime、OS keyring等 |
+| credential source | AlgoLoomが実行時にcredentialを得る方法。`external_runtime`、`credential_helper`、`environment`、`keyring`等 |
+| API key | APIの利用者や契約を識別する秘密の文字列。Providerへ元の値を送る必要がある |
+| token | 認証済みであることや付与された権限を表す値。種類によって用途と有効期限が異なる |
+| Bearer token | その値を提示した主体へ権限を与えるtoken。所持者として扱われるため、漏えい時の影響が大きい |
+| OAuth | passwordを第三者applicationへ渡さず、Providerの認可画面を介して限定的な権限を委譲する仕組み |
+| access token | OAuth等で発行され、API呼び出しに使う通常は有効期限付きの秘密情報 |
+| refresh token | access tokenを再発行するための秘密情報。長期間利用できる場合があり、特に慎重な管理が必要 |
+| scope | tokenやapplicationへ許可する操作範囲。必要最小限に限定する |
+| session | login状態や一連のagent処理を関連付ける状態。永続sessionには入力codeが残る可能性がある |
+| social login | Google等の外部accountを使ってProviderへloginする方式。AlgoLoomはlogin情報を受け取らない |
+| subscription authentication | Claude、Gemini、ChatGPT等の定額契約やworkspace entitlementを利用する認証経路 |
+| API authentication | API key、service account、Application Default Credentials等を利用するAPI・Cloud契約の認証経路 |
+| service account | 人間ではなくapplicationやserverを表すCloud上のaccount。必要最小限の権限を付与する |
+| Application Default Credentials | Google Cloudのlibraryが、環境に応じたcredential sourceを既定の順序で探索する仕組み。ADCとも呼ぶ |
+| BYOK | Bring Your Own Key。ユーザーが自分のProvider API keyを用意する方式 |
+| external runtime | Provider公式のCLIやapp-server等。AlgoLoomの外側でlogin、token保存、更新を管理するprocess |
+| credential helper | 必要なときだけcredentialを返す外部command。AlgoLoomは返された値を永続化しない |
+| environment | processへ渡される環境変数。AlgoLoomは指定された変数だけを読み、環境変数一覧を取得しない |
+| OS keyring | OSが提供するcredential専用の保管領域。通常の設定fileやAlgoLoomのDBとは分離され、OSのaccess controlを介して利用する |
+
+### 2.3. OS keyringとは何か
+
+OS keyringは、passwordやAPI key等を一般の設定fileとは分けて保管する、OSのcredential管理機能である。代表例はmacOSのKeychain、WindowsのCredential Manager、Linux desktop環境のSecret Service互換keyringである。
+
+AlgoLoomがkeyringを利用する場合、設定fileへ保存するのはcredential値ではなく、`service = algoloom`、`account = anthropic-default`等の参照情報だけである。実際のAPI keyはOS keyringから実行時に取得し、Providerへのrequestに必要な間だけmemory上で扱う。
+
+```mermaid
+flowchart LR
+    CONFIG[user-level設定<br/>service・accountの参照] --> APP[AlgoLoom]
+    APP -->|参照を指定して取得| KEYRING[OS keyring<br/>API keyの値]
+    KEYRING -->|実行時だけ返す| MEMORY[process memory]
+    MEMORY -->|認証request| PROVIDER[Provider API]
+
+    KEYRING -. 保存しない .-> DB[(AlgoLoom DB)]
+    KEYRING -. 出力しない .-> LOG[log・error]
+```
+
+keyringは平文fileより安全に扱いやすいが、credential値を端末へ**永続化する仕組み**である点は変わらない。また、keyringを使えば漏えいが絶対に起きないわけではない。OS accountへのaccess、applicationへの読取許可、端末のlock、credentialの失効・削除を適切に管理する必要がある。
+
+したがって、永続化方針は次の2つを混同しない。
+
+| 方針 | OS keyringの扱い |
+|---|---|
+| AlgoLoomの設定file・DBへsecretを保存しない | keyringへの保存は許可できる |
+| AlgoLoomの操作によるcredential値の永続化を一切禁止する | keyringへの新規保存も禁止し、外部runtime、credential helper、環境変数だけを使う |
+
+本文書の現行方針は前者であり、ユーザーが明示的に選択した場合に限ってOS keyringを許可している。後者を製品原則にする場合は、`keyring`をcredential sourceとセットアップUXから除外する必要がある。
+
+### 2.4. 保存・暗号化に関する用語
+
+| 用語 | 意味 | credentialへの適用 |
+|---|---|---|
+| 永続化 | process終了や端末再起動後も値が残る場所へ保存すること | 設定file、DB、keyring、外部runtimeのauth storeはいずれも永続化になり得る |
+| memory上の一時保持 | 実行中のprocessだけで値を扱い、処理後に参照を破棄すること | API呼び出しに必要だが、logやcrash reportへの混入を防ぐ必要がある |
+| 平文保存 | 暗号化せず、fileを読めば元の値が分かる形で保存すること | 禁止する |
+| hash化 | 元の値へ戻せない一方向変換。password照合に利用される | Providerへ元の値を送るAPI keyやtokenの保存には利用できない |
+| 暗号化 | 鍵を使って元の値へ戻せる形に変換すること | 復号鍵の管理が必要。application埋め込みの固定鍵だけでは十分な保護にならない |
+| serialization | memory上の値をJSON、YAML、DB行等の保存・転送可能な形式へ変換すること | credential値を誤って設定fileやDBへ書き出さない |
+| redaction | logやerrorからsecretを削除またはマスクすること | credential値、HTTP header、Providerのraw errorへ適用する |
 
 ---
 
