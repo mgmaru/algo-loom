@@ -11,6 +11,7 @@
 > - [AlgoLoom配布方針ガイド](../distribution/algoloom-distribution.md)
 > - [AlgoLoom Turso設計ガイド](./turso-design-guide.md)
 > - [AlgoLoom Turso移行互換性設計](./turso-migration-compatibility-design.md)
+> - [AlgoLoom LLM Provider選択・実行基盤設計](../design/llm-provider-design.md)
 >
 > 注意: TursoのSDK、同期方式、対応OS、料金、制約は変更される可能性がある。実装開始時とリリース前に公式資料と配布wheelを再確認すること。
 

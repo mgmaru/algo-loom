@@ -7,7 +7,7 @@
 ## 2. システムアーキテクチャ・技術スタック
 * **CLIツール開発言語:** Python (Typer または Click を想定)
 * **コア機能補助:** online-judge-tools (スクレイピング、入出力例の取得、提出処理の代行)
-* **AIレビュー連携:** Ollama (ローカルLLM API呼び出し)
+* **AIレビュー連携:** ユーザーが明示的に選択・管理するLLM Provider（初期対応候補はローカルOllama）。AlgoLoomはProvider本体やモデルをインストール・起動しない。
 * **データベース:** SQLite (sqlite3 標準ライブラリを使用)
 * **データ同期・インフラ:** Google ドライブの仮想ドライブ上にSQLiteの .db ファイルを配置し、端末間で自動同期。
 
@@ -33,7 +33,7 @@ C++（新規挑戦）、Python、Go、Rustなどの複数言語に対応。
 | :--- | :--- | :--- |
 | **get** | [問題ID]<br>--lang [言語] | ①online-judge-toolsでテストケースをtest/にDL<br>②指定言語の雛形ファイルを作成<br>③問題ページをデフォルトブラウザで自動起動 |
 | **test** | [ファイル名] | config.yamlに基づきビルド（C++等）を行い、test/内のデータを使ってローカルで正誤判定を実行 |
-| **submit** | [ファイル名]<br>--review | ①online-judge-toolsでAtCoderへコードを提出<br>②結果(AC/WA等)をポーリングして取得<br>③SQLiteにコードと結果を保存<br>④(--review時) Ollamaにコードと結果を投げ、ターミナルに助言を出力 |
+| **submit** | [ファイル名]<br>--review | ①online-judge-toolsでAtCoderへコードを提出<br>②結果(AC/WA等)をポーリングして取得<br>③SQLiteにコードと結果を保存<br>④(--review時) 安全判定後、ユーザーが選択したLLM Providerへコードと結果を送り、ターミナルに助言を出力 |
 | **log** | なし | SQLiteから過去の提出履歴を取得し、ターミナル上に表形式（Rich等を使用）で一覧表示する |
 | **show** | [問題ID] | DBから指定問題でACを出した最新のコードを取得し、裏側で一時ファイルを作成して nvim -R で閲覧モード起動 |
 | **diff** | [問題ID] | DBから「初回提出時」と「最新提出時」のコードを取得し、nvim -d (Vimdiffモード) で左右分割表示して成長差分を確認 |

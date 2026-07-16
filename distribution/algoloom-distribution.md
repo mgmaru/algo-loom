@@ -2,7 +2,9 @@
 
 > 対象: AtCoder学習用ローカルCLI「AlgoLoom」の公開・配布
 >
-> 主な機能: 公開サンプル入出力の取得、ローカルテスト、ユーザー操作による提出、履歴保存、OllamaによるAIレビュー
+> 主な機能: 公開サンプル入出力の取得、ローカルテスト、ユーザー操作による提出、履歴保存、ユーザーが選択したLLM ProviderによるAIレビュー
+>
+> 関連文書: [AlgoLoom LLM Provider選択・実行基盤設計](../design/llm-provider-design.md)
 >
 > 作成日: 2026年7月15日
 >
@@ -154,7 +156,7 @@ flowchart TD
 
 ### 層1: AlgoLoomの自作コード
 
-- CLI、DB処理、設定、同期処理、Ollama連携などはAlgoLoom作者の著作物である。
+- CLI、DB処理、設定、同期処理、LLM Provider連携などはAlgoLoom作者の著作物である。
 - MITまたはApache-2.0等、明示的なOSSライセンスを付ける。
 - AtCoder公式ツールと誤認される説明やデザインにしない。
 
@@ -163,7 +165,7 @@ flowchart TD
 - online-judge-tools、CLIフレームワーク、Turso SDK等が該当する。
 - 配布方法によっては、ライセンス本文や著作権表示の同梱が必要になる。
 - `THIRD_PARTY_NOTICES.md`と依存関係一覧を用意する。
-- Ollama本体やモデルを同梱する場合は、それぞれのライセンスを別途確認する。初期版では同梱せず、ユーザーに導入してもらう。
+- LLM Provider本体やモデルは同梱しない。ユーザーが自分で選択・管理し、Providerとモデルごとのライセンスを確認する。
 
 online-judge-toolsはMITライセンスであり、コピーまたは実質的部分を配布する場合は、著作権表示と許諾表示を保持する必要がある。
 
@@ -321,7 +323,7 @@ AHCには別の生成AIルールがある。ADTは過去のABC問題を再利用
 
 ### 7.2. AlgoLoomの実装方針
 
-- `ai_review_enabled = false`なら、開催確認もOllama呼び出しも行わない。
+- `ai_review_enabled = false`なら、開催確認もLLM Provider呼び出しも行わない。
 - `contest_mode = true`なら、問題照合前にすべてのAIレビューを拒否する。
 - 常時監視を行わず、AIレビュー要求時だけ開催状況を確認する。
 - 問題タイトルやファイル名ではなく、AtCoderの正規問題IDで照合する。
@@ -332,7 +334,7 @@ AHCには別の生成AIルールがある。ADTは過去のABC問題を再利用
 - ADTは専用ルールで判定し、AIなしの練習には`contest_mode`を推奨する。
 - AWC Betaは、対象回の個別ページでAI利用の明示許可を確認できた場合だけ注意表示付きで許可する。
 - コンテスト種別、問題ID、開催状態、適用ルールを確認できない場合は拒否する。
-- ローカルOllamaであっても生成AI利用であることに変わりはない。
+- ローカルOllama等の端末内Providerであっても生成AI利用であることに変わりはない。
 - ユーザーが自己責任を選択するだけの安易な上書きオプションは設けない。
 - ルールページへのリンクと、レビューを利用できない理由を表示する。
 - コンテスト一覧は短時間キャッシュするが、次のコンテスト開始前に失効させる。
@@ -470,7 +472,7 @@ README、PyPI、Webサイトには次の趣旨を記載する。
 
 ---
 
-## 11. Turso・Ollama・プライバシー
+## 11. Turso・LLM Provider・プライバシー
 
 ### 11.1. 公開版のTurso
 
@@ -483,13 +485,21 @@ README、PyPI、Webサイトには次の趣旨を記載する。
 - Cloud同期を無効に戻す方法と、データexport方法を用意する。
 - AtCoderのセッションCookieやパスワードは同期対象外にする。
 
-### 11.2. Ollama
+### 11.2. LLM Provider
 
-- Ollamaへの入力内容をREADMEに説明する。
-- 既定ではローカルOllamaだけを対象とする。
-- リモートOllamaエンドポイントへ送る場合、提出コードが外部送信されることを明示する。
-- Ollama本体やモデルをAlgoLoomへ同梱しない。
-- ユーザーが選ぶモデルごとのライセンスは、ユーザー側でも確認が必要である。
+- 初期状態ではAIレビューをOFF、Providerを未選択にする。
+- Ollamaは初期対応候補の1つとし、必須Providerにしない。
+- Provider、endpoint、モデル、実行場所はユーザーが明示的に選択する。
+- AlgoLoomはProvider本体、OSサービス、GPU runtime、モデルをインストール、更新、起動、停止、削除しない。
+- OSのpackage managerやベンダーのinstallerをAlgoLoomから実行しない。
+- モデルを初期設定中やレビュー実行中に暗黙でdownloadしない。
+- 選択したProviderが失敗しても別Providerへ自動fallbackしない。
+- Providerへの入力内容、送信先、local / remoteの別をREADMEと設定時の画面で説明する。
+- remote Providerへ送る場合、提出コード等が端末外へ送信されることを明示し、事前に同意を得る。
+- Provider endpointとcredentialはworkspace設定へ置かず、user-level設定とOS keyring等で管理する。
+- Provider本体やモデルをAlgoLoomへ同梱しない。
+- ユーザーが選ぶProviderとモデルごとのライセンス、料金、data policyはユーザー側でも確認が必要である。
+- Providerを変更しても、AtCoderルールの安全判定を迂回できないようにする。
 
 ### 11.3. 保存してはいけない情報
 
@@ -542,7 +552,7 @@ algoloom_workspace/
 | `test` | ローカルだけで実行 |
 | `submit` | 提出内容を表示して確認、連続提出を抑止 |
 | `--review` | 実行時に種別・正規問題ID・開催状態を照合。禁止対象との一致または判定不能なら拒否 |
-| `ai_review_enabled` | OFFなら開催確認もOllama呼び出しも行わない |
+| `ai_review_enabled` | OFFなら開催確認もLLM Provider呼び出しも行わない |
 | `contest_mode` | ONなら対象問題にかかわらず、すべてのAIレビューを拒否 |
 | 判定確認 | 間隔付きポーリング、最大待機時間あり |
 | 認証 | ユーザー自身のonline-judge-toolsセッションを使用 |
@@ -579,7 +589,7 @@ algoloom_workspace/
 - [ ] コンテスト種別・問題ID・開催状態・適用ルールを確認できない場合は拒否する。
 - [ ] ABC・ARC・AGCではRated / Unratedにかかわらず同じAI制限を適用する。
 - [ ] AHC、ADT、AWC、その他のコンテストをABC系と同一ルールで処理しない。
-- [ ] AIレビューOFFでは開催確認とOllama呼び出しを行わない。
+- [ ] AIレビューOFFでは開催確認とLLM Provider呼び出しを行わない。
 - [ ] `contest_mode` ONではすべてのAIレビューを拒否する。
 - [ ] 現行のABC・ARC・AGC・AHCルールへのリンクがある。
 
