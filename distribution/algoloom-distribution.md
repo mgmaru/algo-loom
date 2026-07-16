@@ -430,6 +430,9 @@ pip install algoloom
 | AtCoderデータ | 一切同梱しない |
 | デモデータ | 作者が作成した架空fixtureだけを同梱 |
 | クラウド同期 | 任意機能。既定はローカルのみ |
+| Editor / IDE | 必須依存なし。ユーザーが選択した外部ツールを任意利用 |
+
+AlgoLoom Coreは特定のEditor / IDEへ依存させない。配布物はNeovim、VS Code、Emacs等の本体やpluginを同梱せず、インストール、更新、ユーザー設定の変更も行わない。`show`と`diff`の外部Viewer連携は任意機能とし、Viewerがない環境でもterminal fallbackによって履歴を参照できるようにする。
 
 ### 9.2. 第2段階: GitHub Releases / Homebrew
 
