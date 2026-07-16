@@ -491,18 +491,26 @@ README、PyPI、Webサイトには次の趣旨を記載する。
 ### 11.2. LLM Provider
 
 - 初期状態ではAIレビューをOFF、Providerを未選択にする。
-- Ollamaは初期対応候補の1つとし、必須Providerにしない。
-- Provider、endpoint、モデル、実行場所はユーザーが明示的に選択する。
+- Review Backendは、Model API BackendとAgent Bridge Backendを区別して扱う。
+- OllamaとLM Studioをlocal Model APIの初期候補とし、必須Providerにしない。
+- remote APIはBYOKを基本とし、OpenAI API、Anthropic API、Gemini API / Vertex等を個別に評価する。
+- Codex等のCoding Agent連携は、Providerが提供する公式の組み込みinterfaceがあり、review-onlyの権限制約を保証できる場合に限る。
+- Provider、Backend種別、endpoint、モデル、実行場所、課金経路はユーザーが明示的に選択する。
 - AlgoLoomはProvider本体、OSサービス、GPU runtime、モデルをインストール、更新、起動、停止、削除しない。
 - OSのpackage managerやベンダーのinstallerをAlgoLoomから実行しない。
 - モデルを初期設定中やレビュー実行中に暗黙でdownloadしない。
 - 選択したProviderが失敗しても別Providerへ自動fallbackしない。
 - Providerへの入力内容、送信先、local / remoteの別をREADMEと設定時の画面で説明する。
 - remote Providerへ送る場合、提出コード等が端末外へ送信されることを明示し、事前に同意を得る。
-- Provider endpointとcredentialはworkspace設定へ置かず、user-level設定とOS keyring等で管理する。
+- Provider endpointとcredential参照はworkspace設定へ置かず、user-level設定で管理する。credential値は外部runtime、credential helper、環境変数、OS keyringから解決し、project、DB、Cloud同期へ保存しない。
+- keyringが利用できない場合も、平文fileへ自動fallbackしない。
+- password、social login情報、OAuth token、`~/.claude`、`~/.gemini`、`~/.codex`等の認証cacheをAlgoLoomから要求、読取、複製しない。
+- Claude CodeとGemini CLIのsubscription credentialは第三者applicationから転用せず、対応する公式API経路を案内する。
+- Agent Bridgeへworkspace全体、write、shell、MCP、browser、plugin権限を渡さず、一時sessionをreview後に破棄する。
 - Provider本体やモデルをAlgoLoomへ同梱しない。
 - ユーザーが選ぶProviderとモデルごとのライセンス、料金、data policyはユーザー側でも確認が必要である。
 - Providerを変更しても、AtCoderルールの安全判定を迂回できないようにする。
+- Providerの利用規約、認証方式、料金、data policyは変更され得るため、Adapter実装時と各release前に公式資料を再確認する。
 
 ### 11.3. 保存してはいけない情報
 
