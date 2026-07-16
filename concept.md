@@ -68,11 +68,28 @@ C++（新規挑戦）、Python、Go、Rustなどの複数言語に対応。
     ├── templates/
     │   ├── template.cpp
     │   └── template.py
-    └── abc300_a/             # algoloom get で自動生成
+    └── abc300_a/             # aloom get で自動生成
         ├── main.cpp          # 指定言語のテンプレートをコピー
         └── test/             # online-judge-tools が取得した入出力例
 
 ## 6. CLIコマンド構成
+
+AlgoLoomの日常操作では、短く入力でき、製品名との関係も識別しやすい`aloom`を正式command名とする。Python package名や内部module名、保存directory名は`algoloom`を維持でき、command名と一致させる必要はない。
+
+| 区分 | 名前 | 方針 |
+|---|---|---|
+| 製品名 | AlgoLoom | UI、文書、配布時の正式名称 |
+| 正式command | `aloom` | README、help、利用例で優先して使用する |
+| 互換command | `algoloom` | `aloom`と同じentry pointを呼び、既存scriptや明示的な正式名入力を支える |
+| 任意alias | `al` | ユーザーが望む場合だけshell側で設定する。AlgoLoomから自動登録しない |
+
+```bash
+aloom get abc300_a
+aloom test main.cpp
+aloom submit main.cpp
+```
+
+`loom`は他のCLIと衝突しやすいため使用しない。AlgoLoomはshellの設定fileを無断で変更せず、`al`のaliasとcompletionを設定する手順だけを案内する。
 
 | コマンド | 引数 / オプション | 実行される処理 |
 | :--- | :--- | :--- |

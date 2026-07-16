@@ -534,7 +534,7 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 
 ### 6.9. `test`による任意コード実行とresource制限
 
-`algoloom test`はユーザーが指定したcodeを意図的に実行する機能である。これはcommand injectionとは別の、製品仕様上許可されたcode executionである。
+`aloom test`はユーザーが指定したcodeを意図的に実行する機能である。これはcommand injectionとは別の、製品仕様上許可されたcode executionである。
 
 初期版では自作codeを前提とし、次の偶発事故対策を行う。
 

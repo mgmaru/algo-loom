@@ -104,16 +104,16 @@ CLI例:
 
 ```bash
 # AIレビュー機能全体を無効化
-algoloom config set ai-review off
+aloom config set ai-review off
 
 # AIレビュー機能を有効化
-algoloom config set ai-review on
+aloom config set ai-review on
 
 # コンテスト参加前に、すべてのAI機能を停止
-algoloom contest-mode on
+aloom contest-mode on
 
 # コンテスト終了後に通常状態へ戻す
-algoloom contest-mode off
+aloom contest-mode off
 ```
 
 ### 1.2. AtCoderの主なコンテスト名
@@ -326,7 +326,7 @@ abc244_a
 ただし、ADTをAIなしで解きたいユーザーには次の運用を推奨する。
 
 ```bash
-algoloom contest-mode on
+aloom contest-mode on
 ```
 
 ### 3.4. AWC Betaは対象回の明示ルールを確認する
@@ -595,7 +595,7 @@ AIレビューを実行できません。
   contest_mode が有効です。
 
 コンテスト終了後、次のコマンドで解除できます。
-  algoloom contest-mode off
+  aloom contest-mode off
 ```
 
 拒否理由は、単なるエラーコードではなく、問題ID、コンテストID、終了予定時刻、参照ルールを表示する。

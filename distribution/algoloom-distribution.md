@@ -419,6 +419,33 @@ uv tool install algoloom
 pip install algoloom
 ```
 
+#### Package名とcommand名
+
+配布package名とterminalで実行するcommand名を分離する。
+
+| 区分 | 名前 | 配布上の扱い |
+|---|---|---|
+| 製品名 | AlgoLoom | ブランドと表示名 |
+| Python package | `algoloom` | PyPIで利用可能か公開前に再確認する |
+| 正式command | `aloom` | 文書、help、completionの既定 |
+| 互換command | `algoloom` | `aloom`と同じmain functionを呼ぶconsole script |
+| 任意alias | `al` | ユーザー自身がshellへ設定する短縮形 |
+
+Python packageのentry pointでは、少なくとも次の2つを同じ処理へ割り当てる。
+
+```toml
+[project.scripts]
+aloom = "algoloom.__main__:main"
+algoloom = "algoloom.__main__:main"
+```
+
+- 新しい利用例は`aloom`で記載する。
+- `aloom`と`algoloom`で引数、終了code、stdout / stderr、設定・保存先を変えない。
+- `algoloom_workspace`やOS標準directory内の`algoloom`等、command以外の既存namespaceは変更しない。
+- `al`を配布物の実行fileとして自動配置せず、shell aliasの設定例だけを案内する。
+- shell設定fileをAlgoLoomから書き換えない。completionを含む設定commandを表示し、実行判断をユーザーへ委ねる。
+- install後に`aloom --version`と`algoloom --version`が同じversionを返すことをtestする。
+
 | 項目 | 方針 |
 |---|---|
 | ソース | GitHubで公開 |
@@ -624,6 +651,8 @@ algoloom_workspace/
 ### リリース
 
 - [ ] wheel / sdistの中身を一覧で確認した。
+- [ ] `aloom`と互換commandの`algoloom`が同じentry point・version・終了codeで動作する。
+- [ ] `al`を自動配置せず、shell設定fileも変更していない。
 - [ ] `.gitignore`対象ファイルが混入していない。
 - [ ] Cookie、トークン、実ユーザーコードをsecret scanした。
 - [ ] 対応バージョンと既知の制約を記載した。
@@ -720,6 +749,14 @@ flowchart LR
 - [online-judge-tools LICENSE](https://raw.githubusercontent.com/online-judge-tools/oj/master/LICENSE)
 - [online-judge-tools Cloudflare関連Issue](https://github.com/online-judge-tools/oj/issues/934)
 
+### CLI命名とPython packaging
+
+- [GitHub CLI](https://cli.github.com/)
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/what-is-azure-cli)
+- [uv First steps](https://docs.astral.sh/uv/getting-started/first-steps/)
+- [kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/quick-reference/)
+- [Python Packaging User Guide: Entry points specification](https://packaging.python.org/en/latest/specifications/entry-points/)
+
 ---
 
 ## 18. 最終方針
@@ -739,5 +776,6 @@ AlgoLoomは、AtCoderの問題を配布するアプリではなく、**ユーザ
 - 第三者ライセンスを守る。
 - 規約変更へ継続的に追従する。
 - 商用・法人用途はAtCoderへの確認なしに拡大しない。
+- 日常操作の正式commandを`aloom`とし、`algoloom`は互換command、`al`はユーザー任意のshell aliasとして扱う。
 
 この方針はリスクを大きく下げるが、法的な保証やAtCoderからの許諾そのものではない。公開前の問い合わせと、公開後の継続的な規約確認を配布プロセスの一部として扱う。
