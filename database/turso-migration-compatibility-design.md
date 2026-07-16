@@ -324,12 +324,39 @@ erDiagram
 
 ### 6.1. 状態モデル
 
-ユーザーへ表示する状態は同期方式に依存させない。
+この節で扱うのは、**提出コードを含むDBレコードが、AlgoLoomのローカル領域とTurso Cloudへどこまで保存されたか**という保存・同期状態である。
+
+対象となるDBレコードの例は次のとおりである。
+
+- 提出したソースコード、問題ID、言語、AtCoder submission ID、判定結果をまとめた提出履歴
+- ユーザーが開始した問題の記録
+- AIレビューとそのリビジョン
+- 将来同期対象へ追加するメモ等のユーザーデータ
+
+これは、ワークスペース上のコードファイルが編集中か、ファイルへ保存済みかを表す状態ではない。また、AtCoder上の提出・判定状態とも別である。
+
+| 状態の種類 | 例 | 管理対象 |
+|---|---|---|
+| コード編集状態 | 編集中、ファイル保存済み | ワークスペースのソースファイル |
+| AtCoder提出・判定状態 | 未提出、WJ、AC、WA、TLE | AtCoderへの提出と判定 |
+| AlgoLoom保存・同期状態 | ローカル保存済み、同期待ち、同期済み | コードを含むAlgoLoomのDBレコード |
+
+同じ提出でも、3種類の状態は独立している。
+
+```text
+コードファイル:       保存済み
+AtCoderへの提出:      AC
+AlgoLoomローカル:    保存済み
+Turso Cloud:         同期待ち
+```
+
+ユーザーへ表示するAlgoLoomの保存・同期状態は、同期方式に依存させない。
 
 ```mermaid
 stateDiagram-v2
-    [*] --> LocalDurable: ローカル永続化成功
-    LocalDurable --> SyncPending: Cloud未反映
+    [*] --> LocalSaving: DBレコードの保存開始
+    LocalSaving --> LocalSaveFailed: ローカル永続化失敗
+    LocalSaving --> SyncPending: ローカル永続化成功
     SyncPending --> Synced: Cloud反映成功
     SyncPending --> SyncFailedRetryable: 通信・Cloud障害
     SyncFailedRetryable --> SyncPending: retry
@@ -338,12 +365,14 @@ stateDiagram-v2
 
 | 状態 | 意味 | Embedded Replica | Turso Sync |
 |---|---|---|---|
-| `LOCAL_DURABLE` | プロセス終了後も端末から回復できる | outbox保存済み | ローカルDB commit済み |
-| `SYNC_PENDING` | Cloud共有は未完了 | outbox行あり | 未push変更あり |
+| `LOCAL_SAVE_FAILED` | 端末内へ永続保存できず、同期処理へ進めない | outbox保存失敗 | ローカルDB commit失敗 |
+| `SYNC_PENDING` | 端末から回復できるが、Cloud共有は未完了 | outbox保存済み | ローカルDB commit済み・未push変更あり |
 | `SYNCED` | 他端末が取得可能 | Cloud書き込み成功 | push成功 |
 | `SYNC_FAILED_RETRYABLE` | ローカルデータはあるが再送が必要 | outbox保持 | ローカル変更保持 |
 
-これらの状態を業務テーブルへ直接保存せず、AdapterがoutboxまたはSDK統計から導出する。
+`LOCAL_DURABLE`は排他的な状態名ではなく、「プロセス終了後も端末から回復できる」という保証を表す。`SYNC_PENDING`、`SYNCED`、`SYNC_FAILED_RETRYABLE`はいずれも`LOCAL_DURABLE = true`を前提とする。`WriteReceipt.local_durable`等の戻り値では、この保証を真偽値として表現できる。
+
+これらの保存・同期状態を業務テーブルへ直接保存せず、AdapterがoutboxまたはSDK統計から導出する。
 
 ### 6.2. `submit`のUX契約
 
