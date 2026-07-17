@@ -2,12 +2,13 @@
 
 > 対象: AlgoLoomのAIレビューで利用するModel API、Coding Agent、LLM Provider、実行基盤、モデル、接続先、認証・認可、セットアップUX
 >
-> 状態: 設計方針
+> 状態: MVP後の設計方針。AI reviewとReview BackendはMVP対象外
 >
 > 作成日: 2026年7月16日
 >
 > 関連文書:
 > - [プロジェクト草案](../concept.md)
+> - [MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)
 > - [AlgoLoom AIレビュー安全設計](../distribution/ai-review-safety-design.md)
 > - [AlgoLoom 配布方針ガイド](../distribution/algoloom-distribution.md)
 > - [ローカル利用とCloud同期の段階的設計](../database/local-and-cloud-sync-design.md)

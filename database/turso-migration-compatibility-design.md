@@ -11,6 +11,7 @@
 > - [AlgoLoom Turso設計ガイド](./turso-design-guide.md)
 > - [DB候補比較](./db-comparison.md)
 > - [プロジェクト草案](../concept.md)
+> - [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)
 >
 > 注意: TursoのSDK、同期方式、ファイル形式、制約は変更される可能性がある。実装開始時と移行前に公式資料を再確認すること。
 
@@ -245,7 +246,9 @@ class SyncCoordinator(Protocol):
 
 ---
 
-## 5. 共通論理データモデル
+## 5. 同期検討時の暫定論理データモデル
+
+本節の図は、同期方式間でIDと追記ルールを共通化する考え方を示す過去の最小例であり、MVPの確定Schemaではない。[MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)に従い、Coreの論理モデルでは少なくともsource snapshot、checkpoint、submission operation、verdict observation、AtCoder account identityを分離して設計する。AI review tableはMVPへ含めない。
 
 ### 5.1. 基本原則
 
@@ -596,19 +599,21 @@ flowchart TD
 
 ---
 
-## 10. 初期方式の決定
+## 10. 同期方式の採用判断
 
 2026年7月16日時点のTurso公式資料では、Embedded Replicaはレガシー方式と位置付けられ、新規同期用途にはTurso Syncが推奨されている。一方、AlgoLoomではPython SDKの成熟度、復旧性、運用の単純さも確認する必要がある。
 
+AlgoLoom MVPの保存方式はPython標準`sqlite3`によるローカルSQLiteとし、同期を含めない。以下はMVP完了後にCloud同期を追加する場合の採用判断である。
+
 ### 10.1. 判断方針
 
-試作と正式な設計判断が完了するまでは、同期機能を正式公開しない。Turso Syncの必須検証に合格した場合は第一候補として採用し、不合格の場合だけEmbedded Replicaを暫定候補として評価する。どちらの場合も、ローカル保存済み履歴がCloud接続なしで`log`、`show`、`diff`に現れることを採用条件とする。
+試作と正式な設計判断が完了するまでは、同期機能を正式公開しない。Turso Syncの必須検証に合格した場合は第一候補として採用し、不合格の場合は同期公開を延期する。同期への実需があり、別方式を評価する根拠が得られた場合だけ、Embedded Replicaまたは別Adapterを候補にする。どの方式でも、ローカル保存済み履歴がCloud接続なしで`log`、`show`、`diff`に現れることを採用条件とする。
 
 ```mermaid
 flowchart TD
     A[共通論理スキーマで<br/>Turso Syncを試作] --> B{必須検証に合格?}
-    B -->|Yes| C[初期版からTurso Sync]
-    B -->|No| D[Embedded Replicaを暫定採用]
+    B -->|Yes| C[同期Betaの第一候補に採用]
+    B -->|No| D[同期公開を延期または<br/>別Adapterを評価]
     D --> E[同じPortと契約テストを維持]
     E --> F[SDK成熟後に移行手順を実行]
 ```
@@ -628,7 +633,7 @@ flowchart TD
 | セキュリティ | 暗号化とトークン管理を確認する | 標準SQLiteで不用意に読めず、秘密をログへ出さない |
 | 復元 | Cloudから新端末へbootstrapする | 件数・主キー・コードが一致する |
 
-すべて合格する場合は、将来移行を前提にEmbedded Replicaを採用するより、初期版からTurso Syncを採用する方が総コストを下げられる可能性が高い。
+すべて合格する場合は、MVP後の同期BetaでTurso Syncを第一候補として採用する。合格しない場合は同期機能を延期し、ローカルMVPへ別の同期SDKを持ち込まない。
 
 ---
 
@@ -684,21 +689,21 @@ flowchart TD
 
 ## 12. 段階的な実装
 
-### Phase 1: 論理モデルとPort
+### Phase 1: ローカルMVPの論理モデル
 
 - 共通の業務スキーマを確定する。
-- `HistoryStore`、`SyncCoordinator`、`UnitOfWork`を定義する。
-- `WriteReceipt`と共通同期状態を定義する。
+- `HistoryStore`と`UnitOfWork`を定義する。
+- MVPでは`SyncCoordinator`と共通同期状態を日常のDomainへ持ち込まない。
 - in-memoryまたは標準SQLite AdapterでApplication層をテストする。
 
-### Phase 2: Turso Syncの試作と採用判定
+### Phase 2: MVP後のTurso Sync試作と採用判定
 
 - 共通スキーマで`pyturso`を検証する。
 - 2端末、切断、競合、復旧、bootstrapをテストする。
-- 合格すれば初期版からTurso Syncを採用する。
-- 不合格ならEmbedded Replica Adapterを実装する。
+- 合格すれば同期Betaの第一候補としてTurso Syncを採用する。
+- 不合格なら同期公開を延期し、必要に応じて別Adapterを評価する。
 
-### Phase 3: 初期方式の実装
+### Phase 3: 同期Beta方式の実装
 
 - 選択したAdapterを実装する。
 - CLIからTurso SDKへの直接依存を禁止する。
@@ -775,6 +780,6 @@ AlgoLoomの同期方式は交換可能なインフラとして扱い、業務デ
 7. 移行時は物理ファイルを再利用せず、Cloudから新しいローカルDBをbootstrapする。
 8. outboxの未送信データを同じUUIDと冪等キーで引き継ぐ。
 9. 両Adapterへ同じ契約テストとUX回帰テストを適用する。
-10. 実装前にTurso Syncを短期検証し、合格するなら初期版からの採用を優先する。
+10. ローカルMVP完了後にTurso Syncを短期検証し、合格する場合だけ同期Betaの第一候補にする。
 
 この方針により、将来の同期方式変更を「アプリ全体の作り直し」ではなく、「検証済みAdapterの交換とローカル物理DBの再構築」として実施できる。

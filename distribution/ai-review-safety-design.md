@@ -2,11 +2,12 @@
 
 > 対象: AtCoder学習用ローカルCLI「AlgoLoom」のAIレビュー機能
 >
-> 状態: 設計方針
+> 状態: MVP後の設計方針。AI reviewはMVP対象外
 >
 > 作成日: 2026年7月15日
 >
 > 関連文書:
+> - [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)
 > - [AlgoLoom 配布方針ガイド](./algoloom-distribution.md)
 > - [AlgoLoom LLM Provider選択・実行基盤設計](../design/llm-provider-design.md)
 >

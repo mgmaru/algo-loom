@@ -8,6 +8,7 @@
 >
 > 関連文書:
 > - [プロジェクト草案](../concept.md)
+> - [MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)
 > - [Review Backend・LLM Provider設計](./llm-provider-design.md)
 > - [セキュリティ設計ガイド](./security-design.md)
 > - [ストレスフリーUX設計](./stress-free-ux-design.md)
@@ -17,7 +18,7 @@
 
 ## 0. 結論
 
-AlgoLoomは、初期版ではAtCoderの問題取得、local test、提出、履歴、差分、任意のAI reviewを確実に実装する。
+AlgoLoomは、MVPではAtCoderの終了済み過去問を対象に、問題取得、local test、明示checkpoint、提出、履歴、差分、exportからなるCoreを確実に実装する。AI reviewはMVP後の独立した採用判断とする。正確な範囲は[MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)を正とする。
 
 その基盤が安定した後の将来構想として、他者またはLLMが書いたcodeを読み、症状から原因仮説を立て、検証可能な予測を示し、最小限の変更と回帰testによって修正を確かめる学習ワークフローを検討する。本書ではこの構想を仮に**Repair Lab**と呼ぶ。名称、command、画面、採点方式は確定事項ではない。
 

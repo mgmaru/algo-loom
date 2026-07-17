@@ -4,7 +4,9 @@
 >
 > 主な機能: 公開サンプル入出力の取得、ローカルテスト、ユーザー操作による提出、履歴保存、ユーザーが選択したLLM ProviderによるAIレビュー
 >
-> 関連文書: [AlgoLoom LLM Provider選択・実行基盤設計](../design/llm-provider-design.md)
+> 関連文書:
+> - [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)
+> - [AlgoLoom LLM Provider選択・実行基盤設計](../design/llm-provider-design.md)
 >
 > 作成日: 2026年7月15日
 >
@@ -692,8 +694,8 @@ flowchart LR
 ### Phase 1: 個人利用
 
 - ローカルDBを既定にする。
-- 過去問の公開サンプル取得と手動提出を検証する。
-- AIレビューOFF、`contest_mode`、開催中問題の正規ID照合を実装する。
+- [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)に従い、終了済み過去問の公開sample取得、local test、自動提出、履歴、exportを検証する。
+- AI review、`contest_mode`、Cloud同期をMVPへ含めない。
 - 実データがリポジトリへ混入しないことを確認する。
 
 ### Phase 2: 限定公開ベータ

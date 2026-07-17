@@ -8,6 +8,7 @@
 >
 > 関連文書:
 > - [プロジェクト草案](../concept.md)
+> - [MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)
 > - [ローカル利用とCloud同期の段階的設計](../database/local-and-cloud-sync-design.md)
 > - [Turso設計ガイド](../database/turso-design-guide.md)
 > - [Turso移行互換性設計](../database/turso-migration-compatibility-design.md)
@@ -154,7 +155,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 |---|---|---|
 | CLI引数 | 未信頼 | 形式違反、path、optionに見える値を含み得る |
 | ユーザーコード | 未信頼データ | SQL、terminal、editor、LLM等の文法に似た文字列を含み得る |
-| `config.yaml` / `config.toml` | ユーザー管理の設定 | 実行commandを定義できるため、入手元不明の設定は実質的に実行権限を持つ |
+| user-level設定 / 将来のworkspace設定 | ユーザー管理の設定 | 実行commandを定義できる設定は実質的に実行権限を持つ。MVPのworkspace metadataには実行commandを許可しない |
 | DBから取得した行 | 未信頼データ | 手動変更、破損、古いversion、Cloud同期を考慮する |
 | AtCoder / online-judge-tools | 外部データ | HTML、判定、error message等の形式変更を考慮する |
 | LLM Provider response | 未信頼データ | Schema違反、markup、制御文字、過大responseを含み得る |
@@ -634,7 +635,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 
 ## 8. 段階的な実装
 
-### Phase 1: ローカル初期版で必須
+### Phase 1: MVP Coreで必須
 
 - 全queryのparameter bind
 - 動的SQL識別子の許可リスト
@@ -643,15 +644,16 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - 安全なtemp directory、permission、cleanup
 - compile / run timeoutと出力量上限
 - Rich markupとterminal制御文字の安全な処理
-- Editor / Viewer Adapterのargv template、terminal fallback、安全閲覧modeの方針決定
-- LLM response Schema検証と自動操作禁止
-- Review Backend credentialの非保存、認証cache非参照、平文fallback禁止
-- Agent Bridgeを導入する場合の一時directory、tool禁止、session破棄
+- source表示と差分の安全なterminal出力
 - secret、code、raw errorのlog redaction
 - 攻撃的入力を使った自動test
 
-### Phase 2: Cloud同期・公開配布時に必須
+### Phase 2: 各任意機能の公開前に必須
 
+- Editor / Viewer Adapterのargv template、terminal fallback、安全閲覧mode
+- LLM response Schema検証と自動操作禁止
+- Review Backend credentialの非保存、認証cache非参照、平文fallback禁止
+- Agent Bridgeを導入する場合の一時directory、tool禁止、session破棄
 - Cloud同意、送信対象、無効化、exportのUX
 - keyring、token失効、端末単位credential
 - Cloud取得行のSchema・size検証

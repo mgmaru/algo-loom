@@ -8,6 +8,7 @@
 >
 > 関連文書:
 > - [プロジェクト草案](../concept.md)
+> - [MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)
 > - [問題選択・カタログ設計](./problem-selection-and-catalog.md)
 > - [Review Backend・LLM Provider設計](./llm-provider-design.md)
 > - [パフォーマンスと待機体験の設計](./performance-and-waiting-design.md)
@@ -770,7 +771,7 @@ Accepted
 6. AtCoder認証の初回・期限切れ導線を設計する。
 7. P0の利用者検証を行う。
 8. P1の待機、確認、診断、用語を改善する。
-9. Coreが安定した後にAI、同期、catalog、ViewerのP2を検証する。
+9. Coreが安定した後にAI、同期、catalog、ViewerのP2を検証する。MVPの完了範囲は[MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)を正とする。
 
 AI、同期、dashboard等の拡張より先に、install、問題取得、test、submitの一本の導線を静かで、速く、壊れず、回復可能にする。
 

@@ -9,6 +9,7 @@
 >
 > 関連文書:
 > - [プロジェクト草案](../concept.md)
+> - [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)
 > - [AlgoLoom配布方針ガイド](../distribution/algoloom-distribution.md)
 > - [AlgoLoom Turso設計ガイド](./turso-design-guide.md)
 > - [AlgoLoom Turso移行互換性設計](./turso-migration-compatibility-design.md)
@@ -740,8 +741,8 @@ flowchart LR
 ### Phase 1: ローカル利用
 
 - 標準SQLiteで共通論理スキーマを実装する。
-- `submit`、`log`、`show`、`diff`を完成させる。
-- マイグレーション、export、backup、restoreを実装する。
+- [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)に従い、checkpoint、`submit`、`log`、`show`、`diff`、exportを完成させる。
+- マイグレーションと、復旧可能なローカル退避を実装する。自動backupと完全なrestore UXはMVP後とする。
 - `HistoryStore`、`UnitOfWork`、`WriteReceipt`の契約テストを作る。
 - Tursoなしのクリーン環境でインストールと初回起動を検証する。
 

@@ -10,6 +10,7 @@
 >
 > 関連文書:
 > - [プロジェクト草案](../concept.md)
+> - [MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)
 > - [AlgoLoom 配布方針ガイド](../distribution/algoloom-distribution.md)
 > - [AlgoLoom AIレビュー安全設計](../distribution/ai-review-safety-design.md)
 >

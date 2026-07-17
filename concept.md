@@ -1,5 +1,7 @@
 # プロジェクト草案: AlgoLoom
 
+> MVPに含める能力、対象利用者、初期対応環境、履歴と提出のCore契約は、[MVPスコープとCore契約](design/mvp-scope-and-core-contracts.md)を正本とする。本書はMVP後を含む製品全体の構想を扱う。
+
 ## 1. プロジェクトの目的
 アルゴリズムという思考の糸を、ターミナル上で丁寧に織り上げるためのローカルファーストCLIツール。
 ブラウザの往復を最小限に抑え、特定のエディタやIDEに依存せず、ユーザーが使い慣れた環境でコーディング・テスト・提出・AIレビュー・成長履歴の管理をシームレスに行う学習基盤を構築する。
@@ -114,7 +116,7 @@ AlgoLoomは、AlgoLoomだけが意味を理解できる操作に専用commandを
 
 - `log`、`show`、`diff`は、その端末のローカルユーザーDBから直ちに読み取る。
 - 通常の履歴参照で同期完了を待たない。別端末の変更を反映した最新状態が必要な場合だけ、利用者が明示的に同期を実行する。
-- `submit`で取得した履歴は、Cloud送信より先にローカルへ原子的に永続化する。Cloud同期が失敗した場合も、履歴を表示・差分比較できる状態を保ち、再送対象として保持する。
+- `submit`は、AtCoderへの外部送信前に、送信するsource snapshotと提出操作をローカルへ耐久保存する。AtCoderへの送信、submission ID取得、判定確認、将来のCloud同期は別の状態遷移として扱い、部分失敗から回復できるようにする。
 - Cloudへの反映成功は「別端末から取得可能」、ローカル保存成功は「この端末から直ちに参照・回復可能」と区別して表示する。
 - 問題カタログなど再取得可能な補助データだけをTTL付きローカルキャッシュとして扱う。提出コードや判定結果を、失われてもよいキャッシュとして扱わない。
 - 「ローカルが真」とは、すべてのデータをローカルだけで決定する意味ではない。データごとに権威を1つ定める。編集中のcodeはworkspace、AtCoderの提出ID・判定はAtCoder、提出履歴とreview revisionはAlgoLoomの不変レコード、問題カタログは取得元サービスを権威とする。
@@ -123,20 +125,19 @@ AlgoLoomは、AlgoLoomだけが意味を理解できる操作に専用commandを
 同期、競合、バックアップ、障害復旧の詳細は[ローカル利用とCloud同期の段階的設計](database/local-and-cloud-sync-design.md)で定義する。待機時間、resource上限、性能計測、修正優先順位は[パフォーマンスと待機体験の設計](design/performance-and-waiting-design.md)で定義する。
 
 ## 4. 解答言語と設定管理
-C++（新規挑戦）、Python、Go、Rustなどの複数言語に対応。
-プロジェクトルートに配置する config.yaml で、各言語の拡張子、テンプレートファイルパス、コンパイルコマンド、実行コマンドを管理する。
+
+製品構想としてはC++、Python、Go、Rust等の複数言語へ段階的に対応する。MVPはC++とPythonに限定し、安全なcompile/run定義をAlgoLoomの組み込みprofileとして提供する。
+
+将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。ただし、MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と信頼境界の正確な契約は[MVPスコープとCore契約](design/mvp-scope-and-core-contracts.md)を正とする。
 
 ## 5. ディレクトリ構成（ハイブリッド型）
 コンテキストスイッチを防ぐため、`get`は既定でworkspace直下に「問題ごとのフォルダ」を1階層だけ作成する。この構成は開始時の推奨layoutであり、利用者が維持し続けなければならない実行時制約ではない。
 
     algoloom_workspace/
-    ├── config.yaml
-    ├── templates/
-    │   ├── template.cpp
-    │   └── template.py
-    └── abc300_a/             # aloom get で自動生成
-        ├── main.cpp          # 指定言語のテンプレートをコピー
-        └── test/             # online-judge-tools が取得した入出力例
+    └── abc300_a/                 # aloom get で自動生成
+        ├── <problem-metadata>    # 名称と形式は機能設計で決定
+        ├── main.cpp              # 組み込みprofileの雛形から作成
+        └── test/                 # Judge Adapterが取得した公開sample
 
 作成後は、利用者がOS、shell、file manager、Editor / IDEの標準操作でworkspace全体や問題directoryを移動・rename・整理できることを基本契約とする。
 
@@ -170,12 +171,14 @@ aloom submit main.cpp
 
 | コマンド | 引数 / オプション | 実行される処理 |
 | :--- | :--- | :--- |
-| **get** | [問題ID]<br>--lang [言語] | ①online-judge-toolsでテストケースをtest/にDL<br>②指定言語の雛形ファイルを作成<br>③問題ページをデフォルトブラウザで自動起動 |
-| **test** | [ファイル名] | config.yamlに基づきビルド（C++等）を行い、test/内のデータを使ってローカルで正誤判定を実行 |
-| **submit** | [ファイル名]<br>--review | ①online-judge-toolsでAtCoderへコードを提出<br>②結果(AC/WA等)をポーリングして取得<br>③コードと結果をローカルSQLiteへ原子的に保存<br>④同期有効時だけCloud反映を短時間試行し、失敗時は再送対象として保持<br>⑤(--review時) 安全判定後、ユーザーが選択したReview Backendへコードと結果を送り、ターミナルに助言を出力 |
-| **log** | なし | ローカルSQLiteから過去の提出履歴を取得し、通信を待たずにターミナル上へ表形式（Rich等を使用）で一覧表示する |
-| **show** | [問題ID] | ローカルDBから指定問題でACを出した最新のコードを取得し、安全な一時ファイルを設定済みEditor / Viewerで読み取り専用表示する。Viewerを利用できない場合はterminal上のplain text表示へfallbackする。通常はCloud同期を待たない。 |
-| **diff** | [問題ID] | ローカルDBから「初回提出時」と「最新提出時」等、利用者が振り返る2つの実装snapshotを取得し、設定済みDiff Viewerで試行錯誤と成長の差分を表示する。Viewerを利用できない場合はterminal上のunified diffへfallbackする。通常はCloud同期を待たない。 |
+| **get** | [問題ID]<br>--lang [言語] | ①Judge Adapter経由で公開sampleをtest/へ取得<br>②宣言的な問題metadataを保存<br>③組み込みlanguage profileから雛形fileを作成。再実行時は編集済みsourceを上書きしない |
+| **test** | [ファイル名] | 組み込みlanguage profileに基づきbuild（C++等）を行い、test/内の公開sampleとの一致をlocalで確認する。AtCoderでのACを保証する判定とは表現しない。 |
+| **checkpoint** | [ファイル名] | 提出前のsource snapshotを、利用者の明示操作によってローカル履歴へ保存する。外部通信は行わない。 |
+| **submit** | [ファイル名]<br>--review（MVP後） | ①問題contextとAtCoder accountを確認<br>②送信する正確なsource snapshotと提出操作をローカルSQLiteへ耐久保存<br>③Judge Adapter経由でAtCoderへ提出<br>④submission IDを保存し、判定をpolling<br>⑤中断時は状態を保持し、同じ提出の判定だけを再確認<br>⑥将来の同期とAI reviewは、Core完了後の独立した処理として追加 |
+| **log** | なし | ローカルSQLiteからcheckpoint、提出操作、判定を取得し、通信を待たずにterminalへ一覧表示する。 |
+| **show** | [問題IDまたは履歴ID] | ローカルDBから選択したsource snapshotを取得する。MVPはterminal上のplain textで表示し、外部Editor / Viewer連携はMVP後とする。 |
+| **diff** | [問題IDまたは履歴ID] | ローカルDBから利用者が振り返る2つのsource snapshotを取得し、MVPはunified diffで表示する。初回提出と最新AC等を既定候補にしても、比較対象を確認・指定できるようにする。 |
+| **export** | [保存先] | checkpoint、提出、判定、source snapshotを、credentialを含まないversion付き形式で持ち出す。 |
 
 一般的なfile・directory操作はこのcommand体系へ含めない。例えば問題directoryの移動には、macOS / Linuxの`mv`、PowerShellの`Move-Item`、各OSのfile manager、Editor / IDEのfile操作等をそのまま利用できるようにする。
 
