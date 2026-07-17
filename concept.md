@@ -71,6 +71,21 @@ AlgoLoomは、初心者を助けるために学習手順を固定したり、利
 
 AlgoLoomの内部実装が複雑になっても、その複雑さを日常のCLIへそのまま露出させない。一方で、簡略化のために必要な選択肢まで削るのではなく、一般的な操作を短くし、必要な場合だけ詳細な指定へ進める構造を採る。
 
+### 3.4. 標準ツールとの責任境界
+
+AlgoLoomは、AlgoLoomだけが意味を理解できる操作に専用commandを用意し、一般的なfile・directory操作を独自commandとして再定義しない。目的はcommand数そのものを最小化することではなく、利用者が新たに覚える製品固有の概念を必要最小限にすることである。
+
+- 問題取得、sample test、提出、判定取得、履歴、AI review、同期等、AlgoLoom固有のmetadata、状態遷移、外部作用を扱う操作はAlgoLoomが担う。
+- `cd`、`pwd`、一覧表示、通常fileやdirectoryの作成・移動・rename・copy・削除等、一般的な操作は、利用者が選んだshell、OSのfile manager、Editor / IDE等へ委ねる。
+- AlgoLoomは、一般操作の単なる別名となる`move`、`copy`、`cd`等を、初心者向けという理由だけで追加しない。
+- 一般操作であっても、AlgoLoom管理dataの整合性、安全な復旧、外部送信への同意等、製品固有の保証が必要な場合は、専用commandまたは専用optionを設けることを妨げない。
+- OSの標準操作によるsourceや問題directoryの削除は、AlgoLoomの提出履歴、Cloud上のdata、credential等の削除を意味しない。それらAlgoLoom管理dataの削除が必要になった場合は、対象と影響を確認できる専用操作として分離する。
+- helpとerrorは、作成・参照したpath、現在AlgoLoomが認識しているcontext、次に可能な操作を平易に示す。必要な場合はOS・shellごとの標準的な操作例を文書で案内する。
+- 初心者支援では独自操作を増やすのではなく、標準的な操作を理解して安全に次へ進める案内を優先する。そこで得た知識をAlgoLoom以外の開発でも使える状態を目指す。
+- 最初の問題取得からlocal testまでの推奨導線では、workspace整理のための移動・rename等を必須にしない。標準操作は利用者が必要とした時点で学べるようにする。
+
+この責任境界はCLI上のUXに関するものである。AlgoLoom自身が内部処理としてdirectory作成やfile copyを行う場合は、shell command文字列を組み立ててOS utilityを起動するのではなく、Pythonの安全なfilesystem APIを使用する。
+
 本書および関連文書に記載するcommand名、引数、option、対話例、出力例は、明示的にCLI契約として確定したものを除き、機能と責任を説明するための暫定案とする。具体的なCLI設計は、上記原則と実際の利用検証を踏まえて別途決定する。
 
 利用者導線ごとのストレス要因、改善優先度、errorと回復の共通契約は、[ストレスフリーUX設計](design/stress-free-ux-design.md)で定義する。
@@ -80,7 +95,7 @@ C++（新規挑戦）、Python、Go、Rustなどの複数言語に対応。
 プロジェクトルートに配置する config.yaml で、各言語の拡張子、テンプレートファイルパス、コンパイルコマンド、実行コマンドを管理する。
 
 ## 5. ディレクトリ構成（ハイブリッド型）
-コンテキストスイッチを防ぐため、作業ディレクトリ直下に「問題ごとのフォルダ」を1階層だけ作成する構成。
+コンテキストスイッチを防ぐため、`get`は既定でworkspace直下に「問題ごとのフォルダ」を1階層だけ作成する。この構成は開始時の推奨layoutであり、利用者が維持し続けなければならない実行時制約ではない。
 
     algoloom_workspace/
     ├── config.yaml
@@ -90,6 +105,15 @@ C++（新規挑戦）、Python、Go、Rustなどの複数言語に対応。
     └── abc300_a/             # aloom get で自動生成
         ├── main.cpp          # 指定言語のテンプレートをコピー
         └── test/             # online-judge-tools が取得した入出力例
+
+作成後は、利用者がOS、shell、file manager、Editor / IDEの標準操作でworkspace全体や問題directoryを移動・rename・整理できることを基本契約とする。
+
+- workspace全体を移動しても、workspace内の相対的な構成から再認識できるようにする。
+- 問題directoryは、workspace内でrenameまたは下位directoryへ移動しても、directory名ではなく保存済みの正規問題IDを含むmetadataから識別する。
+- 問題metadataは問題directoryと一緒に移動できる通常fileとして保存し、絶対pathを問題や履歴の恒久的な識別子にしない。
+- commandは現在directoryまたは明示されたsourceから親方向へcontextを探索し、安全に一意に決まる場合だけworkspace、問題、sourceを推測する。
+- sourceだけを問題context外へ移動した場合等、一意に判断できない状態では勝手に関連付けず、必要なcontextと明示指定方法を説明する。
+- 複数の同一問題directoryが存在する場合は、暗黙に先頭候補を選んだりmerge・削除したりしない。
 
 ## 6. CLIコマンド構成
 
@@ -120,6 +144,8 @@ aloom submit main.cpp
 | **log** | なし | SQLiteから過去の提出履歴を取得し、ターミナル上に表形式（Rich等を使用）で一覧表示する |
 | **show** | [問題ID] | DBから指定問題でACを出した最新のコードを取得し、安全な一時ファイルを設定済みEditor / Viewerで読み取り専用表示する。Viewerを利用できない場合はterminal上のplain text表示へfallbackする |
 | **diff** | [問題ID] | DBから「初回提出時」と「最新提出時」のコードを取得し、設定済みDiff Viewerで成長差分を表示する。Viewerを利用できない場合はterminal上のunified diffへfallbackする |
+
+一般的なfile・directory操作はこのcommand体系へ含めない。例えば問題directoryの移動には、macOS / Linuxの`mv`、PowerShellの`Move-Item`、各OSのfile manager、Editor / IDEのfile操作等をそのまま利用できるようにする。
 
 ## 7. 今後の拡張構想 (フェーズ2以降)
 * **fzf連携の実装:** log や show コマンド実行時に、Linuxコマンドの fzf ライクなインタラクティブ検索UIをターミナルに表示し、過去問をインクリメンタルサーチできるようにする。

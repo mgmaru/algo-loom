@@ -369,6 +369,8 @@ languages:
 - AlgoLoomが起動するprocessへ、AtCoder Cookie、Turso token、Provider key等の不要な環境変数を渡さない。必要に応じて環境変数を明示的に構成する。
 - command全体や全環境変数をdebug logへ出さない。
 - ユーザーが自分で設定した任意のexecutableはユーザー権限で実行されるため、入手元不明の設定fileを読み込む場合は注意を表示する。
+- AlgoLoom自身がdirectory作成、file copy、移動等を内部処理として行う場合は、`mkdir`、`cp`、`mv`、PowerShell等のshell commandを生成せず、Pythonのfilesystem APIを使用する。
+- 一般的なfile・directory操作を利用者の標準toolへ委ねるというUX方針を、AlgoLoom内部からshellを起動してよいという意味に解釈しない。
 
 ### 6.4. Path traversalと一時ファイル
 
@@ -389,6 +391,9 @@ flowchart LR
 
 - 正規問題IDは想定形式へcanonicalizeし、directory名へ使用可能な文字を制限する。
 - 書き込み先は`resolve()`後にworkspaceまたはAlgoLoom管理directory内であることを確認する。
+- 問題や履歴の識別に絶対pathまたはdirectory名だけを使用せず、問題directoryと一緒に移動する検証済みmetadataと正規問題IDを使用する。
+- workspaceや問題directoryの移動・renameは、特定のOS commandやfile watcherで追跡せず、各command開始時に現在のfilesystem状態を再検証する。これによりshell、file manager、Editor / IDEの操作を同じ安全境界で扱う。
+- 同じ正規問題IDのmetadataが複数見つかった場合は、暗黙に1つを選択したりfileを統合・削除したりせず、曖昧性をerrorとして明示指定を求める。
 - symlinkの扱いを明示する。生成先と一時fileでは追跡しないことを既定とする。
 - 一時directoryはOSの安全なtemp APIで作成し、推測可能な固定名を使用しない。
 - 一時directoryは原則`0700`、code fileは`0600`相当とする。

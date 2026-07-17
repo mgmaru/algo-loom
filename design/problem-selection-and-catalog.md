@@ -340,6 +340,29 @@ flowchart TD
 
 Phase 1にはローカルカタログがないため、正規化後はAtCoder公式ページを直接確認する。カタログ確認と1回だけの更新はPhase 2で追加する最適化であり、`get`の成立条件ではない。
 
+### 6.4. 作成場所と作成後の整理
+
+`get`は既定でworkspace root直下へ正規問題IDを基にした問題directoryを作る。この1階層layoutは、問題開始までの判断と移動を減らすための推奨される生成結果であり、作成後の配置を固定する制約ではない。
+
+利用者は、shell、OSのfile manager、Editor / IDE等の標準操作を使って、workspace全体、または同一workspace内の問題directoryを移動・rename・階層化できる。AlgoLoomは一般的なfile操作を独自の`move`、`rename`、`cd`等として再実装しない。
+
+この自由を成立させるため、次を`get`とproblem workspaceの契約にする。
+
+- 問題directoryへ正規問題IDと取得元を含むmetadataを通常fileとして保存し、directoryと一緒に移動できるようにする。具体的なfile名と形式はworkspace Schema設計時に決める。
+- 問題directory名や絶対pathを問題の恒久的な識別子にしない。
+- workspace設定と問題metadataは、現在directoryまたは明示されたsourceから親方向へ探索できるようにする。
+- `get`でfileを新規作成する前に、対象workspaceのサポート対象範囲から同じ正規問題IDのmetadataを探す。
+- 既存の問題directoryが1つ見つかった場合は、その場所で完了済み処理と未完了処理を確認し、利用者が編集したsourceを上書きせず再開する。
+- 同じ正規問題IDのdirectoryが複数見つかった場合は、勝手に1つを選択、merge、rename、削除せず、候補pathを示して明示指定を求める。
+- metadata、sample、sourceの一部だけが移動されてcontextが不完全な場合は、新しいdirectoryを暗黙に作る前に、認識した状態、影響、復旧方法を示す。
+
+`get`成功時は、browser起動等の内部処理を列挙するのではなく、作成または再利用したpathを主結果として示す。初心者には次の操作へ進めるだけの情報を提供するが、特定shellの操作をAlgoLoom固有commandへ置き換えない。
+
+```text
+問題を開始できます。
+場所: /path/to/algoloom_workspace/abc300_a
+```
+
 ---
 
 ## 7. Phase 3のCLI問題選択
