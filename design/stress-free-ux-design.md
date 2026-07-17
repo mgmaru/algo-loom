@@ -10,6 +10,7 @@
 > - [プロジェクト草案](../concept.md)
 > - [問題選択・カタログ設計](./problem-selection-and-catalog.md)
 > - [Review Backend・LLM Provider設計](./llm-provider-design.md)
+> - [パフォーマンスと待機体験の設計](./performance-and-waiting-design.md)
 > - [セキュリティ設計ガイド](./security-design.md)
 > - [ローカル利用とCloud同期の段階的設計](../database/local-and-cloud-sync-design.md)
 > - [AIレビュー安全設計](../distribution/ai-review-safety-design.md)
