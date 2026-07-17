@@ -251,12 +251,15 @@ class SyncCoordinator(Protocol):
 
 - 提出履歴は追記専用にする。
 - 端末側でUUIDv7またはULIDを生成する。
+- 同じ提出、review revision等の論理レコードに、Adapterごとの別IDや別の業務正本を作らない。ローカルDB、Cloud、必要時のoutboxは同じUUIDとhashを参照する。
 - AtCoder submission IDへ一意制約を付ける。
 - 提出済みコードと確定判定を原則として上書きしない。
 - AIレビューの変更は`REVIEW_REVISIONS`へ追加する。
 - 削除が必要な場合はtombstoneを検討する。
 - `is_synced`等の同期方式固有列を業務テーブルへ追加しない。
 - 同期時刻、Cloud revision、outbox件数はローカルsidecarまたはSDK統計で管理する。
+
+`outbox`はEmbedded ReplicaでCloud障害から復旧するための輸送キューであり、提出履歴の第二の業務DBではない。Turso Syncでは未push変更がローカルユーザーDBに保持されるため、通常はoutboxを持たない。Adapterが異なっても、`HistoryStore`から見えるのは常に同じUUIDを持つ1つの論理履歴である。
 
 ```mermaid
 erDiagram
