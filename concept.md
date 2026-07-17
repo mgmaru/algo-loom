@@ -118,7 +118,7 @@ AlgoLoomは、AlgoLoomだけが意味を理解できる操作に専用commandを
 - 「ローカルが真」とは、すべてのデータをローカルだけで決定する意味ではない。データごとに権威を1つ定める。編集中のcodeはworkspace、AtCoderの提出ID・判定はAtCoder、提出履歴とreview revisionはAlgoLoomの不変レコード、問題カタログは取得元サービスを権威とする。
 - 同じ提出履歴をローカルDBとCloudへ保存しても、別々の正本を作らない。同じUUIDとcode hashを持つ1つの論理レコードを、ローカル保存済み・共有済みという状態で複製する。同期状態や再送キューは業務履歴の別の正本ではない。
 
-同期、競合、バックアップ、障害復旧の詳細は[ローカル利用とCloud同期の段階的設計](database/local-and-cloud-sync-design.md)で定義する。
+同期、競合、バックアップ、障害復旧の詳細は[ローカル利用とCloud同期の段階的設計](database/local-and-cloud-sync-design.md)で定義する。待機時間、resource上限、性能計測、修正優先順位は[パフォーマンスと待機体験の設計](design/performance-and-waiting-design.md)で定義する。
 
 ## 4. 解答言語と設定管理
 C++（新規挑戦）、Python、Go、Rustなどの複数言語に対応。
