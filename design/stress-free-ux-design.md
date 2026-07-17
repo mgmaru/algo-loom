@@ -444,21 +444,21 @@ Provider、Backend、Adapter、endpoint、credential source、billing mode、cap
 - [DB候補比較](../database/db-comparison.md)
 - [ローカル利用とCloud同期の段階的設計](../database/local-and-cloud-sync-design.md)
 
-#### 現在の不一致
+#### 確定した整合方針
 
-- `concept.md`は「完全ローカル完結型」と表現しているが、AtCoder、任意のremote AI、任意のCloud同期を利用する。
-- `concept.md`はGoogle Drive上のSQLiteを記載しているが、DB比較では却下し、後続設計ではTursoを候補としている。
-- ブラウザ往復を最小限にする目的に対し、初期問題選択はブラウザを主経路とする。
+- AlgoLoom Coreはローカルで成立し、履歴の通常の読み書きはローカルDBで完結する。AtCoderへの取得・提出、任意のremote AI、任意のCloud同期は、それぞれ必要な操作でだけ外部接続を使う。
+- Google Drive等のファイル同期領域に稼働中のSQLite DBを置かない。複数端末共有は、ローカルDBを土台にTurso Cloud同期を追加する構成とする。
+- `log`、`show`、`diff`はCloud接続や同期完了を待たず、ローカル履歴を表示する。全端末の共有済み最新状態が必要な場合だけ、明示同期を行う。
+- ブラウザ往復を最小限にする目的に対し、初期問題選択はブラウザを主経路として意図的に残す。
 
 #### 直すべき理由
 
 説明と実際の挙動が違うと、利用者はデータ保存先や通信有無について不安になる。開発時にも、古い正本を参照して設計が分岐する。
 
-#### 改善方向
+#### 継続して確認すること
 
-- `concept.md`を現行のローカルファースト方針へ合わせる。
-- 却下済みのGoogle Drive + SQLiteを現行技術スタックから除く。
-- 「ローカルで成立するCore」と「操作時にAtCoderへ接続すること」を区別して説明する。
+- 「ローカルで成立するCore」と「操作時にAtCoderへ接続すること」を、README、help、同期設定画面で同じ言葉で説明する。
+- 同期の最終成功時刻やpending件数を、通常の履歴表示を妨げない強さで示す。
 - browser利用は、問題発見の初期経路として意図的に残すことを明示する。
 
 ---
