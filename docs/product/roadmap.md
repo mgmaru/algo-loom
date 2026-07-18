@@ -24,7 +24,9 @@
 
 ### 3.1. Core安定後に検討する近接拡張
 
-- Windows、Go、Rust
+- WSLと追加host環境
+- C++、Python、Go、Rust以外の解答言語
+- Cargo、Go module、CMake等のproject build
 - 外部Editor / Diff Viewer Adapter
 - AtCoder Problems catalogと問題選択支援
 - local test eventの保存とopt-in自動checkpoint
@@ -36,13 +38,16 @@
 
 ### 3.2. AI review
 
-AI reviewはMVP後の独立した採用判断とする。少なくとも次を満たすまでCoreへ含めない。
+AI reviewはMVP後の独立した採用判断とする。採用後もCoreへ組み込まず、次をすべて満たした場合だけ正式なoptional Capabilityとして提供する。
 
 - 現行のAtCoderルールをversion付きで確認し、不明時にfail closedにできる。
 - 終了済み過去問を安全に識別できる。
 - 利用者が送信内容、Provider、費用、保持方針を確認できる。
 - reviewを使わなくても同じCore導線が成立する。
 - AIがsourceを自動編集、実行、提出しない権限制約がある。
+- CoreはAI reviewの型、Provider、設定、保存状態へ依存せず、AI reviewだけがCoreの安定したsnapshot・verdict・diff参照契約へ一方向に依存する。
+- AI reviewの保存はCoreのsubmissionやsnapshotへ任意列を追加せず、独立した追記型revisionとして関連付ける。
+- Provider未導入、設定不足、判定拒否、timeout、response不正のいずれでも、Coreの成功済み状態を変更しない。
 
 ### 3.3. Cloud同期
 
