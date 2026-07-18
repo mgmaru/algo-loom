@@ -6,6 +6,8 @@
 >
 > 作成日: 2026年7月16日
 >
+> 更新日: 2026年7月19日
+>
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
 > - [MVPスコープ](../product/mvp.md)
@@ -334,6 +336,26 @@ Submission, tests, and local history were not affected.
 
 ### 3.5. AIなしの機能を止めない
 
+AI reviewはCoreのsnapshot、verdict、diff等を利用するため、Coreと無関係な独立systemにはしない。依存方向を**AI reviewからCoreの安定した読み取り契約への一方向**に固定する。
+
+```mermaid
+flowchart LR
+    AI[AI Review Capability] --> Q[Snapshot / Verdict / Diff Query Ports]
+    Q --> CORE[AlgoLoom Core]
+    AI --> RS[ReviewStore]
+    CORE -. 依存禁止 .-> AI
+    CORE -. 依存禁止 .-> RB[Review Backend / Provider]
+
+    style CORE fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style AI fill:#f3e8ff,stroke:#9333ea
+```
+
+- Core packageからReview Backend、Provider SDK、prompt、同意、review状態の型をimportしない。
+- Coreのsubmission、snapshot、verdict tableへAI固有のnullable列を追加しない。
+- reviewは対象snapshot等の安定IDを参照する独立した追記型revisionとして保存する。
+- `submit --review`を将来提供しても、Coreの提出ServiceからReview Backendを呼び出さない。上位のorchestrationが提出結果とreview結果を別々に扱う。
+- AI未導入の構成ではreview moduleとoptional dependencyをimportせず、Coreだけで起動できるようにする。
+
 次の処理はProvider未選択・停止・未認証でも利用可能にする。
 
 - `get`
@@ -346,6 +368,8 @@ Submission, tests, and local history were not affected.
 - DB同期とbackup
 
 `submit --review`でProvider呼び出しだけが失敗した場合、AtCoder提出とローカル保存の成功を維持する。
+
+この依存方向により、AI reviewの追加、無効化、Provider変更、Schema追加migrationが既存Core commandの意味と成功条件を変更しないようにする。
 
 ### 3.6. credentialを可能な限り所有しない
 
@@ -1121,6 +1145,7 @@ flowchart LR
 | [AIレビュー安全設計](ai-review-safety-design.md) | AtCoderルール、開催中問題の判定、`contest_mode`、fail closed |
 | [配布方針ガイド](../operations/algoloom-distribution.md) | PyPI配布、第三者license、プライバシー、公開版の安全性 |
 | [ローカル・Cloud同期設計](local-and-cloud-sync-design.md) | DB同期、レビュー保存データの端末間共有 |
+| [アーキテクチャ概要](../architecture/overview.md) | Core、任意Capability、LanguageProfile、HostPlatformを含む全体の依存方向 |
 
 Providerを追加・変更しても、AIレビュー安全設計の判定は変更しない。DB同期を有効化・無効化しても、Provider選択とLLMへの送信同意は別に管理する。
 
