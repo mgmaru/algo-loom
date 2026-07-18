@@ -6,10 +6,13 @@
 >
 > 作成日: 2026年7月16日
 >
+> 更新日: 2026年7月19日
+>
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
 > - [MVPスコープ](../product/mvp.md)
 > - [Core契約](../architecture/core-contracts.md)
+> - [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md)
 > - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
 > - [Turso設計ガイド](../integrations/turso-design-guide.md)
 > - [Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md)
@@ -551,7 +554,7 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 
 - compileとrunに別々のtimeoutを設定する。
 - stdout / stderrの取得量に上限を設ける。
-- 子processをprocess groupとして管理し、timeout時に残存processも終了する。
+- 子processを`HostPlatform`のprocess treeとして管理し、timeout時にnative macOS、native Linux、native Windowsそれぞれで残存processも終了する。
 - build outputをworkspace内の管理directoryまたは安全なtemp directoryへ限定する。
 - 実行時にAtCoder Cookie、Turso token、Provider key等を環境変数として渡さない。
 - 異常終了、signal、timeout、出力上限超過を区別して表示する。
