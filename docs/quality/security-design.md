@@ -7,8 +7,9 @@
 > 作成日: 2026年7月16日
 >
 > 関連文書:
-> - [プロジェクト草案](../product/concept.md)
-> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [製品ビジョン](../product/vision.md)
+> - [MVPスコープ](../product/mvp.md)
+> - [Core契約](../architecture/core-contracts.md)
 > - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
 > - [Turso設計ガイド](../integrations/turso-design-guide.md)
 > - [Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md)
@@ -404,6 +405,8 @@ flowchart LR
 
 ### 6.5. ターミナルとRich表示
 
+#### terminalへ出す値
+
 次の値はterminalへ出す前に未信頼データとして扱う。
 
 - ユーザーコード
@@ -413,7 +416,7 @@ flowchart LR
 - LLM Providerのreviewとerror
 - DBに保存されたproblem title、device name、review
 
-対策:
+#### 対策
 
 - Richへ通常文字列を渡す場合はmarkupを無効化するか、`Text`等のplain text APIを使用する。
 - 外部出力に含まれるANSI CSI / OSC等の制御シーケンスを既定で解釈しない。
@@ -542,6 +545,8 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 
 `aloom test`はユーザーが指定したcodeを意図的に実行する機能である。これはcommand injectionとは別の、製品仕様上許可されたcode executionである。
 
+#### 初期版の対策
+
 初期版では自作codeを前提とし、次の偶発事故対策を行う。
 
 - compileとrunに別々のtimeoutを設定する。
@@ -550,6 +555,8 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 - build outputをworkspace内の管理directoryまたは安全なtemp directoryへ限定する。
 - 実行時にAtCoder Cookie、Turso token、Provider key等を環境変数として渡さない。
 - 異常終了、signal、timeout、出力上限超過を区別して表示する。
+
+#### sandboxの再評価条件
 
 次の機能を追加する場合は、OS sandbox、container、VM等による隔離を必須候補として再評価する。
 
@@ -574,7 +581,7 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 
 ### 6.11. ログとエラー処理
 
-通常ログへ記録してよい情報:
+#### 記録してよい情報
 
 - operation ID
 - command名
@@ -583,7 +590,7 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 - 件数、処理時間、Provider type、model名
 - secretを除いたendpoint識別情報
 
-通常ログへ記録しない情報:
+#### 記録しない情報
 
 - source code全文
 - test inputに含まれ得るprivate data

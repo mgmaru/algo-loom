@@ -13,7 +13,7 @@
 - 各項目の「原文」は出典からの抜粋であり、表記・条件・留保を変更していない。
 - 「決めること」は原文から分かる確認対象を短く示すための案内であり、決定そのものではない。
 - 「決定済みの内容」は、別の関連文書ですでに確定している範囲を示す。元の未決事項全体が解消していない場合は、残る未決範囲も併記する。
-- MVPの範囲に関する正本は、引き続き [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md) である。この一覧は正本を置き換えない。
+- MVPの範囲に関する正本は、引き続き [MVPスコープ](../product/mvp.md) である。この一覧は正本を置き換えない。
 
 ### 状態の定義
 
@@ -35,6 +35,24 @@
 | 未決 | 2.1、3.3、6.1 |
 | 外部確認待ち | 5.2、8.1 |
 
+## 用語
+
+| 用語 | この文書での意味 |
+|---|---|
+| MVP | 最小限の価値を検証するために、初期版で実装・保証する範囲 |
+| Core | 日常利用の基本導線と、その不変条件を担う中核機能 |
+| workspace | 問題、解答source、test、metadataを扱う作業単位 |
+| context | commandが対象とするworkspace、問題、sourceの組み合わせ |
+| Adapter | Coreと外部サービスや交換可能な実装を隔離する境界 |
+| BYOC | 利用者自身が所有・管理するCloud接続先を使う方式 |
+| fail closed | 安全性を確認できない場合に、許可せず停止する方針 |
+| outbox | ローカルで確定した変更を、後から外部へ同期するために保持する記録 |
+| Cloud-primary | Cloud側を主要なデータ保存・参照先とする構成 |
+| last-push-wins | 後からpushされた状態で同期先を上書きする競合処理 |
+| test oracle | 実行結果が正しいかを判定する基準 |
+| sandbox | code実行がfilesystem、network、process等へ及ぼす影響を隔離・制限する仕組み |
+| threat model | 保護対象、想定する攻撃者、攻撃経路、許容する残余riskを整理したもの |
+
 ## 1. CLI・workspace・出力UX
 
 ### 1.1 日常commandの最終仕様
@@ -49,7 +67,7 @@
 
 **原文:** 「本書および関連文書に記載するcommand名、引数、option、対話例、出力例は、明示的にCLI契約として確定したものを除き、機能と責任を説明するための暫定案とする。具体的なCLI設計は、上記原則と実際の利用検証を踏まえて別途決定する。」
 
-出典: [プロジェクト草案 §3.4](../product/vision.md#34-標準ツールとの責任境界)、[MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)
+出典: [プロダクトビジョン §3.4](../product/vision.md#34-標準ツールとの責任境界)、[MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)
 
 ### 1.2 workspace metadataとcontext指定
 
@@ -65,7 +83,7 @@
 
 **原文:** 「問題directoryと一緒に移動するmetadata fileの名称、形式、Schema version」「同じ問題を検出するworkspace探索範囲と、除外directory、規模上限」「workspace、問題、source contextを明示指定するoptionの具体名」「引数を省略できる条件」
 
-出典: [MVPスコープとCore契約 §4.3](../architecture/core-contracts.md#43-workspaceとcontext)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
+出典: [Core契約 §2.3](../architecture/core-contracts.md#23-workspaceとcontext)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
 
 ### 1.3 `get`の補助動作と途中失敗の回復
 
@@ -79,7 +97,7 @@
 
 **原文:** 「問題取得は、公式確認、sample取得、directory作成、template作成、DB保存、browser起動という複数の副作用を持つ。次の途中状態が未定義である。」
 
-出典: [MVPスコープとCore契約 §5.2](../architecture/core-contracts.md#52-冪等性と部分失敗)、[問題選択・カタログ設計 §6.3](../features/problem-selection-and-catalog.md#63-getの処理)、[ストレスフリーUX設計 §3.3](../quality/stress-free-ux-design.md#33-問題取得の途中失敗と再実行)
+出典: [Core契約 §3.2](../architecture/core-contracts.md#32-冪等性と部分失敗)、[問題選択・カタログ設計 §6.3](../features/problem-selection-and-catalog.md#63-getの処理)、[ストレスフリーUX設計 §3.3](../quality/stress-free-ux-design.md#33-問題取得の途中失敗と再実行)
 
 ### 1.4 履歴・表示・診断の細部
 
@@ -97,7 +115,7 @@
 
 **原文:** 「進捗表示の具体的な見た目」「統一診断入口の具体名」「Viewer fallbackの具体的な表示量」
 
-出典: [MVPスコープとCore契約 §7.3](../architecture/core-contracts.md#73-checkpoint)、[MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
+出典: [Core契約 §5.3](../architecture/core-contracts.md#53-checkpoint)、[MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
 
 ### 1.5 exit codeとmachine-readable出力
 
@@ -111,7 +129,7 @@
 
 **原文:** 「exit codeとmachine-readable出力の詳細は機能設計で決める。」
 
-出典: [MVPスコープとCore契約 §4.6](../architecture/core-contracts.md#46-出力とerror)
+出典: [Core契約 §2.6](../architecture/core-contracts.md#26-出力とerror)
 
 ### 1.6 任意機能の具体的な導線
 
@@ -139,7 +157,7 @@
 
 **原文:** 「CLI frameworkやdependency injection手法」「class、module、table、columnの最終名称」「metadata fileとexport fileの最終形式」
 
-出典: [MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)
+出典: [MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)
 
 ### 2.2 言語profileとuser-level実行設定
 
@@ -153,7 +171,7 @@
 
 **原文:** 「将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。」
 
-出典: [プロジェクト草案 §4](../architecture/overview.md#4-解答言語と設定管理)、[MVPスコープとCore契約 §14.1](../product/roadmap.md#141-core安定後に検討する近接拡張)
+出典: [アーキテクチャ概要 §3](../architecture/overview.md#3-解答言語と設定管理)、[ロードマップ §3.1](../product/roadmap.md#31-core安定後に検討する近接拡張)
 
 ### 2.3 実行・保持・性能の具体値
 
@@ -169,7 +187,7 @@
 
 **原文:** 「数値は対応OS、DB規模、sample数、Providerにより変わるため、次は実装開始時の仮説である。固定の約束にする前に、代表的な端末と履歴件数でp50/p95を計測する。」
 
-出典: [MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)、[パフォーマンスと待機体験の設計 §5](../quality/performance-and-waiting-design.md#5-性能待機の初期契約)
+出典: [MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)、[パフォーマンスと待機体験の設計 §5](../quality/performance-and-waiting-design.md#5-性能待機の初期契約)
 
 ### 2.4 DB保守の実行規約
 
@@ -197,7 +215,7 @@
 
 **原文:** 「AI reviewはMVP後の独立した採用判断とする。少なくとも次を満たすまでCoreへ含めない。」
 
-出典: [MVPスコープとCore契約 §14.2](../product/roadmap.md#142-ai-review)、[Repair Lab 将来構想 §0](../future/repair-lab-future-design.md#0-結論)
+出典: [ロードマップ §3.2](../product/roadmap.md#32-ai-review)、[Repair Lab 将来構想 §0](../future/repair-lab-future-design.md#0-結論)
 
 ### 3.2 追加Review Backendを採用するか
 
@@ -225,7 +243,7 @@
 
 **原文:** 「Core安定後に検討する近接拡張」
 
-出典: [MVPスコープとCore契約 §14.1](../product/roadmap.md#141-core安定後に検討する近接拡張)
+出典: [ロードマップ §3.1](../product/roadmap.md#31-core安定後に検討する近接拡張)
 
 ### 3.4 CLI問題選択のインタラクション
 
@@ -283,7 +301,7 @@
 
 **原文:** 「Supabase、Neon、Crunchy Bridge等は、将来Cloud-primary構成を再検討する場合の比較対象として残す。その場合も、Cloudへの直接問い合わせで履歴表示を遅くしないためのローカル永続化・読み取り層を別途設計する。」
 
-出典: [DB候補比較メモ §5](../research/db-comparison.md#5-あなたのケースでの推奨)
+出典: [DB候補比較メモ §6](../research/db-comparison.md#6-あなたのケースでの推奨)
 
 ### 4.4 共同編集・削除を扱う場合の競合戦略
 
@@ -463,5 +481,5 @@
 
 ## 確認時の注意
 
-- この一覧にない将来機能でも、MVPの範囲を変更する場合は [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md) §16 の変更管理に従う。
+- この一覧にない将来機能でも、MVPの範囲を変更する場合は [MVPスコープ §7](../product/mvp.md#7-変更管理) の変更管理に従う。
 - 外部サービスの規約、SDK、料金、配布wheelは変わり得る。各設計文書にあるとおり、実装開始時・リリース前に公式情報を再確認する。

@@ -5,7 +5,8 @@
 > 主な機能: 公開サンプル入出力の取得、ローカルテスト、ユーザー操作による提出、履歴保存、ユーザーが選択したLLM ProviderによるAIレビュー
 >
 > 関連文書:
-> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [MVPスコープ](../product/mvp.md)
+> - [Core契約](../architecture/core-contracts.md)
 > - [AlgoLoom LLM Provider選択・実行基盤設計](../features/llm-provider-design.md)
 >
 > 作成日: 2026年7月15日
@@ -18,14 +19,25 @@
 
 AlgoLoomは、次の条件を守ることで、**AtCoderの非公式な補助CLIとして配布することが現実的**である。
 
+### AtCoderコンテンツの取得
+
 - AtCoderの問題文、画像、公開サンプル入出力を配布物へ同梱しない。
 - ユーザーが指定した問題だけを、ユーザー自身の操作で取得する。
 - 取得対象は問題ページで公開されているサンプル入出力に限定する。
 - 隠しシステムテストの取得、一括クロール、Bot対策の回避を実装しない。
+
+### 提出
+
 - 提出にはユーザー自身のAtCoderアカウントとセッションを使う。
+
+### AIレビュー
+
 - AIレビュー要求時に開催状況・コンテスト種別・正規問題IDを照合し、禁止対象の開催中問題では機能的に拒否する。
 - AIレビュー機能OFFと、参加中に全AI機能を止める`contest_mode`を用意する。
 - AIレビューを拒否しても、AIを使わないローカルテストや通常の提出までは一律に停止しない。
+
+### アクセス・表示・同期
+
 - リクエスト間隔、再試行、提出確認などの安全策を既定で有効にする。
 - AtCoder公式またはAtCoder公認のツールだと誤解されない表示にする。
 - 公開版ではTurso同期を任意機能とし、各ユーザーが自分のDBと認証情報を用意する。
@@ -519,23 +531,40 @@ README、PyPI、Webサイトには次の趣旨を記載する。
 
 ### 11.2. LLM Provider
 
+#### 初期状態と選択
+
 - 初期状態ではAIレビューをOFF、Providerを未選択にする。
 - Review Backendは、Model API BackendとAgent Bridge Backendを区別して扱う。
 - OllamaとLM Studioをlocal Model APIの初期候補とし、必須Providerにしない。
 - remote APIはBYOKを基本とし、OpenAI API、Anthropic API、Gemini API / Vertex等を個別に評価する。
 - Codex等のCoding Agent連携は、Providerが提供する公式の組み込みinterfaceがあり、review-onlyの権限制約を保証できる場合に限る。
 - Provider、Backend種別、endpoint、モデル、実行場所、課金経路はユーザーが明示的に選択する。
+
+#### runtimeとmodelの管理
+
 - AlgoLoomはProvider本体、OSサービス、GPU runtime、モデルをインストール、更新、起動、停止、削除しない。
 - OSのpackage managerやベンダーのinstallerをAlgoLoomから実行しない。
 - モデルを初期設定中やレビュー実行中に暗黙でdownloadしない。
 - 選択したProviderが失敗しても別Providerへ自動fallbackしない。
+
+#### 送信条件
+
 - Providerへの入力内容、送信先、local / remoteの別をREADMEと設定時の画面で説明する。
 - remote Providerへ送る場合、提出コード等が端末外へ送信されることを明示し、事前に同意を得る。
+
+#### credential
+
 - Provider endpointとcredential参照はworkspace設定へ置かず、user-level設定で管理する。credential値は外部runtime、credential helper、環境変数、OS keyringから解決し、project、DB、Cloud同期へ保存しない。
 - keyringが利用できない場合も、平文fileへ自動fallbackしない。
 - password、social login情報、OAuth token、`~/.claude`、`~/.gemini`、`~/.codex`等の認証cacheをAlgoLoomから要求、読取、複製しない。
 - Claude CodeとGemini CLIのsubscription credentialは第三者applicationから転用せず、対応する公式API経路を案内する。
+
+#### Agent Bridgeの権限
+
 - Agent Bridgeへworkspace全体、write、shell、MCP、browser、plugin権限を渡さず、一時sessionをreview後に破棄する。
+
+#### 配布・利用条件・保守
+
 - Provider本体やモデルをAlgoLoomへ同梱しない。
 - ユーザーが選ぶProviderとモデルごとのライセンス、料金、data policyはユーザー側でも確認が必要である。
 - Providerを変更しても、AtCoderルールの安全判定を迂回できないようにする。
@@ -694,7 +723,7 @@ flowchart LR
 ### Phase 1: 個人利用
 
 - ローカルDBを既定にする。
-- [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)に従い、終了済み過去問の公開sample取得、local test、自動提出、履歴、exportを検証する。
+- [MVPスコープ](../product/mvp.md)と[Core契約](../architecture/core-contracts.md)に従い、終了済み過去問の公開sample取得、local test、自動提出、履歴、exportを検証する。
 - AI review、`contest_mode`、Cloud同期をMVPへ含めない。
 - 実データがリポジトリへ混入しないことを確認する。
 

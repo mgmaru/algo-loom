@@ -9,8 +9,9 @@
 > 更新日: 2026年7月16日
 >
 > 関連文書:
-> - [プロジェクト草案](../product/concept.md)
-> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [製品ビジョン](../product/vision.md)
+> - [MVPスコープ](../product/mvp.md)
+> - [Core契約](../architecture/core-contracts.md)
 > - [AlgoLoom 配布方針ガイド](../operations/algoloom-distribution.md)
 > - [AlgoLoom AIレビュー安全設計](ai-review-safety-design.md)
 >
@@ -483,6 +484,8 @@ flowchart TD
     D --> T
 ```
 
+#### 行ハッシュの入力
+
 行ハッシュは、次の検索用フィールドを固定順序・固定形式で直列化して計算する。
 
 - `problem_id`
@@ -495,6 +498,8 @@ flowchart TD
 - `contest_end_at`
 - `rate_change`
 - `source`
+
+#### 実装規約
 
 実装規約は次のとおりとする。
 
@@ -752,11 +757,19 @@ flowchart LR
 
 ## 13. アクセス・配布上の方針
 
+### 13.1. 配布物
+
 - AtCoder ProblemsのJSONをPyPIやGitHubリリースへ同梱しない。
-- インストール後、ユーザー操作に応じて実行時取得する。
 - 問題文、画像、解説、公開サンプルを問題カタログへ入れない。
+
+### 13.2. 外部アクセス
+
+- インストール後、ユーザー操作に応じて実行時取得する。
 - AtCoder公式からの取得は、ユーザーが開始した1問だけに限定する。
 - AtCoder ProblemsのAPI注意事項に従い、1秒を超えるアクセス間隔を設ける。
+
+### 13.3. 表示と障害分離
+
 - AtCoder Problemsが非公式サービスであることをUIとドキュメントへ表示する。
 - Providerの仕様変更時に、カタログ機能だけを停止・更新できるようにする。
 - カタログ更新失敗を理由に、既存のローカル作業・テスト・履歴閲覧を止めない。

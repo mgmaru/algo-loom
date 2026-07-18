@@ -1,27 +1,45 @@
 # AlgoLoom アーキテクチャ概要
 
-## 2. システムアーキテクチャ・技術スタック
-* **CLIツール開発言語:** Python (Typer または Click を想定)
-* **コア機能補助:** online-judge-tools (スクレイピング、入出力例の取得、提出処理の代行)
-* **AIレビュー連携:** ユーザーが明示的に選択するReview Backend。初期候補のlocal Model APIはOllamaとLM Studioとし、将来はBYOKのCloud APIや、公式interfaceを持つCoding Agent Bridgeへ段階的に拡張する。AlgoLoomはProvider本体やモデルをインストール・起動しない。
-* **データベース:** ローカルSQLiteを履歴の通常の読み書き先として使用する。基本構成ではPython標準`sqlite3`を使用する。
-* **データ同期・インフラ:** 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。
-* **エディタ連携:** AlgoLoom Coreはエディタに依存しない。閲覧や差分表示が必要な場合だけ、ユーザーが選択した外部Editor / ViewerをAdapter経由で起動する。
+## 1. 用語
 
-## 4. 解答言語と設定管理
+| 用語 | 本書での意味 |
+|---|---|
+| Core | AI review、Cloud同期、外部Viewer等の任意機能に依存しないAlgoLoomの中核機能。 |
+| Judge Adapter | sample取得、提出、判定確認等のjudge固有処理をCoreから分離する接続境界。 |
+| language profile | 言語ごとの拡張子、template、安全なcompile方法、実行方法を定義する設定。 |
+| workspace | 問題directoryを配置し、AlgoLoomが作業対象として認識する通常のdirectory。 |
+| problem metadata | 正規問題ID等、問題directoryの識別に使う宣言的な情報。 |
+| source snapshot | checkpointや提出の時点で保存するsource codeの不変記録。 |
+| context | commandが処理対象とするworkspace、問題、sourceの組み合わせ。 |
+
+## 2. システムアーキテクチャ・技術スタック
+
+| 構成要素 | 方針 |
+|---|---|
+| CLIツール開発言語 | Python (Typer または Click を想定) |
+| コア機能補助 | online-judge-tools (スクレイピング、入出力例の取得、提出処理の代行) |
+| AIレビュー連携 | ユーザーが明示的に選択するReview Backend。初期候補のlocal Model APIはOllamaとLM Studioとし、将来はBYOKのCloud APIや、公式interfaceを持つCoding Agent Bridgeへ段階的に拡張する。AlgoLoomはProvider本体やモデルをインストール・起動しない。 |
+| データベース | ローカルSQLiteを履歴の通常の読み書き先として使用する。基本構成ではPython標準`sqlite3`を使用する。 |
+| データ同期・インフラ | 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。 |
+| エディタ連携 | AlgoLoom Coreはエディタに依存しない。閲覧や差分表示が必要な場合だけ、ユーザーが選択した外部Editor / ViewerをAdapter経由で起動する。 |
+
+## 3. 解答言語と設定管理
 
 製品構想としてはC++、Python、Go、Rust等の複数言語へ段階的に対応する。MVPはC++とPythonに限定し、安全なcompile/run定義をAlgoLoomの組み込みprofileとして提供する。
 
-将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。ただし、MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と信頼境界の正確な契約は[MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)を正とする。
+将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。ただし、MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と信頼境界の正確な契約は[Core契約](core-contracts.md)を正とする。
 
-## 5. ディレクトリ構成（ハイブリッド型）
+## 4. ディレクトリ構成（ハイブリッド型）
+
 コンテキストスイッチを防ぐため、`get`は既定でworkspace直下に「問題ごとのフォルダ」を1階層だけ作成する。この構成は開始時の推奨layoutであり、利用者が維持し続けなければならない実行時制約ではない。
 
-    algoloom_workspace/
-    └── abc300_a/                 # aloom get で自動生成
-        ├── <problem-metadata>    # 名称と形式は機能設計で決定
-        ├── main.cpp              # 組み込みprofileの雛形から作成
-        └── test/                 # Judge Adapterが取得した公開sample
+```text
+algoloom_workspace/
+└── abc300_a/                 # aloom get で自動生成
+    ├── <problem-metadata>    # 名称と形式は機能設計で決定
+    ├── main.cpp              # 組み込みprofileの雛形から作成
+    └── test/                 # Judge Adapterが取得した公開sample
+```
 
 作成後は、利用者がOS、shell、file manager、Editor / IDEの標準操作でworkspace全体や問題directoryを移動・rename・整理できることを基本契約とする。
 
@@ -32,7 +50,7 @@
 - sourceだけを問題context外へ移動した場合等、一意に判断できない状態では勝手に関連付けず、必要なcontextと明示指定方法を説明する。
 - 複数の同一問題directoryが存在する場合は、暗黙に先頭候補を選んだりmerge・削除したりしない。
 
-## 6. CLIコマンド構成
+## 5. CLIコマンド構成
 
 本節は、現時点で想定している機能と責任の整理であり、最終的なsubcommand名、引数、optionを確定するものではない。具体的なCLIは、シンプルさとユーザーの自由を優先して後の設計段階で決定する。
 

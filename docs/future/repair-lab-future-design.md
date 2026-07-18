@@ -7,8 +7,9 @@
 > 作成日: 2026年7月18日
 >
 > 関連文書:
-> - [プロジェクト草案](../product/concept.md)
-> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [製品ビジョン](../product/vision.md)
+> - [MVPスコープ](../product/mvp.md)
+> - [Core契約](../architecture/core-contracts.md)
 > - [Review Backend・LLM Provider設計](../features/llm-provider-design.md)
 > - [セキュリティ設計ガイド](../quality/security-design.md)
 > - [ストレスフリーUX設計](../quality/stress-free-ux-design.md)
@@ -18,7 +19,7 @@
 
 ## 0. 結論
 
-AlgoLoomは、MVPではAtCoderの終了済み過去問を対象に、問題取得、local test、明示checkpoint、提出、履歴、差分、exportからなるCoreを確実に実装する。AI reviewはMVP後の独立した採用判断とする。正確な範囲は[MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)を正とする。
+AlgoLoomは、MVPではAtCoderの終了済み過去問を対象に、問題取得、local test、明示checkpoint、提出、履歴、差分、exportからなるCoreを確実に実装する。AI reviewはMVP後の独立した採用判断とする。正確な範囲は[MVPスコープ](../product/mvp.md)を正とする。
 
 その基盤が安定した後の将来構想として、他者またはLLMが書いたcodeを読み、症状から原因仮説を立て、検証可能な予測を示し、最小限の変更と回帰testによって修正を確かめる学習ワークフローを検討する。本書ではこの構想を仮に**Repair Lab**と呼ぶ。名称、command、画面、採点方式は確定事項ではない。
 
@@ -70,6 +71,21 @@ Repair Labを追加する場合、次を満たす。
 - 局所的な修正が、別の入力、呼び出し元、既存機能を壊す可能性がある。
 
 この不確実性を扱うこと自体を、AtCoder学習とは異なる学習価値として設計する。ただし、その違いを別の操作体系として表現しない。
+
+### 1.4. 用語
+
+| 用語 | 本書での意味 |
+|---|---|
+| Repair Lab | 他者またはLLMが書いた検証済みcodeを題材に、原因仮説と検証による修正を練習する将来の学習ワークフロー。 |
+| Core | 問題取得、local test、明示checkpoint、提出、履歴、差分、exportからなるMVPの中核機能。 |
+| context | AlgoLoomが現在の処理対象として認識するworkspace、問題または教材、sourceの組み合わせ。 |
+| 原因仮説 | 観測された症状を生んでいる処理や前提についての、検証前の説明候補。 |
+| 反証可能な予測 | 仮説が正しい場合に得られる観測を示し、結果によって仮説を否定できる予測。 |
+| 確信度 | 現在の証拠に基づき、仮説が正しいと考える主観的な見積もり。 |
+| test oracle | test結果が期待どおりかを決定的に判定する基準または仕組み。 |
+| 回帰test | 修正によって既存の正常動作が壊れていないことを確認するtest。 |
+| mutation | 参照実装へ意図的な変更を加え、検証対象となる欠陥を作ること。 |
+| sandbox | 未信頼codeが利用できるfilesystem、network、CPU、memory等を制限する隔離環境。 |
 
 ---
 
