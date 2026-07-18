@@ -215,7 +215,7 @@
 
 **原文:** 「AI reviewはMVP後の独立した採用判断とする。採用後もCoreへ組み込まず、次をすべて満たした場合だけ正式なoptional Capabilityとして提供する。」
 
-出典: [ロードマップ §3.2](../product/roadmap.md#32-ai-review)、[Repair Lab 将来構想 §0](../future/repair-lab-future-design.md#0-結論)
+出典: [ロードマップ §4.1](../product/roadmap.md#41-ai-review)、[Repair Lab 将来構想 §0](../future/repair-lab-future-design.md#0-結論)
 
 ### 3.2 追加Review Backendを採用するか
 
@@ -241,9 +241,9 @@
 
 **決めること:** WSL、追加言語、project build、Editor / Diff Viewer、catalog、opt-in自動checkpoint、既存履歴import、自動backup/restore、machine-readable出力を、Core安定後にどの順で採用するか。
 
-**原文:** 「Core安定後に検討する近接拡張」
+**原文:** 「Phase 2: Core安定化・近接拡張」
 
-出典: [ロードマップ §3.1](../product/roadmap.md#31-core安定後に検討する近接拡張)
+出典: [ロードマップ §3](../product/roadmap.md#3-phase-2-core安定化近接拡張)
 
 ### 3.4 CLI問題選択のインタラクション
 
