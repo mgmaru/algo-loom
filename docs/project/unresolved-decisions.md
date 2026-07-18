@@ -2,7 +2,7 @@
 
 > 作成日: 2026年7月18日
 >
-> 状態確認日: 2026年7月18日
+> 状態確認日: 2026年7月19日
 >
 > 目的: リポジトリ内に分散している未決事項を、原文の判断を変えずに確認できるよう集約する。
 >
@@ -163,21 +163,21 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** MVPはC++とPythonに限定し、標準compile/run定義を組み込みprofileとして提供する。workspace metadataに実行command、credential、endpointを持たせず、workspaceから任意commandを定義させない。processはargv配列で起動し、不要なsecretを子processへ渡さない。
+**決定済みの内容:** MVPはC++、Python、Go、Rustを正式対象とし、単一sourceと標準toolchainを初期保証範囲にした組み込み`LanguageProfile`を提供する。profileはshell文字列ではなくBuildPlan / RunPlanを返し、native macOS、native Linux、native Windowsの`HostPlatform`がprocessを実行する。workspace metadataに実行command、credential、endpointを持たせず、workspaceから任意commandを定義させない。個別profile同士と個別OS Adapter同士を依存させず、canonical language IDをlocal toolchainとAtCoder上の言語IDから分離する。
 
-**残る未決:** Go・Rust等の追加時期、user-level設定による拡張子・template・実行file・引数変更を採用するか、およびその具体契約。
+**残る未決:** user-level設定による拡張子・template・実行file・引数変更を採用するか、およびその具体契約。compiler/runtime/OS release/CPU architectureの正確なversion matrixは2.3の実測対象として残る。
 
-**決めること:** C++・Python以外の対応時期、およびuser-level設定から拡張子・template・compile/run commandを変更可能にするかと、その安全な契約。
+**決めること:** user-level設定から拡張子、template、実行file、引数を変更可能にするかと、その安全な契約。
 
 **原文:** 「将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。」
 
-出典: [アーキテクチャ概要 §3](../architecture/overview.md#3-解答言語と設定管理)、[ロードマップ §3.1](../product/roadmap.md#31-core安定後に検討する近接拡張)
+出典: [アーキテクチャ概要 §3](../architecture/overview.md#3-解答言語host-os設定管理)、[言語・実行環境の可搬性設計 §3](../architecture/language-and-platform-portability.md#3-mvpの対応範囲)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)
 
 ### 2.3 実行・保持・性能の具体値
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** compileとrunのtimeoutを分け、stdout/stderrに上限を設け、timeout時はprocess groupを終了する。DB lockは有限時間とし、外部通信ではconnection・request・polling全体の上限を分ける。初期性能目標として`log` p95 100ms、`show` p95 150ms、`diff` p95 250ms等の計測仮説が定義されている。
+**決定済みの内容:** compileとrunのtimeoutを分け、stdout/stderrに上限を設け、timeout時は各`HostPlatform`がprocess treeを終了する。DB lockは有限時間とし、外部通信ではconnection・request・polling全体の上限を分ける。初期性能目標として`log` p95 100ms、`show` p95 150ms、`diff` p95 250ms等の計測仮説が定義されている。
 
 **残る未決:** 実測後に固定するtimeout・出力量・保持期間・resource上限・SLO、対応OSごとの強制memory/process制限、compiler/runtime version matrix。
 
@@ -207,13 +207,13 @@
 
 **状態:** 条件付き決定
 
-**決定済みの内容:** AI reviewはMVPへ含めず、Core完了後の独立した採用判断とする。安全判定、過去問識別、送信・費用・保持方針の明示、Coreからの独立、sourceを自動編集・実行・提出しない権限制約をすべて満たすまで昇格させない。
+**決定済みの内容:** AI reviewはMVPへ含めず、Core完了後の独立した採用判断とする。採用後もCoreへ組み込まず、安全判定、過去問識別、送信・費用・保持方針の明示、sourceを自動編集・実行・提出しない権限制約をすべて満たした場合だけ正式なoptional Capabilityとして提供する。依存方向はAI reviewからCoreのsnapshot・verdict・diff参照契約への一方向とし、CoreはProvider、prompt、review設定・状態へ依存しない。reviewはCore tableの任意列ではなく、安定IDを参照する追記型revisionとして保存する。
 
 **残る判断:** 条件を実装・検証した後に正式採用するか。
 
-**決めること:** AI reviewをCoreへ昇格させるか。採否は、ルールのversion確認、過去問識別、送信・費用・保持方針の確認、review-only制約を満たした後に判断する。
+**決めること:** AI reviewを正式なoptional Capabilityとして採用するか。採否は、ルールのversion確認、過去問識別、送信・費用・保持方針の確認、review-only制約を満たした後に判断する。
 
-**原文:** 「AI reviewはMVP後の独立した採用判断とする。少なくとも次を満たすまでCoreへ含めない。」
+**原文:** 「AI reviewはMVP後の独立した採用判断とする。採用後もCoreへ組み込まず、次をすべて満たした場合だけ正式なoptional Capabilityとして提供する。」
 
 出典: [ロードマップ §3.2](../product/roadmap.md#32-ai-review)、[Repair Lab 将来構想 §0](../future/repair-lab-future-design.md#0-結論)
 
@@ -235,11 +235,11 @@
 
 **状態:** 未決
 
-**決定済みの境界:** すべてMVP対象外であり、追加してもMVPのinstall、日常command、offline履歴を複雑にしないことは決定している。
+**決定済みの境界:** native Windows、Go、RustはMVPへ昇格済みである。残る候補はMVP対象外であり、追加してもMVPのinstall、日常command、offline履歴を複雑にしないことは決定している。
 
 **残る未決:** 各候補を実際に採用するか、および候補間の優先順位。
 
-**決めること:** Windows、Go、Rust、Editor / Diff Viewer、catalog、opt-in自動checkpoint、既存履歴import、自動backup/restore、machine-readable出力を、Core安定後にどの順で採用するか。
+**決めること:** WSL、追加言語、project build、Editor / Diff Viewer、catalog、opt-in自動checkpoint、既存履歴import、自動backup/restore、machine-readable出力を、Core安定後にどの順で採用するか。
 
 **原文:** 「Core安定後に検討する近接拡張」
 
@@ -413,7 +413,7 @@
 
 **状態:** 条件付き決定
 
-**決定済みの内容:** MVPは利用者自身のcodeだけを対象とし、完全sandboxは必須にしない。ただしcompile/run timeout、出力量上限、process group終了、secretを除いた環境等はMVPで必須とする。他人・共有・Cloud取得・LLM生成codeを実行対象にする場合は、OS sandbox、containerまたはVMによる隔離とresource制限を必須候補として再評価する。
+**決定済みの内容:** MVPは利用者自身のcodeだけを対象とし、完全sandboxは必須にしない。ただしcompile/run timeout、出力量上限、`HostPlatform`によるprocess tree終了、secretを除いた環境等はMVPで必須とする。他人・共有・Cloud取得・LLM生成codeを実行対象にする場合は、OS sandbox、containerまたはVMによる隔離とresource制限を必須候補として再評価する。
 
 **残る判断:** 未信頼code実行を採用するときの具体的なsandbox方式、threat model、対応OSと保証範囲。
 
