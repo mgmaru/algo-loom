@@ -6,7 +6,9 @@
 |---|---|
 | Core | AI review、Cloud同期、外部Viewer等の任意機能に依存しないAlgoLoomの中核機能。 |
 | Judge Adapter | sample取得、提出、判定確認等のjudge固有処理をCoreから分離する接続境界。 |
-| language profile | 言語ごとの拡張子、template、安全なcompile方法、実行方法を定義する設定。 |
+| LanguageProfile | 言語ごとの拡張子、template、toolchain診断、安全なBuildPlan / RunPlanを提供する組み込み境界。 |
+| HostPlatform | OS固有のprocess起動・終了、path、terminal、file操作をCoreとlanguage profileから分離する境界。 |
+| optional Capability | AI reviewやCloud同期等、Coreの安定した契約を利用して後から追加でき、未導入でもCoreを変化・停止させない機能。 |
 | workspace | 問題directoryを配置し、AlgoLoomが作業対象として認識する通常のdirectory。 |
 | problem metadata | 正規問題ID等、問題directoryの識別に使う宣言的な情報。 |
 | source snapshot | checkpointや提出の時点で保存するsource codeの不変記録。 |
@@ -23,11 +25,62 @@
 | データ同期・インフラ | 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。 |
 | エディタ連携 | AlgoLoom Coreはエディタに依存しない。閲覧や差分表示が必要な場合だけ、ユーザーが選択した外部Editor / ViewerをAdapter経由で起動する。 |
 
-## 3. 解答言語と設定管理
+### 2.1. 依存方向
 
-製品構想としてはC++、Python、Go、Rust等の複数言語へ段階的に対応する。MVPはC++とPythonに限定し、安全なcompile/run定義をAlgoLoomの組み込みprofileとして提供する。
+Core、言語、OS、judge、任意機能の依存方向を次のように固定する。
+
+```mermaid
+flowchart TB
+    CLI[CLI / Presentation] --> CORE[Application / Core]
+
+    CORE --> LP[LanguageProfile Port]
+    CORE --> HP[HostPlatform Port]
+    CORE --> JA[JudgeAdapter Port]
+    CORE --> HS[HistoryStore Port]
+
+    CPP[C++ Profile] --> LP
+    PY[Python Profile] --> LP
+    GO[Go Profile] --> LP
+    RS[Rust Profile] --> LP
+
+    MAC[macOS Adapter] --> HP
+    LIN[Linux Adapter] --> HP
+    WIN[Windows Adapter] --> HP
+
+    AT[AtCoder Adapter] --> JA
+
+    AI[AI Review Capability] --> QR[Snapshot / Verdict / Diff Query]
+    QR --> CORE
+    SYNC[Sync Capability] --> HS
+
+    CORE -. 禁止 .-> AI
+    CORE -. 禁止 .-> SYNC
+
+    style CORE fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style AI fill:#f3e8ff,stroke:#9333ea
+    style SYNC fill:#dcfce7,stroke:#16a34a
+```
+
+- CoreはAI Provider、review設定、同期SDK、同期状態を知らない。
+- AI reviewはCoreの不変snapshot、verdict、diffの読み取り契約へ一方向に依存できる。
+- Cloud同期はCoreの論理レコードと保存契約へ一方向に依存できる。
+- language profileは別の個別profileへ依存せず、HostPlatform Adapterも別OS Adapterへ依存しない。
+- 個別実装の選択は起動時のcomposition rootまたはregistryへ閉じ込める。
+- 任意機能の失敗は、Coreで確定した成功状態を変更しない。
+
+AI reviewを将来追加する場合、submissionやsnapshotへAI固有のnullable列を加えず、安定IDを参照する追記型review revisionとして保存する。`submit --review`等の複合UXを設ける場合も、Presentation / Application orchestrationがCoreの提出結果と独立したreview結果を組み合わせ、Coreの提出ServiceからReview Backendを呼び出さない。
+
+## 3. 解答言語・host OS・設定管理
+
+MVPはC++、Python、Go、Rustを正式な解答言語とし、安全なtemplate、toolchain診断、build/run計画をAlgoLoomの組み込み`LanguageProfile`として提供する。初期保証は単一sourceと標準toolchainに限定し、Cargo、Go module、CMake、外部package管理等のproject buildを暗黙に対応済みと扱わない。
+
+製品対象OSはnative macOS、native Linux、native Windowsとする。OS固有のprocess tree終了、path、terminal、file lock等は`HostPlatform`の後ろへ置く。WSLはMVP対象外とし、Linux版またはnative Windows版の検証結果をそのままWSL対応の根拠にしない。
+
+言語profileはOSを直接分岐せず、argv、working directory、入力source、生成artifact、timeout区分等からなる`BuildPlan` / `RunPlan`を返す。現在OSの`HostPlatform`がplanを実行し、success、compile error、runtime error、timeout、出力量超過、取消等の共通結果へ正規化する。AtCoder上の提出言語とversionへの対応付けは`JudgeAdapter`の責任とする。
 
 将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。ただし、MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と信頼境界の正確な契約は[Core契約](core-contracts.md)を正とする。
+
+言語・OSごとの差異、依存規則、検証matrixは[言語・実行環境の可搬性設計](language-and-platform-portability.md)を正とする。
 
 ## 4. ディレクトリ構成（ハイブリッド型）
 
@@ -37,9 +90,13 @@
 algoloom_workspace/
 └── abc300_a/                 # aloom get で自動生成
     ├── <problem-metadata>    # 名称と形式は機能設計で決定
-    ├── main.cpp              # 組み込みprofileの雛形から作成
+    ├── main.cpp              # 選択した1言語のprofileからだけ作成
     └── test/                 # Judge Adapterが取得した公開sample
 ```
+
+4言語へ対応しても、`get`はC++、Python、Go、Rustのsourceを同時生成しない。利用者が選んだ1言語のsourceだけを作り、問題directoryを通常の単一言語projectに近い状態へ保つ。
+
+同じ問題を別言語で解く場合、既定では問題directoryを分ける。各directoryは同じ正規問題IDへ関連付けられるため、履歴上は同一問題の異なる実装として比較できる。利用者が同じdirectoryへ複数sourceを置くことは禁止しないが、複数候補がある場合はhiddenなactive languageや先頭fileから暗黙に一つを選ばず、明示sourceを要求する。
 
 作成後は、利用者がOS、shell、file manager、Editor / IDEの標準操作でworkspace全体や問題directoryを移動・rename・整理できることを基本契約とする。
 
@@ -76,7 +133,7 @@ aloom submit main.cpp
 | **get** | [問題ID]<br>--lang [言語] | ①Judge Adapter経由で公開sampleをtest/へ取得<br>②宣言的な問題metadataを保存<br>③組み込みlanguage profileから雛形fileを作成。再実行時は編集済みsourceを上書きしない |
 | **test** | [ファイル名] | 組み込みlanguage profileに基づきbuild（C++等）を行い、test/内の公開sampleとの一致をlocalで確認する。AtCoderでのACを保証する判定とは表現しない。 |
 | **checkpoint** | [ファイル名] | 提出前のsource snapshotを、利用者の明示操作によってローカル履歴へ保存する。外部通信は行わない。 |
-| **submit** | [ファイル名]<br>--review（MVP後） | ①問題contextとAtCoder accountを確認<br>②送信する正確なsource snapshotと提出操作をローカルSQLiteへ耐久保存<br>③Judge Adapter経由でAtCoderへ提出<br>④submission IDを保存し、判定をpolling<br>⑤中断時は状態を保持し、同じ提出の判定だけを再確認<br>⑥将来の同期とAI reviewは、Core完了後の独立した処理として追加 |
+| **submit** | [ファイル名]<br>--review（MVP後） | ①問題contextとAtCoder accountを確認<br>②送信する正確なsource snapshotと提出操作をローカルSQLiteへ耐久保存<br>③Judge Adapter経由でAtCoderへ提出<br>④submission IDを保存し、判定をpolling<br>⑤中断時は状態を保持し、同じ提出の判定だけを再確認<br>⑥将来の同期とAI reviewは、Coreの提出Serviceへ組み込まず、成功状態を変更しない独立したCapabilityとして追加 |
 | **log** | なし | ローカルSQLiteからcheckpoint、提出操作、判定を取得し、通信を待たずにterminalへ一覧表示する。 |
 | **show** | [問題IDまたは履歴ID] | ローカルDBから選択したsource snapshotを取得する。MVPはterminal上のplain textで表示し、外部Editor / Viewer連携はMVP後とする。 |
 | **diff** | [問題IDまたは履歴ID] | ローカルDBから利用者が振り返る2つのsource snapshotを取得し、MVPはunified diffで表示する。初回提出と最新AC等を既定候補にしても、比較対象を確認・指定できるようにする。 |
