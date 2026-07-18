@@ -49,7 +49,7 @@
 
 **原文:** 「本書および関連文書に記載するcommand名、引数、option、対話例、出力例は、明示的にCLI契約として確定したものを除き、機能と責任を説明するための暫定案とする。具体的なCLI設計は、上記原則と実際の利用検証を踏まえて別途決定する。」
 
-出典: [プロジェクト草案 §3.4](../product/concept.md#34-標準ツールとの責任境界)、[MVPスコープとCore契約 §1.2](../product/mvp-scope-and-core-contracts.md#12-本書で決めないこと)
+出典: [プロジェクト草案 §3.4](../product/vision.md#34-標準ツールとの責任境界)、[MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)
 
 ### 1.2 workspace metadataとcontext指定
 
@@ -65,7 +65,7 @@
 
 **原文:** 「問題directoryと一緒に移動するmetadata fileの名称、形式、Schema version」「同じ問題を検出するworkspace探索範囲と、除外directory、規模上限」「workspace、問題、source contextを明示指定するoptionの具体名」「引数を省略できる条件」
 
-出典: [MVPスコープとCore契約 §4.3](../product/mvp-scope-and-core-contracts.md#43-workspaceとcontext)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
+出典: [MVPスコープとCore契約 §4.3](../architecture/core-contracts.md#43-workspaceとcontext)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
 
 ### 1.3 `get`の補助動作と途中失敗の回復
 
@@ -79,7 +79,7 @@
 
 **原文:** 「問題取得は、公式確認、sample取得、directory作成、template作成、DB保存、browser起動という複数の副作用を持つ。次の途中状態が未定義である。」
 
-出典: [MVPスコープとCore契約 §5.2](../product/mvp-scope-and-core-contracts.md#52-冪等性と部分失敗)、[問題選択・カタログ設計 §6.3](../features/problem-selection-and-catalog.md#63-getの処理)、[ストレスフリーUX設計 §3.3](../quality/stress-free-ux-design.md#33-問題取得の途中失敗と再実行)
+出典: [MVPスコープとCore契約 §5.2](../architecture/core-contracts.md#52-冪等性と部分失敗)、[問題選択・カタログ設計 §6.3](../features/problem-selection-and-catalog.md#63-getの処理)、[ストレスフリーUX設計 §3.3](../quality/stress-free-ux-design.md#33-問題取得の途中失敗と再実行)
 
 ### 1.4 履歴・表示・診断の細部
 
@@ -97,7 +97,7 @@
 
 **原文:** 「進捗表示の具体的な見た目」「統一診断入口の具体名」「Viewer fallbackの具体的な表示量」
 
-出典: [MVPスコープとCore契約 §7.3](../product/mvp-scope-and-core-contracts.md#73-checkpoint)、[MVPスコープとCore契約 §1.2](../product/mvp-scope-and-core-contracts.md#12-本書で決めないこと)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
+出典: [MVPスコープとCore契約 §7.3](../architecture/core-contracts.md#73-checkpoint)、[MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)
 
 ### 1.5 exit codeとmachine-readable出力
 
@@ -111,7 +111,7 @@
 
 **原文:** 「exit codeとmachine-readable出力の詳細は機能設計で決める。」
 
-出典: [MVPスコープとCore契約 §4.6](../product/mvp-scope-and-core-contracts.md#46-出力とerror)
+出典: [MVPスコープとCore契約 §4.6](../architecture/core-contracts.md#46-出力とerror)
 
 ### 1.6 任意機能の具体的な導線
 
@@ -139,7 +139,7 @@
 
 **原文:** 「CLI frameworkやdependency injection手法」「class、module、table、columnの最終名称」「metadata fileとexport fileの最終形式」
 
-出典: [MVPスコープとCore契約 §1.2](../product/mvp-scope-and-core-contracts.md#12-本書で決めないこと)
+出典: [MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)
 
 ### 2.2 言語profileとuser-level実行設定
 
@@ -153,7 +153,7 @@
 
 **原文:** 「将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。」
 
-出典: [プロジェクト草案 §4](../product/concept.md#4-解答言語と設定管理)、[MVPスコープとCore契約 §14.1](../product/mvp-scope-and-core-contracts.md#141-core安定後に検討する近接拡張)
+出典: [プロジェクト草案 §4](../architecture/overview.md#4-解答言語と設定管理)、[MVPスコープとCore契約 §14.1](../product/roadmap.md#141-core安定後に検討する近接拡張)
 
 ### 2.3 実行・保持・性能の具体値
 
@@ -169,7 +169,7 @@
 
 **原文:** 「数値は対応OS、DB規模、sample数、Providerにより変わるため、次は実装開始時の仮説である。固定の約束にする前に、代表的な端末と履歴件数でp50/p95を計測する。」
 
-出典: [MVPスコープとCore契約 §1.2](../product/mvp-scope-and-core-contracts.md#12-本書で決めないこと)、[パフォーマンスと待機体験の設計 §5](../quality/performance-and-waiting-design.md#5-性能待機の初期契約)
+出典: [MVPスコープとCore契約 §1.2](../product/mvp.md#12-本書で決めないこと)、[パフォーマンスと待機体験の設計 §5](../quality/performance-and-waiting-design.md#5-性能待機の初期契約)
 
 ### 2.4 DB保守の実行規約
 
@@ -197,7 +197,7 @@
 
 **原文:** 「AI reviewはMVP後の独立した採用判断とする。少なくとも次を満たすまでCoreへ含めない。」
 
-出典: [MVPスコープとCore契約 §14.2](../product/mvp-scope-and-core-contracts.md#142-ai-review)、[Repair Lab 将来構想 §0](../future/repair-lab-future-design.md#0-結論)
+出典: [MVPスコープとCore契約 §14.2](../product/roadmap.md#142-ai-review)、[Repair Lab 将来構想 §0](../future/repair-lab-future-design.md#0-結論)
 
 ### 3.2 追加Review Backendを採用するか
 
@@ -225,7 +225,7 @@
 
 **原文:** 「Core安定後に検討する近接拡張」
 
-出典: [MVPスコープとCore契約 §14.1](../product/mvp-scope-and-core-contracts.md#141-core安定後に検討する近接拡張)
+出典: [MVPスコープとCore契約 §14.1](../product/roadmap.md#141-core安定後に検討する近接拡張)
 
 ### 3.4 CLI問題選択のインタラクション
 
