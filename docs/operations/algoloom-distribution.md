@@ -7,9 +7,12 @@
 > 関連文書:
 > - [MVPスコープ](../product/mvp.md)
 > - [Core契約](../architecture/core-contracts.md)
+> - [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md)
 > - [AlgoLoom LLM Provider選択・実行基盤設計](../features/llm-provider-design.md)
 >
 > 作成日: 2026年7月15日
+>
+> 更新日: 2026年7月19日
 >
 > 重要: 本文書は法的助言ではなく、公開情報に基づく設計・配布上の判断材料である。規約やコンテストルールは変更されるため、公開前に最新版を確認し、必要に応じてAtCoderまたは法律の専門家へ相談すること。
 
@@ -421,6 +424,8 @@ flowchart LR
 - `pip install algoloom`でも導入できるが、現在のPython環境へ依存パッケージも追加される。
 - CLIアプリでは、専用の仮想環境を自動作成する`pipx`または`uv tool`を推奨する。
 - 推奨コマンドをREADMEの先頭に示し、通常の`pip`は代替手段として案内する。
+- 基本packageをnative macOS、native Linux、native Windowsへ同じPyPI packageから導入できるようにし、OSごとの手順差は案内へ閉じ込める。
+- Windows向け案内はnative Windows上のPowerShell等を対象とし、WSLを正式対応経路として暗黙に案内しない。
 
 ```bash
 # 推奨: CLI専用の環境へインストール
@@ -465,6 +470,8 @@ algoloom = "algoloom.__main__:main"
 | ソース | GitHubで公開 |
 | Python配布 | PyPIでwheel / sdistを公開 |
 | インストール | `pipx install algoloom`または`uv tool install algoloom` |
+| MVP対応OS | native macOS、native Linux、native Windows。WSLは対象外 |
+| MVP解答言語 | C++、Python、Go、Rustの組み込みprofile |
 | AlgoLoomのライセンス | MITまたはApache-2.0を選択 |
 | 第三者表示 | `THIRD_PARTY_NOTICES.md`を同梱 |
 | 依存関係 | バージョン範囲またはlock fileで管理 |
@@ -687,6 +694,8 @@ algoloom_workspace/
 - [ ] `.gitignore`対象ファイルが混入していない。
 - [ ] Cookie、トークン、実ユーザーコードをsecret scanした。
 - [ ] 対応バージョンと既知の制約を記載した。
+- [ ] native macOS、native Linux、native Windowsで基本package、entry point、4言語の代表的な`get → test` smoke testを確認した。
+- [ ] WSL、project build、未検証toolchainを対応済みと表示していない。
 - [ ] AtCoderの最新規約とコンテストルールを再確認した。
 
 ---
@@ -724,6 +733,7 @@ flowchart LR
 
 - ローカルDBを既定にする。
 - [MVPスコープ](../product/mvp.md)と[Core契約](../architecture/core-contracts.md)に従い、終了済み過去問の公開sample取得、local test、自動提出、履歴、exportを検証する。
+- C++、Python、Go、Rustをnative macOS、native Linux、native Windowsで検証し、言語とOSの差異が他profile・他OSへ波及しないことを契約テストで確認する。
 - AI review、`contest_mode`、Cloud同期をMVPへ含めない。
 - 実データがリポジトリへ混入しないことを確認する。
 
