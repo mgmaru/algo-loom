@@ -7,11 +7,11 @@
 > 作成日: 2026年7月16日
 >
 > 関連文書:
-> - [プロジェクト草案](../concept.md)
-> - [MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)
-> - [AlgoLoom AIレビュー安全設計](../distribution/ai-review-safety-design.md)
-> - [AlgoLoom 配布方針ガイド](../distribution/algoloom-distribution.md)
-> - [ローカル利用とCloud同期の段階的設計](../database/local-and-cloud-sync-design.md)
+> - [プロジェクト草案](../product/concept.md)
+> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [AlgoLoom AIレビュー安全設計](ai-review-safety-design.md)
+> - [AlgoLoom 配布方針ガイド](../operations/algoloom-distribution.md)
+> - [ローカル利用とCloud同期の段階的設計](local-and-cloud-sync-design.md)
 >
 > 注意: Provider、API、モデル、ライセンス、料金、データ利用条件は変更される可能性がある。実装時とリリース前に各Providerの公式資料を再確認すること。
 
@@ -1091,10 +1091,10 @@ flowchart LR
 | 文書 | 主な責任 |
 |---|---|
 | 本文書 | Review Backend選択、credential境界、runtime非管理、接続先、同意、Adapter、no-fallback |
-| [セキュリティ設計](./security-design.md) | secret管理、外部process、Agent Bridgeの権限制約、Prompt injection |
-| [AIレビュー安全設計](../distribution/ai-review-safety-design.md) | AtCoderルール、開催中問題の判定、`contest_mode`、fail closed |
-| [配布方針ガイド](../distribution/algoloom-distribution.md) | PyPI配布、第三者license、プライバシー、公開版の安全性 |
-| [ローカル・Cloud同期設計](../database/local-and-cloud-sync-design.md) | DB同期、レビュー保存データの端末間共有 |
+| [セキュリティ設計](../quality/security-design.md) | secret管理、外部process、Agent Bridgeの権限制約、Prompt injection |
+| [AIレビュー安全設計](ai-review-safety-design.md) | AtCoderルール、開催中問題の判定、`contest_mode`、fail closed |
+| [配布方針ガイド](../operations/algoloom-distribution.md) | PyPI配布、第三者license、プライバシー、公開版の安全性 |
+| [ローカル・Cloud同期設計](local-and-cloud-sync-design.md) | DB同期、レビュー保存データの端末間共有 |
 
 Providerを追加・変更しても、AIレビュー安全設計の判定は変更しない。DB同期を有効化・無効化しても、Provider選択とLLMへの送信同意は別に管理する。
 

@@ -7,12 +7,12 @@
 > 決定日: 2026年7月18日
 >
 > 関連文書:
-> - [プロジェクト草案](../concept.md)
-> - [ストレスフリーUX設計](./stress-free-ux-design.md)
-> - [セキュリティ設計ガイド](./security-design.md)
-> - [パフォーマンスと待機体験の設計](./performance-and-waiting-design.md)
-> - [ローカル利用とCloud同期の段階的設計](../database/local-and-cloud-sync-design.md)
-> - [配布方針ガイド](../distribution/algoloom-distribution.md)
+> - [プロジェクト草案](concept.md)
+> - [ストレスフリーUX設計](../quality/stress-free-ux-design.md)
+> - [セキュリティ設計ガイド](../quality/security-design.md)
+> - [パフォーマンスと待機体験の設計](../quality/performance-and-waiting-design.md)
+> - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
+> - [配布方針ガイド](../operations/algoloom-distribution.md)
 
 ---
 

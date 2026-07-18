@@ -2,7 +2,7 @@
 
 > 目的：SQLite のデータを複数デバイスで共有したい。できるだけ無料枠に収めたい。
 >
-> 位置付け：本書はCloudサービスの調査メモであり、AlgoLoomの現在の保存・同期アーキテクチャを決める正本ではない。正本は[ローカル利用とCloud同期の段階的設計](./local-and-cloud-sync-design.md)および[Turso設計ガイド](./turso-design-guide.md)とする。
+> 位置付け：本書はCloudサービスの調査メモであり、AlgoLoomの現在の保存・同期アーキテクチャを決める正本ではない。正本は[ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)および[Turso設計ガイド](../integrations/turso-design-guide.md)とする。
 > 作成日：2026年7月15日 ／ 料金・無料枠は各社とも頻繁に変わるため、最終判断の前に必ず公式の pricing ページで最新値を確認してください。
 
 ---

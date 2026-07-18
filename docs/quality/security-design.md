@@ -7,14 +7,14 @@
 > 作成日: 2026年7月16日
 >
 > 関連文書:
-> - [プロジェクト草案](../concept.md)
-> - [MVPスコープとCore契約](./mvp-scope-and-core-contracts.md)
-> - [ローカル利用とCloud同期の段階的設計](../database/local-and-cloud-sync-design.md)
-> - [Turso設計ガイド](../database/turso-design-guide.md)
-> - [Turso移行互換性設計](../database/turso-migration-compatibility-design.md)
-> - [LLM Provider選択・実行基盤設計](./llm-provider-design.md)
-> - [AIレビュー安全設計](../distribution/ai-review-safety-design.md)
-> - [AlgoLoom配布方針ガイド](../distribution/algoloom-distribution.md)
+> - [プロジェクト草案](../product/concept.md)
+> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
+> - [Turso設計ガイド](../integrations/turso-design-guide.md)
+> - [Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md)
+> - [LLM Provider選択・実行基盤設計](../features/llm-provider-design.md)
+> - [AIレビュー安全設計](../features/ai-review-safety-design.md)
+> - [AlgoLoom配布方針ガイド](../operations/algoloom-distribution.md)
 
 ---
 

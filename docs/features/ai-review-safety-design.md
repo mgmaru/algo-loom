@@ -7,9 +7,9 @@
 > 作成日: 2026年7月15日
 >
 > 関連文書:
-> - [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)
-> - [AlgoLoom 配布方針ガイド](./algoloom-distribution.md)
-> - [AlgoLoom LLM Provider選択・実行基盤設計](../design/llm-provider-design.md)
+> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [AlgoLoom 配布方針ガイド](../operations/algoloom-distribution.md)
+> - [AlgoLoom LLM Provider選択・実行基盤設計](llm-provider-design.md)
 >
 > 注意: AtCoderの規約やコンテストルールは変更される可能性がある。実装時・公開時には必ず最新版を再確認する。
 

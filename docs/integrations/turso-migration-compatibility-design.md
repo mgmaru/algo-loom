@@ -9,9 +9,9 @@
 >
 > 関連文書:
 > - [AlgoLoom Turso設計ガイド](./turso-design-guide.md)
-> - [DB候補比較](./db-comparison.md)
-> - [プロジェクト草案](../concept.md)
-> - [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)
+> - [DB候補比較](../research/db-comparison.md)
+> - [プロジェクト草案](../product/concept.md)
+> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
 >
 > 注意: TursoのSDK、同期方式、ファイル形式、制約は変更される可能性がある。実装開始時と移行前に公式資料を再確認すること。
 
@@ -248,7 +248,7 @@ class SyncCoordinator(Protocol):
 
 ## 5. 同期検討時の暫定論理データモデル
 
-本節の図は、同期方式間でIDと追記ルールを共通化する考え方を示す過去の最小例であり、MVPの確定Schemaではない。[MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)に従い、Coreの論理モデルでは少なくともsource snapshot、checkpoint、submission operation、verdict observation、AtCoder account identityを分離して設計する。AI review tableはMVPへ含めない。
+本節の図は、同期方式間でIDと追記ルールを共通化する考え方を示す過去の最小例であり、MVPの確定Schemaではない。[MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)に従い、Coreの論理モデルでは少なくともsource snapshot、checkpoint、submission operation、verdict observation、AtCoder account identityを分離して設計する。AI review tableはMVPへ含めない。
 
 ### 5.1. 基本原則
 

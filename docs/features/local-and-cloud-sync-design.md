@@ -8,12 +8,12 @@
 > 更新日: 2026年7月18日
 >
 > 関連文書:
-> - [プロジェクト草案](../concept.md)
-> - [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)
-> - [AlgoLoom配布方針ガイド](../distribution/algoloom-distribution.md)
-> - [AlgoLoom Turso設計ガイド](./turso-design-guide.md)
-> - [AlgoLoom Turso移行互換性設計](./turso-migration-compatibility-design.md)
-> - [AlgoLoom LLM Provider選択・実行基盤設計](../design/llm-provider-design.md)
+> - [プロジェクト草案](../product/concept.md)
+> - [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)
+> - [AlgoLoom配布方針ガイド](../operations/algoloom-distribution.md)
+> - [AlgoLoom Turso設計ガイド](../integrations/turso-design-guide.md)
+> - [AlgoLoom Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md)
+> - [AlgoLoom LLM Provider選択・実行基盤設計](llm-provider-design.md)
 >
 > 注意: TursoのSDK、同期方式、対応OS、料金、制約は変更される可能性がある。実装開始時とリリース前に公式資料と配布wheelを再確認すること。
 
@@ -741,7 +741,7 @@ flowchart LR
 ### Phase 1: ローカル利用
 
 - 標準SQLiteで共通論理スキーマを実装する。
-- [MVPスコープとCore契約](../design/mvp-scope-and-core-contracts.md)に従い、checkpoint、`submit`、`log`、`show`、`diff`、exportを完成させる。
+- [MVPスコープとCore契約](../product/mvp-scope-and-core-contracts.md)に従い、checkpoint、`submit`、`log`、`show`、`diff`、exportを完成させる。
 - マイグレーションと、復旧可能なローカル退避を実装する。自動backupと完全なrestore UXはMVP後とする。
 - `HistoryStore`、`UnitOfWork`、`WriteReceipt`の契約テストを作る。
 - Tursoなしのクリーン環境でインストールと初回起動を検証する。
@@ -866,11 +866,11 @@ flowchart LR
 
 | 文書 | 主な責任 |
 |---|---|
-| [プロジェクト草案](../concept.md) | 製品目的、主要機能、基本的な利用体験 |
-| [配布方針ガイド](../distribution/algoloom-distribution.md) | PyPI公開、ライセンス、AtCoder規約、公開版の安全性 |
+| [プロジェクト草案](../product/concept.md) | 製品目的、主要機能、基本的な利用体験 |
+| [配布方針ガイド](../operations/algoloom-distribution.md) | PyPI公開、ライセンス、AtCoder規約、公開版の安全性 |
 | 本文書 | ローカル利用と同期利用の包含関係、導入UX、追加Capabilityとしての同期設計 |
-| [Turso設計ガイド](./turso-design-guide.md) | Turso方式、データの権威、outbox、競合、バックアップ |
-| [Turso移行互換性設計](./turso-migration-compatibility-design.md) | Adapter境界、方式変更、契約テスト、移行手順 |
+| [Turso設計ガイド](../integrations/turso-design-guide.md) | Turso方式、データの権威、outbox、競合、バックアップ |
+| [Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md) | Adapter境界、方式変更、契約テスト、移行手順 |
 
 本文書は「同期機能を使うか」という製品・UX上の選択を扱う。Turso設計ガイドと移行互換性設計は「同期機能をどのSDK・方式で実現するか」という内部実装の選択を扱う。
 

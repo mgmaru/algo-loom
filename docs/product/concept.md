@@ -1,6 +1,6 @@
 # プロジェクト草案: AlgoLoom
 
-> MVPに含める能力、対象利用者、初期対応環境、履歴と提出のCore契約は、[MVPスコープとCore契約](design/mvp-scope-and-core-contracts.md)を正本とする。本書はMVP後を含む製品全体の構想を扱う。
+> MVPに含める能力、対象利用者、初期対応環境、履歴と提出のCore契約は、[MVPスコープとCore契約](mvp-scope-and-core-contracts.md)を正本とする。本書はMVP後を含む製品全体の構想を扱う。
 
 ## 1. プロジェクトの目的
 アルゴリズムという思考の糸を、ターミナル上で丁寧に織り上げるためのローカルファーストCLIツール。
@@ -108,7 +108,7 @@ AlgoLoomは、AlgoLoomだけが意味を理解できる操作に専用commandを
 
 本書および関連文書に記載するcommand名、引数、option、対話例、出力例は、明示的にCLI契約として確定したものを除き、機能と責任を説明するための暫定案とする。具体的なCLI設計は、上記原則と実際の利用検証を踏まえて別途決定する。
 
-利用者導線ごとのストレス要因、改善優先度、errorと回復の共通契約は、[ストレスフリーUX設計](design/stress-free-ux-design.md)で定義する。
+利用者導線ごとのストレス要因、改善優先度、errorと回復の共通契約は、[ストレスフリーUX設計](../quality/stress-free-ux-design.md)で定義する。
 
 ### 3.5. 履歴参照のローカルファースト契約
 
@@ -122,13 +122,13 @@ AlgoLoomは、AlgoLoomだけが意味を理解できる操作に専用commandを
 - 「ローカルが真」とは、すべてのデータをローカルだけで決定する意味ではない。データごとに権威を1つ定める。編集中のcodeはworkspace、AtCoderの提出ID・判定はAtCoder、提出履歴とreview revisionはAlgoLoomの不変レコード、問題カタログは取得元サービスを権威とする。
 - 同じ提出履歴をローカルDBとCloudへ保存しても、別々の正本を作らない。同じUUIDとcode hashを持つ1つの論理レコードを、ローカル保存済み・共有済みという状態で複製する。同期状態や再送キューは業務履歴の別の正本ではない。
 
-同期、競合、バックアップ、障害復旧の詳細は[ローカル利用とCloud同期の段階的設計](database/local-and-cloud-sync-design.md)で定義する。待機時間、resource上限、性能計測、修正優先順位は[パフォーマンスと待機体験の設計](design/performance-and-waiting-design.md)で定義する。
+同期、競合、バックアップ、障害復旧の詳細は[ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)で定義する。待機時間、resource上限、性能計測、修正優先順位は[パフォーマンスと待機体験の設計](../quality/performance-and-waiting-design.md)で定義する。
 
 ## 4. 解答言語と設定管理
 
 製品構想としてはC++、Python、Go、Rust等の複数言語へ段階的に対応する。MVPはC++とPythonに限定し、安全なcompile/run定義をAlgoLoomの組み込みprofileとして提供する。
 
-将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。ただし、MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と信頼境界の正確な契約は[MVPスコープとCore契約](design/mvp-scope-and-core-contracts.md)を正とする。
+将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。ただし、MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と信頼境界の正確な契約は[MVPスコープとCore契約](mvp-scope-and-core-contracts.md)を正とする。
 
 ## 5. ディレクトリ構成（ハイブリッド型）
 コンテキストスイッチを防ぐため、`get`は既定でworkspace直下に「問題ごとのフォルダ」を1階層だけ作成する。この構成は開始時の推奨layoutであり、利用者が維持し続けなければならない実行時制約ではない。
@@ -186,4 +186,4 @@ aloom submit main.cpp
 * **fzf連携の実装:** log や show コマンド実行時に、Linuxコマンドの fzf ライクなインタラクティブ検索UIをターミナルに表示し、過去問をインクリメンタルサーチできるようにする。
 * **ダッシュボード化:** DBの蓄積データを利用し、将来的にチャート等を用いたWeb UIを作成する。
 * **Editor / Viewer Adapter:** 実需に応じて代表的な外部ツール向け設定例を追加する。ただし、個別エディタの機能をAlgoLoom Coreへ組み込まない。
-* **Repair Lab（将来の学習ワークフロー）:** AtCoder Coreが安定した後、他者またはLLMが書いた検証済みcodeを読み、修正前に原因仮説・根拠・予測・確信度を記録し、testによる検証、最小限の修正、回帰確認、確信度の更新までを練習する学習対象を検討する。別applicationのようなmode切替やcommand体系は設けず、workspace、編集、test、履歴、差分、review等の共通UXへ統合する。patchの速さや想定解との一致ではなく、調査と検証の質を中心に扱う。詳細は[Repair Lab 将来構想](design/repair-lab-future-design.md)で定義する。
+* **Repair Lab（将来の学習ワークフロー）:** AtCoder Coreが安定した後、他者またはLLMが書いた検証済みcodeを読み、修正前に原因仮説・根拠・予測・確信度を記録し、testによる検証、最小限の修正、回帰確認、確信度の更新までを練習する学習対象を検討する。別applicationのようなmode切替やcommand体系は設けず、workspace、編集、test、履歴、差分、review等の共通UXへ統合する。patchの速さや想定解との一致ではなく、調査と検証の質を中心に扱う。詳細は[Repair Lab 将来構想](../future/repair-lab-future-design.md)で定義する。
