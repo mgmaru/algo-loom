@@ -30,7 +30,7 @@
 | 状態 | 項目 |
 |---|---|
 | 決定済み | 1.3、2.4、4.4 |
-| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、2.2、2.3、3.2、3.4、4.2、5.3 |
+| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、2.2、2.3、3.2、3.4、4.2、5.3 |
 | 条件付き決定 | 3.1、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
 | 未決 | 2.1、3.3、6.1 |
 | 外部確認待ち | 5.2、8.1 |
@@ -59,7 +59,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。`get`、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、`export`の責任分割もMVP契約として定義されている。
+**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。aliasはまずshell側へ委ね、将来AlgoLoom内で提供する場合もcanonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、再帰、raw shell構文、AlgoLoom外のcommand実行を許可しない。`get`、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、`export`の責任分割もMVP契約として定義されている。
 
 **残る未決:** 各subcommand・引数・optionの最終名称、aliasとcompletionの詳細、各表示例を正式契約にする範囲。
 
@@ -144,6 +144,18 @@
 **原文:** 「interactive UIの有無」「AtCoder認証を確認する具体的な操作」「AI Provider選択画面の具体的な階層」「Cloud同期を案内するタイミング」「aliasとshell completionの詳細」
 
 出典: [ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)、[Review Backend設計 §6](../features/llm-provider-design.md#6-セットアップux)、[ローカル利用とCloud同期の段階的設計 §8](../features/local-and-cloud-sync-design.md#8-cli設計)
+
+### 1.7 ユーザーカスタマイズの具体仕様
+
+**状態:** 一部決定済み
+
+**決定済みの内容:** 設定なしでcanonicalなCore導線を成立させる。カスタマイズは、表示、反復入力の既定値、端末固有の外部tool等、Coreの意味を変えないuser-levelの差分に限定する。commandの意味、状態遷移、データの権威、履歴の不変条件、安全性、privacy、外部作用への同意は変更できない。明示指定、user-level preference、製品既定値の順に解決し、workspace metadataを汎用設定層にしない。新項目は既存設定の変更を要求せず、安全な既定値を適用する。任意機能の設定不備は影響する機能へ局所化する。
+
+**残る未決:** user preferenceの保存場所・file形式・Schema version、最初に採用する設定項目、環境変数を設定経路として採用する範囲、設定の参照・変更・reset・無効化・migrationを行う具体的なCLI、設定fileを自動更新する場合のbackupとcomment保持方針。
+
+**決めること:** 利用者検証で反復的な摩擦を確認したうえで、設定Schema、設定操作、migration、診断、最初の設定項目を具体化する。
+
+出典: [プロダクトビジョン §3.3](../product/vision.md#33-シンプルさとユーザーの自由)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)、[ストレスフリーUX設計 §7.7](../quality/stress-free-ux-design.md#77-ユーザーカスタマイズ)
 
 ## 2. Core実装・性能パラメータ
 
