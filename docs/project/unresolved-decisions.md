@@ -177,7 +177,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** compileとrunのtimeoutを分け、stdout/stderrに上限を設け、timeout時は各`HostPlatform`がprocess treeを終了する。DB lockは有限時間とし、外部通信ではconnection・request・polling全体の上限を分ける。初期性能目標として`log` p95 100ms、`show` p95 150ms、`diff` p95 250ms等の計測仮説が定義されている。
+**決定済みの内容:** compileとrunのtimeoutを分け、stdout/stderrに上限を設け、timeout時は各`HostPlatform`がprocess treeを終了する。DB lockは有限時間とし、外部通信ではconnection・request・polling全体の上限を分ける。foregroundとbackgroundはasync APIの採否ではなく利用者の主目的と制御返却点で分け、中断して破棄できない処理は必要な状態を先に耐久保存する。初期段階ではbackground化のための常駐daemonを導入しない。初期性能目標として`log` p95 100ms、`show` p95 150ms、`diff` p95 250ms等の計測仮説が定義されている。
 
 **残る未決:** 実測後に固定するtimeout・出力量・保持期間・resource上限・SLO、対応OSごとの強制memory/process制限、compiler/runtime version matrix。
 
@@ -187,7 +187,7 @@
 
 **原文:** 「数値は対応OS、DB規模、sample数、Providerにより変わるため、次は実装開始時の仮説である。固定の約束にする前に、代表的な端末と履歴件数でp50/p95を計測する。」
 
-出典: [MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)、[パフォーマンスと待機体験の設計 §5](../quality/performance-and-waiting-design.md#5-性能待機の初期契約)
+出典: [MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)、[パフォーマンスと待機体験の設計 §1.3](../quality/performance-and-waiting-design.md#13-非同期化と制御返却点)、[同 §5](../quality/performance-and-waiting-design.md#5-性能待機の初期契約)
 
 ### 2.4 DB保守の実行規約
 
