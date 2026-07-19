@@ -447,7 +447,7 @@ flowchart LR
 
 ### 6.6. 外部Editor / Viewerによる`show` / `diff`
 
-AlgoLoom Coreは特定のeditorやIDEに依存しない。`show`と`diff`では、CoreがDBからcodeを取得して安全な一時fileを用意し、その表示要求を任意のEditor / Viewer Adapterへ渡す。Adapterが未設定または起動できない場合は、terminal上のplain textまたはunified diffへfallbackする。
+AlgoLoom Coreは特定のeditorやIDEに依存せず、通常のworkspace fileを編集するためにAdapterを要求しない。`show`と`diff`でAlgoLoomから外部toolを起動する公式連携だけを別の安全境界とする。CoreがDBからcodeを取得して安全な一時fileを用意し、その表示要求を任意のEditor / Viewer Adapterへ渡す。Adapterが未設定または起動できない場合は、terminal上のplain textまたはunified diffへfallbackする。
 
 ```mermaid
 flowchart LR

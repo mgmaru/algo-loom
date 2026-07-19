@@ -183,7 +183,7 @@
 
 **原文:** 「将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。」
 
-出典: [アーキテクチャ概要 §3](../architecture/overview.md#3-解答言語host-os設定管理)、[言語・実行環境の可搬性設計 §3](../architecture/language-and-platform-portability.md#3-mvpの対応範囲)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)
+出典: [アーキテクチャ概要 §3](../architecture/overview.md#3-解答言語host-os開発環境設定管理)、[言語・実行環境の可搬性設計 §3](../architecture/language-and-platform-portability.md#3-mvpの対応範囲)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)
 
 ### 2.3 実行・保持・性能の具体値
 
@@ -247,7 +247,7 @@
 
 **状態:** 未決
 
-**決定済みの境界:** native Windows、Go、RustはMVPへ昇格済みである。残る候補はMVP対象外であり、追加してもMVPのinstall、日常command、offline履歴を複雑にしないことは決定している。
+**決定済みの境界:** native Windows、Go、RustはMVPへ昇格済みである。Editor / IDE非依存のCore互換性はMVP契約であり、保存済みの通常fileとCLIだけで主要導線を成立させる。個別のEditor / Diff Viewer Adapter、plugin、machine-readable出力はCore互換性と分離したMVP後の候補である。その他の候補もMVP対象外であり、追加してもMVPのinstall、日常command、offline履歴を複雑にしないことは決定している。
 
 **残る未決:** 各候補を実際に採用するか、および候補間の優先順位。
 

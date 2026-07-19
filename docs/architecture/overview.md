@@ -23,7 +23,7 @@
 | AIレビュー連携 | ユーザーが明示的に選択するReview Backend。初期候補のlocal Model APIはOllamaとLM Studioとし、将来はBYOKのCloud APIや、公式interfaceを持つCoding Agent Bridgeへ段階的に拡張する。AlgoLoomはProvider本体やモデルをインストール・起動しない。 |
 | データベース | ローカルSQLiteを履歴の通常の読み書き先として使用する。基本構成ではPython標準`sqlite3`を使用する。 |
 | データ同期・インフラ | 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。 |
-| エディタ連携 | AlgoLoom Coreはエディタに依存しない。閲覧や差分表示が必要な場合だけ、ユーザーが既に導入した外部Editor / ViewerをAdapter経由で一時起動する。Editor本体、plugin、ユーザー設定は変更しない。 |
+| 開発環境・エディタ連携 | AlgoLoom Coreは保存済みの通常fileを境界とし、Editor / IDE、plugin、専用project fileに依存しない。閲覧や差分表示で外部toolを起動する場合だけ、ユーザーが既に導入したEditor / Viewerを任意Adapter経由で一時起動する。Editor本体、plugin、ユーザー設定は変更しない。 |
 
 ### 2.1. 依存方向
 
@@ -65,12 +65,13 @@ flowchart TB
 - AI reviewはCoreの不変snapshot、verdict、diffの読み取り契約へ一方向に依存できる。
 - Cloud同期はCoreの論理レコードと保存契約へ一方向に依存できる。
 - language profileは別の個別profileへ依存せず、HostPlatform Adapterも別OS Adapterへ依存しない。
+- Editor / Viewer AdapterはCoreの安定した表示要求へ一方向に依存できるが、CoreはEditor名、plugin API、project設定形式を知らない。
 - 個別実装の選択は起動時のcomposition rootまたはregistryへ閉じ込める。
 - 任意機能の失敗は、Coreで確定した成功状態を変更しない。
 
 AI reviewを将来追加する場合、submissionやsnapshotへAI固有のnullable列を加えず、安定IDを参照する追記型review revisionとして保存する。`submit --review`等の複合UXを設ける場合も、Presentation / Application orchestrationがCoreの提出結果と独立したreview結果を組み合わせ、Coreの提出ServiceからReview Backendを呼び出さない。
 
-## 3. 解答言語・host OS・設定管理
+## 3. 解答言語・host OS・開発環境・設定管理
 
 MVPはC++、Python、Go、Rustを正式な解答言語とし、安全なtemplate、toolchain診断、build/run計画をAlgoLoomの組み込み`LanguageProfile`として提供する。初期保証は単一sourceと標準toolchainに限定し、Cargo、Go module、CMake、外部package管理等のproject buildを暗黙に対応済みと扱わない。
 
@@ -80,7 +81,9 @@ MVPはC++、Python、Go、Rustを正式な解答言語とし、安全なtemplate
 
 将来、user-level設定から拡張子、template、AlgoLoomが利用する既存compiler / runtimeのexecutableと安全なargvを変更できる構成を検討する。この設定は呼出対象と一時的な実行方法を選ぶものであり、toolchainのinstall、update、設定file、永続的な`PATH`や環境変数を変更するものではない。MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と外部所有環境の正確な契約は[Core契約](core-contracts.md)を正とする。
 
-言語・OSごとの差異、依存規則、検証matrixは[言語・実行環境の可搬性設計](language-and-platform-portability.md)を正とする。
+Editor / IDEは第三のCore実装軸にせず、保存済みの通常source fileと宣言的metadataを共有する外部所有環境として扱う。Core互換性にEditor固有のplugin、project file、Adapterを要求しない。Remote SSHやdev container等はEditor名ではなく、AlgoLoom process、workspace filesystem、toolchainの実行配置からhost環境を判定する。外部Editor / Viewerの起動はMVP後の任意連携であり、未導入・失敗時もterminal fallbackとCore操作を維持する。
+
+言語・OS・開発環境ごとの差異、依存規則、実行配置、検証matrixは[言語・実行環境の可搬性設計](language-and-platform-portability.md)を正とする。
 
 ## 4. ディレクトリ構成（ハイブリッド型）
 

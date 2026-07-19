@@ -478,9 +478,9 @@ algoloom = "algoloom.__main__:main"
 | AtCoderデータ | 一切同梱しない |
 | デモデータ | 作者が作成した架空fixtureだけを同梱 |
 | クラウド同期 | 任意機能。既定はローカルのみ |
-| Editor / IDE | 必須依存なし。ユーザーが選択した外部ツールを任意利用 |
+| Editor / IDE | Coreの必須依存なし。通常fileを編集できるユーザー選択の外部toolを利用し、公式連携は任意Adapterとして別途表示 |
 
-AlgoLoom Coreは特定のEditor / IDEへ依存させない。配布物はNeovim、VS Code、Emacs等の本体やpluginを同梱せず、インストール、更新、ユーザー設定の変更も行わない。`show`と`diff`の外部Viewer連携は任意機能とし、Viewerがない環境でもterminal fallbackによって履歴を参照できるようにする。
+AlgoLoom Coreは特定のEditor / IDEへ依存させず、保存済みの通常fileとCLIだけで利用できるようにする。配布物はNeovim、VS Code、Emacs等の本体やpluginを同梱せず、インストール、更新、ユーザー設定の変更も行わない。`show`と`diff`の外部Viewer連携はCore互換性と分離した任意機能とし、Viewerがない環境でもterminal fallbackによって履歴を参照できるようにする。公式連携がないEditorをCore非対応と表示せず、Core互換性だけを根拠にEditor固有機能を検証済みとも表示しない。
 
 #### 外部環境への非侵襲性
 

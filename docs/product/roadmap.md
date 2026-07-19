@@ -35,11 +35,11 @@ Phase 2の各候補は実装を約束するbacklogではなく、すべての候
 | 追加host環境 | WSL等、MVP外のhost環境へ対応範囲を広げる。 | 既存の`HostPlatform`契約と検証matrixを弱めない。 |
 | 追加の解答言語 | C++、Python、Go、Rust以外の言語を追加する。 | 既存の`LanguageProfile`契約と共通テストを適用できる。 |
 | project build | Cargo、Go module、CMake等を使うprojectを扱えるようにする。 | 単一sourceの既定導線を複雑にせず、実行範囲と設定の安全性を定義できる。 |
-| 外部Editor / Diff Viewer Adapter | 実需に応じて、利用者が既に導入した代表的な外部toolの選択、process-localな呼出方法、設定例を追加する。 | 個別EditorやViewerの機能をCoreへ組み込まず、Editor本体、plugin、ユーザー設定をinstall、update、変更しない。 |
+| 外部Editor / Diff Viewer Adapter | Core互換性とは分離して、利用者が既に導入した代表的な外部toolの選択、process-localな呼出方法、設定例を実需に応じて追加する。 | 公式連携の有無をEditorでのCore利用可否と混同せず、個別EditorやViewerの機能をCoreへ組み込まない。Editor本体、plugin、ユーザー設定をinstall、update、変更しない。 |
 | local test eventと自動checkpoint | local testの記録と、利用者が選択した場合の自動checkpointを検討する。 | opt-inとし、自動保存の範囲、保持方針、履歴上の意味を明確にする。 |
 | AtCoder既存履歴のread-only import | AlgoLoom導入前の提出履歴を参照できるようにする。 | AlgoLoomが記録した履歴と外部から取得した履歴を混同しない。 |
 | 自動backupとrestore UX | local履歴を安全に退避し、回復しやすくする。 | 同期とは別の責任として設計し、復元時に成功済みデータを失わない。 |
-| machine-readable出力と高度なshell integration | scriptや外部toolからCore機能を利用しやすくする。 | 人向けCLIの意味と終了statusを変えず、version付きの出力契約を定義する。aliasとcompletionは設定例・生成手順を優先し、shell設定を通常commandから編集しない。 |
+| machine-readable出力と高度なshell / Editor integration | script、task runner、将来のEditor plugin等からCore機能を利用しやすくする。 | 人向けCLIを非公式にparseさせず、その意味と終了statusを変えないversion付き出力契約を定義する。alias、completion、Editor連携は設定例・生成手順を優先し、外部設定を通常commandから編集しない。 |
 | 境界づけられたuser preference | 表示、反復入力の既定値、AlgoLoomが利用する既存外部toolの参照と一時的な呼出方法等を、利用者の環境へなじませる。 | 利用者検証で反復的な摩擦を確認し、user preferenceなしの標準導線、Coreの意味と安全契約、旧設定の互換性、設定errorの局所化を維持する。外部tool本体や永続設定をカスタマイズ対象にせず、shellで自然に実現できるalias等は標準toolへ委ねる方法を先に検討する。 |
 
 ## 4. Phase 3以降: 任意Capabilityの検証・採用

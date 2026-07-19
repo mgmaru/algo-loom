@@ -915,7 +915,7 @@ flowchart LR
 | 本文書 | ローカル利用と同期利用の包含関係、導入UX、追加Capabilityとしての同期設計 |
 | [Turso設計ガイド](../integrations/turso-design-guide.md) | Turso方式、データの権威、outbox、競合、バックアップ |
 | [Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md) | Adapter境界、方式変更、契約テスト、移行手順 |
-| [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md) | OS・言語差異、絶対path、workspace layout、snapshot materializeの境界 |
+| [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md) | OS・言語差異、Editor / IDE非依存境界、実行配置、絶対path、workspace layout、snapshot materializeの境界 |
 
 本文書は「同期機能を使うか」という製品・UX上の選択を扱う。Turso設計ガイドと移行互換性設計は「同期機能をどのSDK・方式で実現するか」という内部実装の選択を扱う。
 

@@ -1,15 +1,17 @@
 # AlgoLoom 言語・実行環境の可搬性設計
 
-> 対象: 解答言語、host OS、process実行、workspace layout、異なる環境間での履歴可搬性
+> 対象: 解答言語、host OS、process実行、workspace layout、Editor / IDE非依存性、異なる環境間での履歴可搬性
 >
 > 状態: MVPの対応環境を実装するための設計方針
 >
 > 作成日: 2026年7月19日
 >
 > 関連文書:
+> - [製品ビジョン](../product/vision.md)
 > - [MVPスコープ](../product/mvp.md)
 > - [アーキテクチャ概要](overview.md)
 > - [Core契約](core-contracts.md)
+> - [ストレスフリーUX設計](../quality/stress-free-ux-design.md)
 > - [パフォーマンスと待機体験の設計](../quality/performance-and-waiting-design.md)
 > - [セキュリティ設計ガイド](../quality/security-design.md)
 > - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
@@ -51,8 +53,9 @@ flowchart LR
 - `LanguageProfile`は、言語固有のtemplate、toolchain診断、build/run計画を担う。
 - `HostPlatform`は、OS固有のprocess起動・終了、path、terminal、原子的file操作を担う。
 - `JudgeAdapter`は、sample取得、提出、判定、judge上の提出言語への対応付けを担う。
+- Editor / IDEは新たなCoreの実装軸にせず、通常のworkspace fileをAlgoLoomと共有する外部所有環境として扱う。外部toolをAlgoLoomから起動する場合だけ、任意のEditor / Viewer Adapterへ閉じ込める。
 - Coreの各commandへ言語名やOS名の条件分岐を散在させない。
-- 対応言語やOSを追加しても、既存command、履歴、snapshot、提出の意味を変更しない。
+- 対応言語、OS、利用するEditor / IDEを変更しても、既存command、履歴、snapshot、提出の意味を変更しない。
 
 ---
 
@@ -64,8 +67,10 @@ flowchart LR
 - 言語差異とOS差異を閉じ込める境界
 - 各言語の初期対応範囲
 - 複数言語sourceが存在する場合のworkspace UX
+- Editor / IDEに依存しないCore互換性の境界と保証水準
+- IDE内terminal、task runner、Remote Editor等を含む実行配置の判定原則
 - 異なるOS間で履歴とsource snapshotを可搬にする原則
-- 追加言語・追加OSの契約テストと受け入れ条件
+- 追加言語・追加OS・開発環境差異の契約テストと受け入れ条件
 
 ### 1.2. 本書で決めないこと
 
@@ -73,6 +78,9 @@ flowchart LR
 - 各OSにおけるcompiler/runtimeの具体的な導入command
 - build artifact用directoryの最終名称
 - metadata fileの最終形式
+- 個別Editor / IDE、plugin、task runnerのversion matrixと具体的な設定手順
+- 外部Editor / Diff Viewer AdapterをMVP後にどのtoolから正式対応するか
+- machine-readable出力とEditor plugin APIの最終形式
 - MVP後のCargo project、Go module、CMake等のproject build対応
 - WSLを将来正式対応する時期
 
@@ -91,6 +99,9 @@ flowchart LR
 | RunPlan | argv、working directory、stdin、実行対象、resource上限区分等で表す実行計画 |
 | toolchain observation | compiler/runtimeの種類、version、診断結果等、その端末で観測した実行環境情報 |
 | logical source name | snapshotやexportでsourceを説明するための、絶対pathではない可搬な名称 |
+| Core互換 | Editor固有のplugin、project設定、Adapterなしで、通常fileとCLIからAlgoLoomの主要操作を利用できる状態 |
+| 公式連携 | AlgoLoomから特定の外部toolを起動するAdapterや、将来のplugin等について、対象versionとcapabilityを個別検証した状態 |
+| 実行配置 | Editorの画面、AlgoLoom process、workspace filesystem、toolchainがlocal、remote host、container、WSL等のどこに存在するかという配置 |
 
 ---
 
@@ -133,6 +144,8 @@ WSL上で偶然動作することを妨げないが、native Windows対応また
 | Judge言語mapping契約 | canonical language IDとAtCoder提出言語の対応 | 4言語と対応version |
 | End-to-End smoke | `get → test`と代表的な提出前検証 | 4言語 × 3 OS |
 | Core回帰 | workspace、snapshot、履歴、error構造 | 言語・OS非依存fixture |
+| 開発環境非依存契約 | 保存済みsource、移動・rename、TTY有無、Editor設定非変更 | Editor名に依存しないfixture |
+| 公式連携契約 | argv、capability、起動失敗、terminal fallback | 提供するAdapterごと |
 
 ---
 
@@ -176,6 +189,8 @@ sequenceDiagram
 | `JudgeAdapter` | 問題取得、認証、提出、判定、canonical language IDからjudge言語への解決 | local compilerの探索、OS process制御、履歴Schema |
 | `HistoryStore` | snapshot、言語ID、toolchain観測、提出と判定の永続化 | sourceのbuild/run、host pathを恒久IDにすること |
 | workspace context | 問題metadata探索、source候補解決、曖昧性の検出 | compiler実行、暗黙のsource選択、別directoryの自動merge |
+| workspace filesystem境界 | 保存済みsourceの読み取り、宣言済みfileの安全な作成、command開始時のcontext再検証 | 未保存buffer、Editor project設定、plugin API、file watcherによるEditor操作の追跡 |
+| Editor / Viewer Adapter | 検証済みcapabilityからの安全なargv生成、任意の表示先の一時起動 | Coreの編集・test・提出、外部toolのinstall、plugin追加、永続設定変更 |
 
 ### 4.3. 許可する依存方向
 
@@ -184,10 +199,12 @@ sequenceDiagram
 - 個別HostPlatform Adapterは共通契約へ依存できるが、別OS Adapterへ依存しない。
 - `JudgeAdapter`はcanonical language IDをjudge上の言語へ解決できるが、workspace内の実行commandを変更しない。
 - Domainと履歴の論理モデルは、compiler executable名、path separator、signal番号等のOS詳細へ依存しない。
+- CoreはEditor / IDE名、plugin API、project設定形式へ依存せず、Editor / Viewer AdapterだけがCoreの安定した表示要求と一時file契約へ一方向に依存する。
+- Editor / Viewer Adapterが未導入、設定不正、起動失敗であっても、workspace編集、test、checkpoint、提出、履歴取得を停止させない。
 
 ### 4.4. 条件分岐の配置
 
-`if windows`、`if rust`等の条件分岐を各commandやDomainへ散在させない。個別Adapterの選択は起動時のcomposition rootまたはregistryで行い、その後は共通interfaceを使う。
+`if windows`、`if rust`、`if vscode`等の条件分岐を各commandやDomainへ散在させない。個別Adapterの選択は起動時のcomposition rootまたはregistryで行い、その後は共通interfaceを使う。Editor / IDEを単に編集へ使う場合はAdapter自体を選択せず、通常のworkspace filesystem境界を使う。
 
 共通化できる処理は共有してよい。ただし、共有実装の変更が全profile・全OSへ影響するため、共通契約テストを必ず実行する。
 
@@ -328,9 +345,100 @@ algoloom_workspace/
 
 ---
 
-## 8. 異なるOS間の可搬性
+## 8. Editor / IDE・開発環境の可搬性
 
-### 8.1. 共有可能な論理データと端末固有データ
+### 8.1. Core互換性の基本契約
+
+AlgoLoomの編集体験は、特定のEditor / IDEをCoreへ組み込むことで成立させない。利用者が選んだ外部toolとAlgoLoomは、保存済みの通常fileと宣言的な問題metadataを境界として協調する。
+
+```mermaid
+flowchart LR
+    U[利用者] --> E[任意のEditor / IDE]
+    E -->|保存・移動・rename| W[通常のworkspace filesystem]
+    C[AlgoLoom Core] <-->|保存済みsource・metadata| W
+    U -->|外部またはIDE内terminal| C
+
+    C -. 任意の表示要求 .-> A[Editor / Viewer Adapter]
+    A -. 検証済みargv .-> V[対応する外部tool]
+    A -. 未設定・失敗 .-> F[terminal fallback]
+
+    style C fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style W fill:#dcfce7,stroke:#16a34a
+    style A fill:#f3e8ff,stroke:#9333ea
+```
+
+Core互換性として保証するのは次の範囲である。
+
+- `get`、`test`、checkpoint、`submit`、`log`、`show`、`diff`、exportに、Editor plugin、専用project file、Editor / Viewer Adapterを要求しない。
+- 編集中sourceの権威はworkspaceへ保存された通常fileとする。Editor上の未保存buffer、仮想document、Editor内部の履歴をAlgoLoomから推測または取得しない。
+- `.vscode`、`.idea`等のEditor固有fileを生成・要求せず、存在しても問題metadata、source候補、実行commandとして解釈しない。
+- sourceやdirectoryの移動・renameをfile watcherやEditor APIで追跡せず、各command開始時に現在のfilesystemとmetadataからcontextを再検証する。
+- Editorによる自動format、改行・文字コード変換、未保存変更、pluginやmodelineの挙動は外部toolの責任とする。AlgoLoomは読み取ったsource bytesをsnapshot時に暗黙変換しない。
+- AlgoLoomのCore互換性をEditor製品名やversionの列挙で制限しない。通常fileを同じfilesystem namespaceへ保存できるEditor / IDEは、公式Adapterの有無にかかわらず編集手段として利用できる。
+
+### 8.2. 差異を閉じ込める境界
+
+| 開発環境の差異 | AlgoLoomが依存する共通契約 | 境界外または別途検証すること |
+|---|---|---|
+| source編集、保存、rename | workspace上の通常file、問題metadata、command開始時のcontext解決 | 未保存buffer、Editor独自履歴、plugin API |
+| 外部terminalとIDE内terminal | 同じCLI argv、working directory、環境変数、`TerminalCapabilities` | IDE固有のkeybinding、terminal profile、shell設定 |
+| 非TTYのtask runner | 人向けCLIの意味、安定した終了状態、明示引数による非対話実行 | version付きmachine-readable Schemaとtask定義はMVP後に別途設計 |
+| `show`、`diff`の外部表示 | Coreのsnapshot取得、terminal上のplain text / unified diff | 外部tool起動は任意のEditor / Viewer Adapter |
+| Editor plugin / extension | 将来のversion付きCLIまたはquery契約からCoreへの一方向依存 | plugin固有UI、配布、Editor API互換性 |
+| Remote SSH、container、WSL | AlgoLoom processから見えるhost OS、filesystem、toolchain | client側URIの変換、remote agent導入、未検証の境界越し起動 |
+
+terminal capabilityの差によってCore commandの意味を変えない。色だけで状態を示さず、terminal幅、対話入力、pager、外部Viewerが利用できない場合も、通常表示または明示引数による回復経路を持つ。ただし、scriptやplugin向けのversion付きmachine-readable出力はMVP後の独立した契約とし、人向け表示を非公式にparseすることを公式連携の前提にしない。
+
+### 8.3. 実行配置の判定
+
+Editor / IDEの製品名ではなく、AlgoLoom process、workspace、toolchainがどこにあるかで対応環境を判定する。
+
+```mermaid
+flowchart TD
+    A[AlgoLoom processを起動する] --> B{sourceとmetadataを<br/>通常pathで参照できるか}
+    B -->|No| X[Core互換の配置外<br/>pathまたは実行場所を明示]
+    B -->|Yes| C{toolchainを同じ実行側から<br/>安全に起動できるか}
+    C -->|No| Y[toolchain unavailable<br/>または未対応配置]
+    C -->|Yes| D[そのprocessの環境を<br/>host OSとして判定]
+    D --> E[LanguageProfileとHostPlatformの<br/>既存契約を適用]
+
+    style E fill:#dcfce7,stroke:#16a34a
+    style X fill:#fee2e2,stroke:#dc2626
+    style Y fill:#fee2e2,stroke:#dc2626
+```
+
+- local Editorと外部terminalが同じlocal workspaceを参照する場合、通常のnative hostとして扱う。
+- Remote SSHやdev containerでは、原則としてsourceとtoolchainが存在する側でAlgoLoomを実行し、その実行側をhost OSとして扱う。client UIのOSをhost OSと誤認しない。
+- clientと実行側でfilesystem namespaceが異なり、Editor独自URIや同期機構による変換が必要な構成は、通常のEditor非依存契約だけを根拠に正式対応と表示しない。
+- WSLはEditorから接続できるかにかかわらず、MVPでは未対応host環境とする。native WindowsまたはLinuxのEditor smoke testをWSL対応の根拠にしない。
+- Remote Editor、container、共有folder等を将来正式対応する場合は、path、取消、process tree、credential、browser、外部Viewer起動の境界を実行配置ごとに検証する。
+
+### 8.4. 互換性表示の水準
+
+| 表示 | 意味 | 必要な検証 |
+|---|---|---|
+| Core互換 | 通常fileとCLIから主要操作を利用でき、Editor固有機能を必要としない | Editor名に依存しないworkspace・CLI契約テスト |
+| 利用例あり | 特定Editor / IDEでterminalを開き、Coreを使う手順や設定断片を案内する | 文書の手順確認。Coreの保証をEditor固有に分岐させない |
+| 公式連携対応 | AlgoLoomから起動するAdapterまたは将来pluginの対象versionとcapabilityを明示する | tool・versionごとの契約テストとsmoke test |
+
+公式連携がないEditorを「AlgoLoom非対応」と表現しない。反対に、Core互換であることを根拠に、そのEditor固有のViewer起動、diff mode、task runner、pluginまで検証済みと表示しない。
+
+### 8.5. 開発環境差異の受け入れ条件
+
+- Editor / IDEとEditor / Viewer Adapterを一切導入していない環境で、MVPのCore導線とterminal fallbackが成立する。
+- 外部操作を模したfixtureでsourceの編集、保存、file rename、問題directoryの移動・階層化を行った後も、同じcontext解決規則で利用できる。
+- 未保存bufferを参照できると誤認させず、commandが読み取る保存済みsourceと送信対象を外部作用前に確認できる。
+- TTYの有無、色の有無、狭いterminal幅によって、成功・失敗の分類、履歴、snapshot、提出の意味が変わらない。
+- Core commandの前後で、Editor、plugin、shell、task runnerの設定fileに差分がない。
+- Editor / Viewer Adapterが未設定、設定不正、起動失敗の場合も、履歴取得成功を維持し、安全なterminal表示へfallbackする。
+- 公式連携を追加する場合は、検証済みAdapter ID、対象tool/version、argv、wait / detach、read-only、diff、起動失敗のcapabilityを個別に定義する。
+- Remote Editorやcontainer等は実行配置を記録したsmoke testに合格するまで、その配置を正式対応と表示しない。
+
+---
+
+## 9. 異なるOS間の可搬性
+
+### 9.1. 共有可能な論理データと端末固有データ
 
 | データ | 可搬・同期可能 | 端末ローカル | 理由 |
 |---|:---:|:---:|---|
@@ -344,7 +452,7 @@ algoloom_workspace/
 | build artifact、cache、temp file | No | Yes | 現在OSで再生成する |
 | credential、session | No | Yes | secret ownerから取得する |
 
-### 8.2. 絶対pathの扱い
+### 9.2. 絶対pathの扱い
 
 - 絶対pathを問題、解答、snapshot、提出、履歴の恒久IDにしない。
 - 共有DB、Cloud、exportへ不要な絶対pathを含めない。
@@ -352,7 +460,7 @@ algoloom_workspace/
 - local indexは同期せず、別端末ではmetadataから再構築する。
 - sourceの関連付けには安定ID、正規問題ID、canonical language ID、code hashを使う。
 
-### 8.3. snapshotからworkspaceを再構築する将来機能
+### 9.3. snapshotからworkspaceを再構築する将来機能
 
 Cloud同期は履歴を共有する機能であり、編集中workspaceの自動同期・mergeではない。別OSで編集を再開する場合は、同期済みsnapshotを利用者が選んだlocal directoryへ安全にmaterializeする独立機能として設計する。
 
@@ -370,9 +478,9 @@ materialize時は次を守る。
 
 ---
 
-## 9. 追加時の回帰防止
+## 10. 追加時の回帰防止
 
-### 9.1. 新しい言語
+### 10.1. 新しい言語
 
 新しいlanguage profileは次を満たすまで正式対応と表示しない。
 
@@ -383,7 +491,7 @@ materialize時は次を守る。
 - 既存snapshot、履歴Schema、CLIの意味を変えない。
 - 未導入時に他言語と履歴機能を停止しない。
 
-### 9.2. 新しいOSまたはWSL
+### 10.2. 新しいOSまたはWSL
 
 新しいHostPlatform Adapterは次を満たすまで正式対応と表示しない。
 
@@ -393,17 +501,29 @@ materialize時は次を守る。
 - unsupportedなtoolchainや機能を明示し、推測して続行しない。
 - 既存OSのCIと実機確認を再実行する。
 
-### 9.3. Architectureテスト
+### 10.3. 新しいEditor / Viewer公式連携
+
+新しい公式連携は次を満たすまで「公式連携対応」と表示しない。
+
+- CoreへEditor固有module、plugin API、設定形式の依存を追加せず、任意AdapterまたはCore外のpluginとして追加できる。
+- 連携が未導入、無効、設定不正、起動失敗でも、Core互換の導線とterminal fallbackが利用できる。
+- 対応toolとversion、read-only、diff、wait / detach、path、option終端等のcapabilityを明示し、未対応optionを推測しない。
+- Editor本体、plugin、ユーザー設定をinstall、update、変更せず、必要な場合は設定断片、差分、利用者が実行できる手順を提供する。
+- Adapter契約テストと、対象toolを使う代表的なsmoke testへ合格する。
+
+### 10.4. Architectureテスト
 
 - Domainから個別language profile moduleを直接importしない。
 - DomainからWindows、macOS、Linux固有moduleを直接importしない。
 - 個別profile同士、個別HostPlatform Adapter同士のimportを禁止する。
+- DomainとApplicationからEditor固有module、plugin API、project設定形式を直接importしない。
+- Editor / Viewer Adapterをすべて除いてもCore commandとterminal fallbackが起動することを確認する。
 - optional featureの追加によってCore packageへ逆向き依存を作らない。
 - registryからprofileまたはplatformを1つ除いても、無関係なCore commandが起動することを確認する。
 
 ---
 
-## 10. 実装チェックリスト
+## 11. 実装チェックリスト
 
 ### LanguageProfile
 
@@ -428,6 +548,16 @@ materialize時は次を守る。
 - [ ] 複数source候補があるとき暗黙に一つを選ばない。
 - [ ] source、言語、問題contextを外部作用前に確認できる。
 
+### Editor / IDE・開発環境
+
+- [ ] Coreの利用にEditor plugin、専用project file、Editor / Viewer Adapterを要求していない。
+- [ ] 保存済みの通常fileをsourceの権威とし、未保存bufferやEditor内部状態を推測していない。
+- [ ] file watcherやEditor APIなしで、移動・rename後のcontextをcommand開始時に再認識できる。
+- [ ] Editor固有fileを生成・要求せず、外部toolの設定を変更していない。
+- [ ] TTYや外部Viewerが利用できなくても、Coreの意味を維持したfallbackがある。
+- [ ] Remote EditorやcontainerをEditor名ではなく、AlgoLoom process、filesystem、toolchainの実行配置で判定している。
+- [ ] 公式連携の有無をCore互換性の有無と混同して表示していない。
+
 ### 可搬性
 
 - [ ] 絶対pathを履歴の恒久IDにしていない。
@@ -437,16 +567,18 @@ materialize時は次を守る。
 
 ---
 
-## 11. 最終方針
+## 12. 最終方針
 
 AlgoLoomの拡張性は、すべてを動的設定へすることではなく、変更理由の異なる差異を別々の境界へ閉じ込めることで確保する。
 
 ```text
 解答言語を追加する  → LanguageProfileを追加する
 host OSを追加する   → HostPlatform Adapterを追加する
+Editor / IDEで編集する → Adapterを追加せず、通常のworkspace fileを共有する
+外部表示連携を追加する → 任意のEditor / Viewer Adapterを追加する
 judgeを追加する     → JudgeAdapterを追加する
 AIを追加する        → Coreの安定した参照契約を利用する任意Capabilityを追加する
 Cloud同期を追加する → local-firstの保存契約を利用する任意Capabilityを追加する
 ```
 
-いずれの追加でも、既存command、履歴、snapshot、提出、offline参照の意味を変更しない。共通部分の変更が必要な場合は、局所的な都合で広げず、Core契約と全既存Adapterの回帰テストを先に確認する。
+いずれの追加でも、既存command、履歴、snapshot、提出、offline参照の意味を変更しない。Editor / IDEは通常の編集手段としてCoreから認識せず、公式連携が必要な場合だけ任意境界を追加する。共通部分の変更が必要な場合は、局所的な都合で広げず、Core契約と全既存Adapterの回帰テストを先に確認する。
