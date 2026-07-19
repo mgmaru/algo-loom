@@ -40,6 +40,7 @@ Phase 2の各候補は実装を約束するbacklogではなく、すべての候
 | AtCoder既存履歴のread-only import | AlgoLoom導入前の提出履歴を参照できるようにする。 | AlgoLoomが記録した履歴と外部から取得した履歴を混同しない。 |
 | 自動backupとrestore UX | local履歴を安全に退避し、回復しやすくする。 | 同期とは別の責任として設計し、復元時に成功済みデータを失わない。 |
 | machine-readable出力と高度なshell integration | scriptや外部toolからCore機能を利用しやすくする。 | 人向けCLIの意味と終了statusを変えず、version付きの出力契約を定義する。 |
+| 境界づけられたuser preference | 表示、反復入力の既定値、端末固有の外部tool等を、利用者の環境へなじませる。 | 利用者検証で反復的な摩擦を確認し、user preferenceなしの標準導線、Coreの意味と安全契約、旧設定の互換性、設定errorの局所化を維持する。shellで自然に実現できるalias等は標準toolへ委ねる方法を先に検討する。 |
 
 ## 4. Phase 3以降: 任意Capabilityの検証・採用
 
