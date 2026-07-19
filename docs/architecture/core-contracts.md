@@ -1,5 +1,9 @@
 # AlgoLoom MVPスコープとCore契約（Core契約）
 
+## ドキュメント概要
+
+本書は、AlgoLoom Coreが共通して守るUX、データの権威、workspace、問題取得、local test、履歴、提出、保存、Securityの不変契約を定義します。
+
 ## 1. 用語
 
 | 用語 | 本書での意味 |

@@ -18,6 +18,10 @@
 
 ---
 
+## ドキュメント概要
+
+本書は、MVPで対応する解答言語とhost OSを定め、言語・OS・Editor / IDEの差異を分離する契約、workspace UX、異なる環境間での履歴可搬性を定義します。
+
 ## 0. 結論
 
 MVPの解答言語は**C++、Python、Go、Rust**、製品対象OSは**native macOS、native Linux、native Windows**とする。WSLはLinux版またはnative Windows版と同一の保証範囲とはみなさず、MVPの正式対象へ含めない。

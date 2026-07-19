@@ -18,6 +18,10 @@
 
 ---
 
+## ドキュメント概要
+
+本書は、Embedded ReplicaとTurso Syncを切り替えても維持する論理データモデルとCLI契約、Adapter境界、状態表現、移行・rollback・互換性検証の手順を定義します。
+
 ## 0. 結論
 
 AlgoLoomでは、Embedded ReplicaからTurso Syncへ移行しても、次のものを変更しない。

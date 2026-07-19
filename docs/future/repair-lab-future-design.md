@@ -17,6 +17,10 @@
 
 ---
 
+## ドキュメント概要
+
+本書は、他者またはLLMが書いたcodeを仮説と検証によって修正する将来の学習ワークフロー「Repair Lab」の学習サイクル、共通UX、安全境界、採用条件を定義します。
+
 ## 0. 結論
 
 AlgoLoomは、MVPではAtCoderの終了済み過去問を対象に、問題取得、local test、明示checkpoint、提出、履歴、差分、exportからなるCoreを確実に実装する。AI reviewはMVP後の独立した採用判断とする。正確な範囲は[MVPスコープ](../product/mvp.md)を正とする。
