@@ -55,7 +55,7 @@ Repair Labを追加する場合、次を満たす。
 - 同じ意味の操作には同じcommand、option規則、成功表示、error、回復方法を使用する。
 - 仮説、根拠、予測、確信度等の追加情報は、共通導線の必要な時点へ統合し、Repair専用の操作体系を別に構築しない。
 - 外部提出の有無等、意味が本質的に異なる操作は無理に同じcommandへ統合しない。対象固有commandが必要な場合も、最小限に限定する。
-- Editor、Viewer、terminal fallback、AIの利用有無に関するユーザーの選択を、AtCoder学習と同じように尊重する。
+- Editor、Viewer、terminal fallback、AIの利用有無に関するユーザーの選択を、AtCoder学習と同じように尊重する。外部toolの選択は既存toolの参照と一時起動を意味し、Repair Labの導入や実行によってEditor、plugin、shell、debugger、test framework等の永続設定を変更しない。
 - 履歴の保存形式を内部で分離しても、利用者が別の履歴applicationを覚える状態にしない。
 
 一貫性の対象はcommand名だけではない。対象を認識する方法、作業の始め方、結果の読み方、失敗後の戻り方までを含む。小規模検証では学習効果と同時にこの一貫性を確認し、大きく異なる操作体験が必要だと分かった場合はAlgoLoomへの統合を中止する。

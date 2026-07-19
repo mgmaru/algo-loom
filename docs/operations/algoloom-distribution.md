@@ -482,6 +482,20 @@ algoloom = "algoloom.__main__:main"
 
 AlgoLoom Coreは特定のEditor / IDEへ依存させない。配布物はNeovim、VS Code、Emacs等の本体やpluginを同梱せず、インストール、更新、ユーザー設定の変更も行わない。`show`と`diff`の外部Viewer連携は任意機能とし、Viewerがない環境でもterminal fallbackによって履歴を参照できるようにする。
 
+#### 外部環境への非侵襲性
+
+配布とsetupでは、AlgoLoom自身のinstallと、AlgoLoomが利用する外部toolの管理を分ける。
+
+| 対象 | 配布・setupで行うこと | 行わないこと |
+|---|---|---|
+| AlgoLoom package・entry point | package managerの通常契約に沿ってinstall・update・uninstallする | 無関係なPython環境やsystem packageを変更する |
+| alias・completion | shellごとの設定例や生成commandを表示する | shell設定fileへ自動追記する |
+| Editor / Viewer連携 | Adapterと設定断片、手順を提供する | Editor、plugin、ユーザー設定をinstall・update・変更する |
+| compiler / runtime | 必要なversionと公式導入手順を診断・案内する | OS package managerを実行し、toolchainや`PATH`を変更する |
+| Provider runtime・model | 公式資料と接続診断を提供する | install、service登録、起動・停止、model downloadを行う |
+
+外部設定の自動適用を将来検討する場合も、通常commandやAlgoLoom本体のinstallへ混ぜない。設定断片の生成で代替できない実需を確認し、変更対象、差分、backup、冪等性、rollbackを保証できる専用helperとしてのみ評価する。
+
 ### 9.2. 第2段階: GitHub Releases / Homebrew
 
 PyPI版の動作とライセンス監査が安定した後に追加する。
@@ -691,6 +705,8 @@ algoloom_workspace/
 - [ ] wheel / sdistの中身を一覧で確認した。
 - [ ] `aloom`と互換commandの`algoloom`が同じentry point・version・終了codeで動作する。
 - [ ] `al`を自動配置せず、shell設定fileも変更していない。
+- [ ] Editor、plugin、toolchain、Provider runtime、OS設定を配布・通常commandからinstall、update、変更、削除していない。
+- [ ] completionやEditor連携は、外部設定の自動編集より設定例・生成手順を優先している。
 - [ ] `.gitignore`対象ファイルが混入していない。
 - [ ] Cookie、トークン、実ユーザーコードをsecret scanした。
 - [ ] 対応バージョンと既知の制約を記載した。
@@ -813,6 +829,7 @@ AlgoLoomは、AtCoderの問題を配布するアプリではなく、**ユーザ
 - AIレビュー要求時に開催状況・種別・正規問題IDを照合し、禁止対象の開催中問題ではAIレビューを停止する。
 - AIレビューOFFと`contest_mode`を用意し、不要な確認処理と参加中の誤操作を防ぐ。
 - 認証情報を保存・同期・ログ出力しない。
+- AlgoLoom自身のinstallと外部toolの管理を分け、通常操作でEditor、shell、plugin、toolchain、Provider runtime、OS設定を永続的に変更しない。
 - 非公式・非公認であることを明記する。
 - 第三者ライセンスを守る。
 - 規約変更へ継続的に追従する。

@@ -149,11 +149,11 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** 設定なしでcanonicalなCore導線を成立させる。カスタマイズは、表示、反復入力の既定値、端末固有の外部tool等、Coreの意味を変えないuser-levelの差分に限定する。commandの意味、状態遷移、データの権威、履歴の不変条件、安全性、privacy、外部作用への同意は変更できない。明示指定、user-level preference、製品既定値の順に解決し、workspace metadataを汎用設定層にしない。新項目は既存設定の変更を要求せず、安全な既定値を適用する。任意機能の設定不備は影響する機能へ局所化する。
+**決定済みの内容:** 設定なしでcanonicalなCore導線を成立させる。カスタマイズは、表示、反復入力の既定値、AlgoLoomが利用する既存外部toolの参照とprocess-localな呼出方法等、Coreの意味を変えないuser-levelの差分に限定する。外部tool本体や永続設定はカスタマイズ対象にしない。commandの意味、状態遷移、データの権威、履歴の不変条件、安全性、privacy、外部作用への同意は変更できない。明示指定、user-level preference、製品既定値の順に解決し、workspace metadataを汎用設定層にしない。新項目は既存設定の変更を要求せず、安全な既定値を適用する。任意機能の設定不備は影響する機能へ局所化する。通常commandはAlgoLoom所有領域と明示workspace以外の永続状態を変更せず、alias、completion、Editor連携は外部設定の直接編集より設定断片・手順の生成を優先する。
 
-**残る未決:** user preferenceの保存場所・file形式・Schema version、最初に採用する設定項目、環境変数を設定経路として採用する範囲、設定の参照・変更・reset・無効化・migrationを行う具体的なCLI、設定fileを自動更新する場合のbackupとcomment保持方針。
+**残る未決:** user preferenceの保存場所・file形式・Schema version、最初に採用する設定項目、環境変数を設定経路として採用する範囲、設定の参照・変更・reset・無効化・migrationを行う具体的なCLI、AlgoLoom自身の設定fileを自動更新する場合のbackupとcomment保持方針、外部設定へ作用する専用setup helperを将来採用するか。
 
-**決めること:** 利用者検証で反復的な摩擦を確認したうえで、設定Schema、設定操作、migration、診断、最初の設定項目を具体化する。
+**決めること:** 利用者検証で反復的な摩擦を確認したうえで、設定Schema、設定操作、migration、診断、最初の設定項目を具体化する。外部設定へ作用するsetup helperは、設定断片の生成では解決できない実需と、差分、backup、冪等性、rollbackを保証できる場合だけ採否を判断する。
 
 出典: [プロダクトビジョン §3.3](../product/vision.md#33-シンプルさとユーザーの自由)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)、[ストレスフリーUX設計 §7.7](../quality/stress-free-ux-design.md#77-ユーザーカスタマイズ)
 
@@ -175,7 +175,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** MVPはC++、Python、Go、Rustを正式対象とし、単一sourceと標準toolchainを初期保証範囲にした組み込み`LanguageProfile`を提供する。profileはshell文字列ではなくBuildPlan / RunPlanを返し、native macOS、native Linux、native Windowsの`HostPlatform`がprocessを実行する。workspace metadataに実行command、credential、endpointを持たせず、workspaceから任意commandを定義させない。個別profile同士と個別OS Adapter同士を依存させず、canonical language IDをlocal toolchainとAtCoder上の言語IDから分離する。
+**決定済みの内容:** MVPはC++、Python、Go、Rustを正式対象とし、単一sourceと標準toolchainを初期保証範囲にした組み込み`LanguageProfile`を提供する。profileはshell文字列ではなくBuildPlan / RunPlanを返し、native macOS、native Linux、native Windowsの`HostPlatform`がprocessを実行する。workspace metadataに実行command、credential、endpointを持たせず、workspaceから任意commandを定義させない。個別profile同士と個別OS Adapter同士を依存させず、canonical language IDをlocal toolchainとAtCoder上の言語IDから分離する。将来のuser-level実行設定も、利用者が既に導入したexecutableの参照とchild processの安全なargvに限定し、toolchainのinstall、update、設定file、永続的な`PATH`・環境変数を変更しない。
 
 **残る未決:** user-level設定による拡張子・template・実行file・引数変更を採用するか、およびその具体契約。compiler/runtime/OS release/CPU architectureの正確なversion matrixは2.3の実測対象として残る。
 

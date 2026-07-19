@@ -23,7 +23,7 @@
 | AIレビュー連携 | ユーザーが明示的に選択するReview Backend。初期候補のlocal Model APIはOllamaとLM Studioとし、将来はBYOKのCloud APIや、公式interfaceを持つCoding Agent Bridgeへ段階的に拡張する。AlgoLoomはProvider本体やモデルをインストール・起動しない。 |
 | データベース | ローカルSQLiteを履歴の通常の読み書き先として使用する。基本構成ではPython標準`sqlite3`を使用する。 |
 | データ同期・インフラ | 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。 |
-| エディタ連携 | AlgoLoom Coreはエディタに依存しない。閲覧や差分表示が必要な場合だけ、ユーザーが選択した外部Editor / ViewerをAdapter経由で起動する。 |
+| エディタ連携 | AlgoLoom Coreはエディタに依存しない。閲覧や差分表示が必要な場合だけ、ユーザーが既に導入した外部Editor / ViewerをAdapter経由で一時起動する。Editor本体、plugin、ユーザー設定は変更しない。 |
 
 ### 2.1. 依存方向
 
@@ -78,7 +78,7 @@ MVPはC++、Python、Go、Rustを正式な解答言語とし、安全なtemplate
 
 言語profileはOSを直接分岐せず、argv、working directory、入力source、生成artifact、timeout区分等からなる`BuildPlan` / `RunPlan`を返す。現在OSの`HostPlatform`がplanを実行し、success、compile error、runtime error、timeout、出力量超過、取消等の共通結果へ正規化する。AtCoder上の提出言語とversionへの対応付けは`JudgeAdapter`の責任とする。
 
-将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。ただし、MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と信頼境界の正確な契約は[Core契約](core-contracts.md)を正とする。
+将来、user-level設定から拡張子、template、AlgoLoomが利用する既存compiler / runtimeのexecutableと安全なargvを変更できる構成を検討する。この設定は呼出対象と一時的な実行方法を選ぶものであり、toolchainのinstall、update、設定file、永続的な`PATH`や環境変数を変更するものではない。MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と外部所有環境の正確な契約は[Core契約](core-contracts.md)を正とする。
 
 言語・OSごとの差異、依存規則、検証matrixは[言語・実行環境の可搬性設計](language-and-platform-portability.md)を正とする。
 

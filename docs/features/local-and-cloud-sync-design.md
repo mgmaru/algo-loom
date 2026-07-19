@@ -705,7 +705,7 @@ Embedded Replicaを暫定採用する場合も、ユーザーへ「Cloud版のAl
 - コンパイラやエディタの個人設定
 - Turso Platform APIトークン
 
-Editor / Viewerの選択とcommand設定は端末固有設定として扱い、共有DBへ同期しない。`show`と`diff`が取得する論理データは全端末で共通にするが、その表示先は各端末のユーザーが自由に選択できる。共有テーブルへworkspace・source・compiler・エディタ固有の絶対path、URI、plugin設定等を保存せず、特定OSやEditorの有無によって履歴参照の可否を変えない。
+AlgoLoomが利用する既存Editor / Viewerの選択とprocess-localな呼出設定は端末固有設定として扱い、共有DBへ同期しない。これは表示先を参照・起動するためのAlgoLoom側の設定であり、Editor / Viewer本体、plugin、ユーザー設定を変更するものではない。`show`と`diff`が取得する論理データは全端末で共通にするが、その表示先は各端末のユーザーが自由に選択できる。共有テーブルへworkspace・source・compiler・エディタ固有の絶対path、URI、plugin設定等を保存せず、特定OSやEditorの有無によって履歴参照の可否を変えない。
 
 端末内のworkspace探索を高速化するため絶対pathが必要な場合は、同期対象外のlocal sidecarへ`device_id`、論理workspaceまたは問題の安定ID、local root、最終確認時刻を保存できる。この情報はlocatorであり業務履歴の権威ではない。pathが失効しても共有snapshotを失ったとは扱わない。
 

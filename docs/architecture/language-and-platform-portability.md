@@ -232,6 +232,7 @@ MVPの4 profileはAlgoLoom配布物に含め、version管理する。workspace m
 将来user-level設定で実行fileや引数の変更を許可する場合も、次を守る。
 
 - workspaceから変更できない端末所有の設定として扱う。
+- 利用者が既に導入したexecutableの参照とAlgoLoom child processのargvだけを変更対象とし、compiler / runtimeのinstall、update、設定file、永続的な`PATH`・環境変数を変更しない。
 - safe argvとして検証し、shell文字列を許可しない。
 - 組み込みprofileと同じprocess、resource、secret分離契約を通す。
 - 設定変更が他言語profileへ波及しない。
@@ -339,7 +340,7 @@ algoloom_workspace/
 | logical source name | Yes | No | 絶対pathではない表示・復元用metadata |
 | workspaceの絶対path | No | Yes | OS・端末ごとに異なるlocator |
 | compiler/runtimeの絶対path | No | Yes | 端末固有toolchain |
-| Editor / Viewer設定 | No | Yes | 端末固有UX |
+| Editor / Viewerの選択・呼出設定 | No | Yes | 端末固有UX。外部tool本体の設定は含めない |
 | build artifact、cache、temp file | No | Yes | 現在OSで再生成する |
 | credential、session | No | Yes | secret ownerから取得する |
 
@@ -411,6 +412,7 @@ materialize時は次を守る。
 - [ ] workspace metadataへ任意commandを保存しない。
 - [ ] toolchain未導入が他言語とCore機能を止めない。
 - [ ] canonical language IDとjudge上の言語/versionを分離している。
+- [ ] user-level実行設定が既存toolの参照とchild processのargvに限定され、toolchainやhost設定を書き換えない。
 
 ### HostPlatform
 
@@ -430,7 +432,7 @@ materialize時は次を守る。
 
 - [ ] 絶対pathを履歴の恒久IDにしていない。
 - [ ] source snapshotがpathなしで`show`、`diff`、exportできる。
-- [ ] 端末固有path、toolchain、Editor設定を共有DBへ同期しない。
+- [ ] 端末固有path、toolchain参照、Editor / Viewerの選択・呼出設定を共有DBへ同期しない。
 - [ ] source bytesを改行・文字コードの暗黙変換なしで保持する。
 
 ---
