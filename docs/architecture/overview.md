@@ -128,6 +128,8 @@ aloom submit main.cpp
 
 `loom`は他のCLIと衝突しやすいため使用しない。AlgoLoomはshellの設定fileを無断で変更せず、`al`のaliasとcompletionを設定する手順だけを案内する。
 
+反復入力を短くするaliasは、まず利用者が所有するshellのaliasまたはfunctionへ委ねる。将来AlgoLoom内のaliasを検討する場合も、canonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、aliasの再帰、raw shell構文、pipe・redirect、AlgoLoom外のcommand実行を許可しない。展開後のcanonical commandをhelpと診断から確認できるようにし、aliasがない環境でも同じ機能と意味を利用できる状態を維持する。
+
 | コマンド | 引数 / オプション | 実行される処理 |
 | :--- | :--- | :--- |
 | **get** | [問題ID]<br>--lang [言語] | ①Judge Adapter経由で公開sampleをtest/へ取得<br>②宣言的な問題metadataを保存<br>③組み込みlanguage profileから雛形fileを作成。再実行時は編集済みsourceを上書きしない |
