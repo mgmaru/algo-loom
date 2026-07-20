@@ -6,7 +6,7 @@
 >
 > 作成日: 2026年7月16日
 >
-> 更新日: 2026年7月19日
+> 更新日: 2026年7月20日
 >
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
@@ -153,6 +153,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 | ユーザー端末 | 意図しないcommand実行、workspace外の変更、過剰なresource消費を防ぐ |
 | 提出コード | 無断送信、改変、欠落、ログへの露出を防ぐ |
 | 提出履歴 | 不正な追加・更新・削除、重複、対応関係の破壊を防ぐ |
+| 学習時間履歴 | SolveAttempt、FocusInterval、milestoneの無断送信、改変、誤った関連付けを防ぐ |
 | 認証情報 | AtCoder session、Turso token、Provider credentialを漏らさない |
 | ターミナル | 制御文字による表示偽装や不要なterminal操作を防ぐ |
 | AIレビュー | Prompt injectionの影響を限定し、不正形式のresponseを保存しない |
@@ -597,6 +598,7 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 - Cloud同期は既定OFFとし、送信データと保存先を説明した後に有効化する。
 - DB tokenは端末・DB単位の最小権限とし、失効・再発行可能にする。
 - Cloudから取得した行も、型、必須field、列挙値、文字列長、Schema versionを検証する。
+- SolveAttemptとFocusIntervalは、状態遷移、開始・終了順序、非負duration、問題・milestoneとの関連を検証し、時計異常や破損値を正常な学習時間として集計しない。
 - migration SQLは配布物に含めた固定fileだけから読み込み、DB行やCloud responseから生成しない。
 - code hashは同期・移行時の欠落や偶発的改変の検出に使う。hashだけで悪意ある改変を防止できるとはみなさない。
 - backupとexportは公開repository、共有directory、release成果物へ誤混入しないよう除外・検査する。
@@ -609,7 +611,7 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 - command名
 - 成否と安全なerror category
 - source codeそのものを含まないcode hash
-- 件数、処理時間、Provider type、model名
+- 件数、process処理時間、Provider type、model名
 - secretを除いたendpoint識別情報
 
 #### 記録しない情報
@@ -621,6 +623,7 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 - raw HTTP header
 - 環境変数一覧
 - Providerのraw error / response全文
+- 個人のlearning active duration、開始・pause・終了時刻の時系列
 
 debug logを提供する場合も既定OFFとし、redaction後の情報だけを出力する。予期しない例外の文字列にcodeやcredentialが含まれる可能性があるため、外部libraryの例外をそのままterminalやlogへ表示しない。
 
@@ -787,6 +790,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] 必要のないsecret、file、environment、network accessを渡していないか。
 - [ ] credential ownerとcredential sourceを定義し、subscriptionとAPI認証を混同していないか。
 - [ ] codeやcredentialをlog、error、telemetryへ出していないか。
+- [ ] SolveAttemptの時系列やlearning active durationを、診断に不要なlogまたはtelemetryへ出していないか。
 - [ ] 新しいCloud送信またはProvider送信に明示同意が必要か確認したか。
 - [ ] 失敗時に安全側へ停止し、ローカル保存済みdataを失わないか。
 

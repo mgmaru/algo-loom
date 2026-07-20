@@ -6,6 +6,8 @@
 >
 > 作成日: 2026年7月19日
 >
+> 更新日: 2026年7月20日
+>
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
 > - [MVPスコープ](../product/mvp.md)
@@ -60,6 +62,9 @@ flowchart LR
 - Editor / IDEは新たなCoreの実装軸にせず、通常のworkspace fileをAlgoLoomと共有する外部所有環境として扱う。外部toolをAlgoLoomから起動する場合だけ、任意のEditor / Viewer Adapterへ閉じ込める。
 - Coreの各commandへ言語名やOS名の条件分岐を散在させない。
 - 対応言語、OS、利用するEditor / IDEを変更しても、既存command、履歴、snapshot、提出の意味を変更しない。
+- Coreの論理モデルは特定のcompiler/runtimeの種類とversionに依存させない。ただし、実際のbuild、run、性能、judge結果まで環境差異がないとは保証せず、利用時に解決した環境を観測情報として扱う。
+
+ここでいうversion非依存は「任意のversionで同じ挙動を保証する」ことではない。言語の論理的な識別、local toolchain、judge上の提出環境を分離し、具体的なversionの変更が履歴とCoreの意味を壊さないことを指す。
 
 ---
 
@@ -102,6 +107,7 @@ flowchart LR
 | BuildPlan | shell文字列ではなくargv、working directory、入力、生成物、timeout区分等で表すbuild計画 |
 | RunPlan | argv、working directory、stdin、実行対象、resource上限区分等で表す実行計画 |
 | toolchain observation | compiler/runtimeの種類、version、診断結果等、その端末で観測した実行環境情報 |
+| judge language resolution | canonical language IDを、対象contestで利用可能なjudge固有の言語ID、処理系、versionへ提出時に解決した結果 |
 | logical source name | snapshotやexportでsourceを説明するための、絶対pathではない可搬な名称 |
 | Core互換 | Editor固有のplugin、project設定、Adapterなしで、通常fileとCLIからAlgoLoomの主要操作を利用できる状態 |
 | 公式連携 | AlgoLoomから特定の外部toolを起動するAdapterや、将来のplugin等について、対象versionとcapabilityを個別検証した状態 |
@@ -191,7 +197,7 @@ sequenceDiagram
 | `LanguageProfile` | 拡張子、template、toolchain要件、build/run計画、生成物種別 | process tree終了、AtCoder通信、DB保存、任意shell実行 |
 | `HostPlatform` | process起動・取消・終了、path、temp、terminal capability、原子的file操作 | 言語template、judge提出言語、sample比較 |
 | `JudgeAdapter` | 問題取得、認証、提出、判定、canonical language IDからjudge言語への解決 | local compilerの探索、OS process制御、履歴Schema |
-| `HistoryStore` | snapshot、言語ID、toolchain観測、提出と判定の永続化 | sourceのbuild/run、host pathを恒久IDにすること |
+| `HistoryStore` | SolveAttempt、milestone、snapshot、言語ID、toolchain観測、提出と判定の永続化 | sourceのbuild/run、host pathを恒久IDにすること |
 | workspace context | 問題metadata探索、source候補解決、曖昧性の検出 | compiler実行、暗黙のsource選択、別directoryの自動merge |
 | workspace filesystem境界 | 保存済みsourceの読み取り、宣言済みfileの安全な作成、command開始時のcontext再検証 | 未保存buffer、Editor project設定、plugin API、file watcherによるEditor操作の追跡 |
 | Editor / Viewer Adapter | 検証済みcapabilityからの安全なargv生成、任意の表示先の一時起動 | Coreの編集・test・提出、外部toolのinstall、plugin追加、永続設定変更 |
@@ -257,6 +263,51 @@ MVPの4 profileはAlgoLoom配布物に含め、version管理する。workspace m
 - safe argvとして検証し、shell文字列を許可しない。
 - 組み込みprofileと同じprocess、resource、secret分離契約を通す。
 - 設定変更が他言語profileへ波及しない。
+
+### 5.3. 言語・compiler・version非依存の境界
+
+Coreは言語を`canonical language ID`で扱い、local testと提出の時点で具体的な環境を別々に解決する。
+
+```mermaid
+flowchart LR
+    C[canonical language ID<br/>例: cpp] --> LP[LanguageProfile]
+    LP --> LT[local toolchain resolution<br/>GCC / Clang・version・argv]
+    C --> JA[JudgeAdapter]
+    JA --> JT[judge language resolution<br/>言語ID・処理系・version]
+
+    LT --> O[ToolchainObservation]
+    JT --> S[Submission metadata]
+
+    O -. 恒久IDにしない .-> H[履歴]
+    S -. 提出時の事実として保存 .-> H
+
+    style C fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style H fill:#dcfce7,stroke:#16a34a
+```
+
+| 識別・観測 | 例 | 責任と保存方針 |
+|---|---|---|
+| canonical language ID | `cpp` | snapshot、履歴、CLIが使う安定した論理識別子 |
+| LanguageProfile ID / version | 組み込みC++ profileのrevision | templateとbuild/run計画を再現・診断するためのAlgoLoom側metadata |
+| local toolchain observation | GCC / Clang、version、診断結果 | test時に観測する。snapshotや問題の恒久IDにしない |
+| local executable path | `/usr/bin/g++`等 | 端末固有。共有DB、export、同期対象へ原則含めない |
+| judge language resolution | AtCoder固有言語ID、表示名、処理系、version | 提出直前に対象contestで解決し、実際に送った提出の事実として保存する |
+
+#### 保証すること
+
+- compiler/runtimeの種類またはversionが変わっても、問題、SolveAttempt、snapshot、checkpoint、submissionの論理的な関連を失わない。
+- 利用者へ特定versionのinstall、update、`PATH`変更を通常操作から強制しない。
+- 未導入または未検証のtoolchainは、利用できない操作と影響範囲を診断し、履歴参照等の無関係なCore操作を止めない。
+- 対応matrixで検証した組み合わせと、検出できたが未検証の組み合わせを同じ「正式対応」と表示しない。
+- local testで解決した環境とjudge提出環境が異なることを隠さず、必要時に両方を確認できるようにする。
+
+#### 保証しないこと
+
+- 同じcanonical language IDなら、すべてのcompiler、runtime、version、library、compile optionで同じ結果または性能になること。
+- local sample通過が、異なるjudge環境でのcompile成功、AC、実行時間を保証すること。
+- 未検証versionを、近いversionの結果だけから正式対応とみなすこと。
+
+`JudgeAdapter`はmappingを永久固定値として扱わず、対象contestで利用できる言語とversionを確認して解決する。外部仕様を取得できず安全に一意なmappingを決められない場合は、推測して別versionへ提出せず、影響する提出だけを停止する。
 
 ---
 
@@ -449,6 +500,7 @@ flowchart TD
 | problem ID、judge ID | Yes | No | pathに依存しない識別子 |
 | snapshot ID、source bytes、code hash | Yes | No | 履歴の不変記録 |
 | canonical language ID | Yes | No | compiler名やjudge versionと分離する |
+| profile ID / version、toolchainの種類・version | 条件付き | Yes | 診断・再現性の補助情報。恒久IDにせず、共有・export時はprivacyと必要性を確認する |
 | logical source name | Yes | No | 絶対pathではない表示・復元用metadata |
 | workspaceの絶対path | No | Yes | OS・端末ごとに異なるlocator |
 | compiler/runtimeの絶対path | No | Yes | 端末固有toolchain |
@@ -536,6 +588,8 @@ materialize時は次を守る。
 - [ ] workspace metadataへ任意commandを保存しない。
 - [ ] toolchain未導入が他言語とCore機能を止めない。
 - [ ] canonical language IDとjudge上の言語/versionを分離している。
+- [ ] local toolchainの種類/versionと、提出時に解決したjudge言語ID/versionを別々の観測として扱っている。
+- [ ] 未検証versionを正式対応と表示せず、version差異を理由に履歴や無関係なCore機能を停止していない。
 - [ ] user-level実行設定が既存toolの参照とchild processのargvに限定され、toolchainやhost設定を書き換えない。
 
 ### HostPlatform

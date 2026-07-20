@@ -16,6 +16,8 @@
 | workspace | 問題directoryを配置し、AlgoLoomが作業対象として認識する通常のdirectory。 |
 | problem metadata | 正規問題ID等、問題directoryの識別に使う宣言的な情報。 |
 | source snapshot | checkpointや提出の時点で保存するsource codeの不変記録。 |
+| SolveAttempt | ある問題へ一度取り組む開始から終了までを表し、時間とmilestoneを関連付ける学習記録。 |
+| FocusInterval | SolveAttempt内でpauseを除いて能動的に取り組んだ一つの時間区間。 |
 | context | commandが処理対象とするworkspace、問題、sourceの組み合わせ。 |
 
 ## 2. システムアーキテクチャ・技術スタック
@@ -83,6 +85,8 @@ MVPはC++、Python、Go、Rustを正式な解答言語とし、安全なtemplate
 
 言語profileはOSを直接分岐せず、argv、working directory、入力source、生成artifact、timeout区分等からなる`BuildPlan` / `RunPlan`を返す。現在OSの`HostPlatform`がplanを実行し、success、compile error、runtime error、timeout、出力量超過、取消等の共通結果へ正規化する。AtCoder上の提出言語とversionへの対応付けは`JudgeAdapter`の責任とする。
 
+Core、履歴、snapshotは、特定のcompiler/runtimeの種類とversionではなく`cpp`、`python`等のcanonical language IDを使用する。これは任意versionで同じ実行結果を保証する意味ではない。local test時に解決したtoolchainと、提出時に`JudgeAdapter`が解決したAtCoder固有の言語ID・処理系・versionを別々の観測として扱い、具体的な環境変更によって問題、SolveAttempt、snapshot、提出の論理的な関連を失わないようにする。
+
 将来、user-level設定から拡張子、template、AlgoLoomが利用する既存compiler / runtimeのexecutableと安全なargvを変更できる構成を検討する。この設定は呼出対象と一時的な実行方法を選ぶものであり、toolchainのinstall、update、設定file、永続的な`PATH`や環境変数を変更するものではない。MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と外部所有環境の正確な契約は[Core契約](core-contracts.md)を正とする。
 
 Editor / IDEは第三のCore実装軸にせず、保存済みの通常source fileと宣言的metadataを共有する外部所有環境として扱う。Core互換性にEditor固有のplugin、project file、Adapterを要求しない。Remote SSHやdev container等はEditor名ではなく、AlgoLoom process、workspace filesystem、toolchainの実行配置からhost環境を判定する。外部Editor / Viewerの起動はMVP後の任意連携であり、未導入・失敗時もterminal fallbackとCore操作を維持する。
@@ -129,6 +133,7 @@ AlgoLoomの日常操作では、短く入力でき、製品名との関係も識
 
 ```bash
 aloom get abc300_a
+aloom attempt start
 aloom test main.cpp
 aloom submit main.cpp
 ```
@@ -140,12 +145,13 @@ aloom submit main.cpp
 | コマンド | 引数 / オプション | 実行される処理 |
 | :--- | :--- | :--- |
 | **get** | [問題ID]<br>--lang [言語] | ①Judge Adapter経由で公開sampleをtest/へ取得<br>②宣言的な問題metadataを保存<br>③組み込みlanguage profileから雛形fileを作成。再実行時は編集済みsourceを上書きしない |
+| **attempt** | start / pause / resume / status / finish / abandon | 利用者の明示操作で、現在の問題に対するSolveAttemptとFocusIntervalをローカル履歴へ保存する。`get`や最初の`test`だけでは暗黙に開始せず、時間計測なしでも他のCore操作を利用できる。action名は暫定案とする。 |
 | **test** | [ファイル名] | 組み込みlanguage profileに基づきbuild（C++等）を行い、test/内の公開sampleとの一致をlocalで確認する。AtCoderでのACを保証する判定とは表現しない。 |
 | **checkpoint** | [ファイル名] | 提出前のsource snapshotを、利用者の明示操作によってローカル履歴へ保存する。外部通信は行わない。 |
 | **submit** | [ファイル名]<br>--review（MVP後） | ①問題contextとAtCoder accountを確認<br>②送信する正確なsource snapshotと提出操作をローカルSQLiteへ耐久保存<br>③Judge Adapter経由でAtCoderへ提出<br>④submission IDを保存し、判定をpolling<br>⑤中断時は状態を保持し、同じ提出の判定だけを再確認<br>⑥将来の同期とAI reviewは、Coreの提出Serviceへ組み込まず、成功状態を変更しない独立したCapabilityとして追加 |
-| **log** | なし | ローカルSQLiteからcheckpoint、提出操作、判定を取得し、通信を待たずにterminalへ一覧表示する。 |
+| **log** | なし | ローカルSQLiteからSolveAttempt、active duration、milestone、checkpoint、提出操作、判定を取得し、通信を待たずにterminalへ一覧表示する。時間を利用者間rankまたは単一skill scoreとして表示しない。 |
 | **show** | [問題IDまたは履歴ID] | ローカルDBから選択したsource snapshotを取得する。MVPはterminal上のplain textで表示し、外部Editor / Viewer連携はMVP後とする。 |
 | **diff** | [問題IDまたは履歴ID] | ローカルDBから利用者が振り返る2つのsource snapshotを取得し、MVPはunified diffで表示する。初回提出と最新AC等を既定候補にしても、比較対象を確認・指定できるようにする。 |
-| **export** | [保存先] | checkpoint、提出、判定、source snapshotを、credentialを含まないversion付き形式で持ち出す。 |
+| **export** | [保存先] | SolveAttempt、FocusInterval、milestone、checkpoint、提出、判定、source snapshotを、credentialを含まないversion付き形式で持ち出す。 |
 
 一般的なfile・directory操作はこのcommand体系へ含めない。例えば問題directoryの移動には、macOS / Linuxの`mv`、PowerShellの`Move-Item`、各OSのfile manager、Editor / IDEのfile操作等をそのまま利用できるようにする。

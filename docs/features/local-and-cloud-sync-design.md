@@ -5,7 +5,7 @@
 > 状態: 設計方針
 >
 > 作成日: 2026年7月16日
-> 更新日: 2026年7月19日
+> 更新日: 2026年7月20日
 >
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
@@ -273,6 +273,7 @@ class SyncCoordinator(Protocol):
 |---|---|---|---|
 | 編集中のコード | 各端末のワークスペース | workspace file | 同じ。原則としてCloud同期しない |
 | 提出履歴・source snapshot | AlgoLoomがUUID・code hash付きで保存する不変レコード | ローカルユーザーDBへ保存 | 先にローカルDBへ保存し、同じレコードをCloudへ複製 |
+| SolveAttempt・FocusInterval・learning milestone | 利用者の明示操作とAlgoLoomが観測し、安定IDと状態遷移を持つ学習記録 | ローカルユーザーDBへ保存 | 同期を有効化した場合だけ、同じ安定IDと関連をCloudへ複製 |
 | AIレビュー・ユーザーメモ | AlgoLoomのrevision record | ローカルDBへ追記 | 同じrevisionをCloudへ複製。上書きしない |
 | AtCoder提出ID・判定 | AtCoder | 取得値を保存 | 同じ。AlgoLoomは権威を置き換えない |
 | 問題カタログ・補助metadata | AtCoder Problems等の取得元 | 再取得可能なローカルcache | 同じ。Cloud同期対象外 |
@@ -282,7 +283,7 @@ class SyncCoordinator(Protocol):
 
 提出履歴では、ローカルDBとCloudは同じUUID、AtCoder submission ID、code hashを持つ1つの論理レコードの保存場所である。ローカルcommitは「この端末で回復・参照可能」、push成功は「共有済みで別端末から取得可能」という保証を追加する。Cloudとローカルが同じ行を独立に更新して真偽を競う設計にはしない。
 
-共有する問題、snapshot、submission、review等の業務recordは、workspaceやcompilerの絶対pathを識別子にしない。端末上のworkspaceを見つけるために絶対pathを保存する場合は、同期対象外のlocal sidecarまたはlocal indexへ置き、別端末では共有metadataと利用者が選んだlocal rootから再構築する。
+共有する問題、SolveAttempt、FocusInterval、learning milestone、snapshot、submission、review等の業務recordは、workspaceやcompilerの絶対pathを識別子にしない。端末上のworkspaceを見つけるために絶対pathを保存する場合は、同期対象外のlocal sidecarまたはlocal indexへ置き、別端末では共有metadataと利用者が選んだlocal rootから再構築する。
 
 同期利用では、ローカルとCloudの役割を次のように分ける。
 
@@ -490,7 +491,7 @@ flowchart TD
 
 | データ | 新しいWindows端末での扱い |
 |---|---|
-| problem、checkpoint、submission、verdict | 同じUUIDと業務IDでbootstrapする |
+| problem、SolveAttempt、FocusInterval、learning milestone、checkpoint、submission、verdict | 同じUUIDと業務IDでbootstrapする |
 | source snapshot | 正確なbytesとcode hashを保持し、`show`、`diff`、exportから参照できる |
 | macOSのworkspace絶対path | 取得・再利用しない |
 | 未提出・未checkpointのworkspace file | 同期されない |
@@ -785,7 +786,7 @@ flowchart LR
 ### Phase 1: ローカル利用
 
 - 標準SQLiteで共通論理スキーマを実装する。
-- [MVPスコープ](../product/mvp.md)と[Core契約](../architecture/core-contracts.md)に従い、checkpoint、`submit`、`log`、`show`、`diff`、exportを完成させる。
+- [MVPスコープ](../product/mvp.md)と[Core契約](../architecture/core-contracts.md)に従い、SolveAttempt、FocusInterval、learning milestone、checkpoint、`submit`、`log`、`show`、`diff`、exportを完成させる。
 - マイグレーションと、復旧可能なローカル退避を実装する。自動backupと完全なrestore UXはMVP後とする。
 - `HistoryStore`、`UnitOfWork`、`WriteReceipt`の契約テストを作る。
 - Tursoなしのクリーン環境でインストールと初回起動を検証する。
@@ -837,6 +838,7 @@ flowchart LR
 - [ ] 同期有効化前後でUUID、件数、コードハッシュが一致する。
 - [ ] Cloud障害時もローカルへ保存し、履歴を参照できる。
 - [ ] 新端末へbootstrapできる。
+- [ ] SolveAttempt、FocusInterval、learning milestoneのID、順序、関連、durationがbootstrap前後で一致する。
 - [ ] macOS、Linux、Windowsの異なるOS間でbootstrapし、絶対pathなしで`log`、`show`、`diff`、exportを実行できる。
 - [ ] 元端末のworkspace、compiler、Editorの絶対pathが共有DBへ含まれない。
 - [ ] source bytesとcode hashが異なるOSへのbootstrap前後で一致する。

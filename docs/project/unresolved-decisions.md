@@ -2,7 +2,7 @@
 
 > 作成日: 2026年7月18日
 >
-> 状態確認日: 2026年7月19日
+> 状態確認日: 2026年7月20日
 >
 > 目的: リポジトリ内に分散している未決事項を、原文の判断を変えずに確認できるよう集約する。
 >
@@ -34,7 +34,7 @@
 | 状態 | 項目 |
 |---|---|
 | 決定済み | 1.3、2.4、4.4 |
-| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、2.2、2.3、3.2、3.4、4.2、5.3 |
+| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、2.2、2.3、3.2、3.4、4.2、5.3 |
 | 条件付き決定 | 3.1、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
 | 未決 | 2.1、3.3、6.1 |
 | 外部確認待ち | 5.2、8.1 |
@@ -63,7 +63,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。aliasはまずshell側へ委ね、将来AlgoLoom内で提供する場合もcanonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、再帰、raw shell構文、AlgoLoom外のcommand実行を許可しない。`get`、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、`export`の責任分割もMVP契約として定義されている。
+**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。aliasはまずshell側へ委ね、将来AlgoLoom内で提供する場合もcanonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、再帰、raw shell構文、AlgoLoom外のcommand実行を許可しない。`get`、SolveAttemptの開始・pause・resume・終了、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、`export`の責任分割もMVP契約として定義されている。
 
 **残る未決:** 各subcommand・引数・optionの最終名称、aliasとcompletionの詳細、各表示例を正式契約にする範囲。
 
@@ -71,7 +71,7 @@
 
 **原文:** 「本書および関連文書に記載するcommand名、引数、option、対話例、出力例は、明示的にCLI契約として確定したものを除き、機能と責任を説明するための暫定案とする。具体的なCLI設計は、上記原則と実際の利用検証を踏まえて別途決定する。」
 
-出典: [プロダクトビジョン §3.4](../product/vision.md#34-標準ツールとの責任境界)、[MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)
+出典: [プロダクトビジョン §3.5](../product/vision.md#35-標準ツールとの責任境界)、[MVPスコープ §1.2](../product/mvp.md#12-本書で決めないこと)
 
 ### 1.2 workspace metadataとcontext指定
 
@@ -159,7 +159,19 @@
 
 **決めること:** 利用者検証で反復的な摩擦を確認したうえで、設定Schema、設定操作、migration、診断、最初の設定項目を具体化する。外部設定へ作用するsetup helperは、設定断片の生成では解決できない実需と、差分、backup、冪等性、rollbackを保証できる場合だけ採否を判断する。
 
-出典: [プロダクトビジョン §3.3](../product/vision.md#33-シンプルさとユーザーの自由)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)、[ストレスフリーUX設計 §7.7](../quality/stress-free-ux-design.md#77-ユーザーカスタマイズ)
+出典: [プロダクトビジョン §3.4](../product/vision.md#34-シンプルさとユーザーの自由)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)、[ストレスフリーUX設計 §7.7](../quality/stress-free-ux-design.md#77-ユーザーカスタマイズ)
+
+### 1.8 学習時間計測のCLIと時計異常からの回復
+
+**状態:** 一部決定済み
+
+**決定済みの内容:** 時間計測はMVPへ含めるが任意とし、利用者の明示操作でSolveAttemptを開始する。`get`、file保存、最初の`test`から暗黙に開始せず、pauseを除いたFocusIntervalからactive durationを計算する。最初の公開sample通過、初回提出、初ACを別のmilestoneとして記録し、初ACのdurationには判定polling時間を加えない。常駐daemon、Editor plugin、全local test event、自動checkpointはMVPへ含めない。時間を他者rankまたは単一skill scoreへ変換しない。
+
+**残る未決:** start / pause / resume / status / finish / abandonの最終command名と引数、`get --start`相当の明示optionを提供するか、表示精度と丸め、activeな別試行がある場合の具体的な対話、時計の後退・飛躍・未終了intervalに対する確認・訂正UX、AC後に追加作業を続ける場合の既定導線。
+
+**決めること:** 明示性を保ちながら記録忘れを増やさない最終CLI、時計異常時に履歴を黙って書き換えない回復方法、通常表示で時間をどの粒度と強さで示すか。
+
+出典: [プロダクトビジョン §3.3](../product/vision.md#33-自己比較を中心とする学習)、[MVPスコープ §3.1](../product/mvp.md#31-mvpに含める能力)、[Core契約 §5.6](../architecture/core-contracts.md#56-solveattemptと学習時間)、[ストレスフリーUX設計 §4.8](../quality/stress-free-ux-design.md#48-時間計測による焦りと記録忘れ)
 
 ## 2. Core実装・性能パラメータ
 
@@ -179,7 +191,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** MVPはC++、Python、Go、Rustを正式対象とし、単一sourceと標準toolchainを初期保証範囲にした組み込み`LanguageProfile`を提供する。profileはshell文字列ではなくBuildPlan / RunPlanを返し、native macOS、native Linux、native Windowsの`HostPlatform`がprocessを実行する。workspace metadataに実行command、credential、endpointを持たせず、workspaceから任意commandを定義させない。個別profile同士と個別OS Adapter同士を依存させず、canonical language IDをlocal toolchainとAtCoder上の言語IDから分離する。将来のuser-level実行設定も、利用者が既に導入したexecutableの参照とchild processの安全なargvに限定し、toolchainのinstall、update、設定file、永続的な`PATH`・環境変数を変更しない。
+**決定済みの内容:** MVPはC++、Python、Go、Rustを正式対象とし、単一sourceと標準toolchainを初期保証範囲にした組み込み`LanguageProfile`を提供する。profileはshell文字列ではなくBuildPlan / RunPlanを返し、native macOS、native Linux、native Windowsの`HostPlatform`がprocessを実行する。workspace metadataに実行command、credential、endpointを持たせず、workspaceから任意commandを定義させない。個別profile同士と個別OS Adapter同士を依存させず、canonical language IDをlocal toolchainとAtCoder上の言語IDから分離する。Coreと履歴の意味は具体的なcompiler/runtime versionへ依存させず、local toolchain observationと提出時のjudge language resolutionを別々に扱う。将来のuser-level実行設定も、利用者が既に導入したexecutableの参照とchild processの安全なargvに限定し、toolchainのinstall、update、設定file、永続的な`PATH`・環境変数を変更しない。
 
 **残る未決:** user-level設定による拡張子・template・実行file・引数変更を採用するか、およびその具体契約。compiler/runtime/OS release/CPU architectureの正確なversion matrixは2.3の実測対象として残る。
 
@@ -187,7 +199,7 @@
 
 **原文:** 「将来、user-level設定から拡張子、template、compile/run commandを変更できる構成を検討する。」
 
-出典: [アーキテクチャ概要 §3](../architecture/overview.md#3-解答言語host-os開発環境設定管理)、[言語・実行環境の可搬性設計 §3](../architecture/language-and-platform-portability.md#3-mvpの対応範囲)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)
+出典: [アーキテクチャ概要 §3](../architecture/overview.md#3-解答言語host-os開発環境設定管理)、[言語・実行環境の可搬性設計 §5.3](../architecture/language-and-platform-portability.md#53-言語compilerversion非依存の境界)、[Core契約 §2.4](../architecture/core-contracts.md#24-設定と実行commandの信頼境界)
 
 ### 2.3 実行・保持・性能の具体値
 
