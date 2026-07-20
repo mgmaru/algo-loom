@@ -6,7 +6,7 @@
 >
 > 作成日: 2026年7月15日
 >
-> 更新日: 2026年7月16日
+> 更新日: 2026年7月20日
 >
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
@@ -14,6 +14,8 @@
 > - [Core契約](../architecture/core-contracts.md)
 > - [AlgoLoom 配布方針ガイド](../operations/algoloom-distribution.md)
 > - [AlgoLoom AIレビュー安全設計](ai-review-safety-design.md)
+> - [外部学習資料参照設計](external-learning-resources.md)
+> - [解き直しworkflow設計](revisit-workflow.md)
 >
 > 注意: AtCoder ProblemsはAtCoder社とは別の有志が運営する非公式サービスである。API、データ形式、更新間隔は将来変更される可能性がある。
 
@@ -369,6 +371,17 @@ Phase 1にはローカルカタログがないため、正規化後はAtCoder公
 場所: /path/to/algoloom_workspace/abc300_a
 ```
 
+### 6.5. 問題発見、関連資料、解き直しを分ける
+
+| 操作 | 責任 | workspace作成 |
+|---|---|---|
+| `browse` | AtCoder Problems等で問題を探す | 行わない |
+| `get` | 指定問題の初回checkoutを作成または安全に再利用する | 共通処理を持つ |
+| `open problem / editorial`相当 | current problemのAtCoder公式ページをbrowserで開く | 行わない |
+| `redo`相当 | 同じ問題のfreshなsibling checkoutと新しいSolveAttemptを作る | `get`の安全なfile作成契約を再利用するが、既存checkoutを再開しない |
+
+`browse`と`open`を同じ意味へ流用しない。外部資料のURLとbrowser委譲は[外部学習資料参照設計](external-learning-resources.md)、解き直しのlayoutと履歴は[解き直しworkflow設計](revisit-workflow.md)を正とする。
+
 ---
 
 ## 7. Phase 3のCLI問題選択
@@ -703,6 +716,9 @@ abc300_a       ── get ──>    atcoder:abc300_a
 | `aloom browse --user USER` | 指定ユーザーの一覧を開く |
 | `aloom get PROBLEM_ID` | 問題IDから開始する |
 | `aloom get ATCODER_URL` | AtCoder公式URLから開始する |
+| `aloom open problem` | current problemのAtCoder公式問題ページを開く。概念名 |
+| `aloom open editorial` | current problemのAtCoder問題別解説ページを開く。概念名 |
+| `aloom redo PROBLEM_ID` | freshなsibling checkoutと新しいSolveAttemptを作る。概念名 |
 
 ### Phase 2
 
@@ -712,6 +728,7 @@ abc300_a       ── get ──>    atcoder:abc300_a
 | `aloom catalog update` | カタログを明示更新する |
 | `aloom catalog clear` | ユーザー履歴を残してカタログだけ削除する |
 | `aloom catalog doctor` | スキーマ、件数、ETag、SQLite整合性を診断する |
+| `aloom open submissions` | current problemのAC提出一覧をAtCoder公式サイト上でbrowser表示する近接拡張。外部codeは取得しない。概念名 |
 
 ### Phase 3
 

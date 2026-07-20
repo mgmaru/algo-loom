@@ -34,7 +34,7 @@
 | 状態 | 項目 |
 |---|---|
 | 決定済み | 1.3、2.4、4.4 |
-| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、2.2、2.3、3.2、3.4、4.2、5.3 |
+| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、1.9、1.10、2.2、2.3、3.2、3.4、4.2、5.3 |
 | 条件付き決定 | 3.1、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
 | 未決 | 2.1、3.3、6.1 |
 | 外部確認待ち | 5.2、8.1 |
@@ -63,7 +63,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。aliasはまずshell側へ委ね、将来AlgoLoom内で提供する場合もcanonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、再帰、raw shell構文、AlgoLoom外のcommand実行を許可しない。`get`、SolveAttemptの開始・pause・resume・終了、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、`export`の責任分割もMVP契約として定義されている。
+**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。aliasはまずshell側へ委ね、将来AlgoLoom内で提供する場合もcanonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、再帰、raw shell構文、AlgoLoom外のcommand実行を許可しない。`get`、SolveAttemptの開始・pause・resume・終了、freshな解き直し、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、公式問題・解説ページへの外部参照、`export`の責任分割もMVP契約として定義されている。
 
 **残る未決:** 各subcommand・引数・optionの最終名称、aliasとcompletionの詳細、各表示例を正式契約にする範囲。
 
@@ -95,7 +95,7 @@
 
 **決定済みの内容:** 機能設計で、`get`は公式ページ確認、公開sample取得、template・test作成、ユーザーDB保存、公式問題ページのbrowser表示の順に処理すると決定している。再実行では編集済みsourceを上書きせず、完了段階を識別し、重複fileや破損contextを増やさない。browser起動だけの失敗はworkspace作成失敗にせず、既存directoryを勝手にmerge・rename・削除しない。
 
-**決めること:** 問題ページをbrowserで開くか、templateをいつ作るか、取得の各途中状態からどのように再実行・回復するか。
+**残る実装設計:** 各完了段階を識別するmarker、file作成とDB transactionの具体的な順序、atomic writeとcleanupの実装方法。
 
 **原文:** 「問題ページをbrowserで開くか、templateをいつ作るか等は機能設計で決める。」
 
@@ -172,6 +172,30 @@
 **決めること:** 明示性を保ちながら記録忘れを増やさない最終CLI、時計異常時に履歴を黙って書き換えない回復方法、通常表示で時間をどの粒度と強さで示すか。
 
 出典: [プロダクトビジョン §3.3](../product/vision.md#33-自己比較を中心とする学習)、[MVPスコープ §3.1](../product/mvp.md#31-mvpに含める能力)、[Core契約 §5.6](../architecture/core-contracts.md#56-solveattemptと学習時間)、[ストレスフリーUX設計 §4.8](../quality/stress-free-ux-design.md#48-時間計測による焦りと記録忘れ)
+
+### 1.9 外部学習資料のCLIとspoiler確認
+
+**状態:** 一部決定済み
+
+**決定済みの内容:** MVPではAtCoder公式問題ページと問題別解説ページをdefault browserで開く。解説本文、画像、PDF、動画、sample codeはAlgoLoomへ取得・保存しない。他ユーザーのAC提出一覧はMVP後のPhase 2候補とし、他ユーザーのcode本文・author・submission IDや、Cookie、browser profileを取得・保存しない。`ReferenceLinkProvider`と`BrowserLauncher`を分け、browser起動失敗はCore履歴を変更しない。未AC時はspoilerを確認し、contest終了を確認できない場合は開かない。`browse`は問題発見、`open`相当はcurrent problemの資料参照として責任を分ける。
+
+**残る未決:** `open problem / editorial / submissions`相当の最終command・action・option名、未AC時の対話文、non-interactiveで明示確認を表すoption、初回のADT・virtual contest注意表示、URL変更時のfallback、browserがない環境でURLをどこまで表示するか。
+
+**決めること:** 外部本文を取得しない境界を維持したまま、spoilerの誤操作と確認疲れを両方抑えるCLI、表示、fallbackを利用者検証で確定する。
+
+出典: [外部学習資料参照設計](../features/external-learning-resources.md)、[Core契約 §3.4](../architecture/core-contracts.md#34-外部学習資料への参照)、[配布方針ガイド §4.5](../operations/algoloom-distribution.md#45-解説と他ユーザーの提出code)
+
+### 1.10 freshな解き直しのCLIと回復
+
+**状態:** 一部決定済み
+
+**決定済みの内容:** 同じ問題の解き直しは新しいSolveAttemptとし、前回履歴を上書きしない。freshな解き直しでは、同じ正規問題IDを持つ新しいsibling checkoutと組み込みtemplateを既定で作り、前回sourceを自動copyしない。`abc300_a--02`等は候補名であり恒久IDではない。検証済みlocal sampleは新しい`test/`へ安全にcopyできるが、symlink・hard linkを既定にしない。自分のsnapshotから開始する場合は明示指定し、外部codeを開始元にしない。active / paused attemptを暗黙に変更しない。
+
+**残る未決:** `redo`相当の最終command名、fresh・snapshot・in-placeを選ぶoption、候補directory名の具体形式、checkoutのstable local identity、fileとDBの作成順序、重複操作key、途中状態marker、active attemptがある場合の具体的な対話。
+
+**決めること:** 既存sourceを壊さず、同じ操作の再実行でcheckout・SolveAttemptを重複させないCLI、metadata、transaction、回復UXを機能設計で確定する。
+
+出典: [解き直しworkflow設計](../features/revisit-workflow.md)、[Core契約 §3.3](../architecture/core-contracts.md#33-解き直し用problem-checkout)、[言語・実行環境の可搬性設計 §7.2](../architecture/language-and-platform-portability.md#72-同じ問題をfreshに解き直す場合)
 
 ## 2. Core実装・性能パラメータ
 

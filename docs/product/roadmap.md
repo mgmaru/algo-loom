@@ -23,8 +23,8 @@
 
 | 製品フェーズ | 目的 | 主な対象 | 次へ進む判断 |
 |---|---|---|---|
-| Phase 1: MVP Core | AtCoderの終了済み過去問について、問題開始から履歴の振り返りまでの主要導線を成立させる。 | `get`、`test`、任意の学習時間計測、checkpoint、`submit`、`log`、`show`、`diff`、export | MVP文書の実装開始条件と完了条件を満たす。 |
-| Phase 2: Core安定化・近接拡張 | Coreの意味を変えず、実需に基づいて日常利用と対応範囲を改善する。 | 問題選択支援、履歴検索、追加host・言語・build方式、外部Adapter、backup・restore等 | install、日常command、offline履歴を複雑にせず追加できることを候補ごとに確認する。 |
+| Phase 1: MVP Core | AtCoderの終了済み過去問について、問題開始から履歴の振り返りまでの主要導線を成立させる。 | `get`、`test`、任意の学習時間計測、freshな解き直し、checkpoint、`submit`、`log`、`show`、`diff`、公式問題・解説ページへのbrowser参照、export | MVP文書の実装開始条件と完了条件を満たす。 |
+| Phase 2: Core安定化・近接拡張 | Coreの意味を変えず、実需に基づいて日常利用と対応範囲を改善する。 | 問題選択支援、履歴検索、他ユーザーのAC提出一覧へのbrowser参照、追加host・言語・build方式、外部Adapter、backup・restore等 | install、日常command、offline履歴を複雑にせず追加できることを候補ごとに確認する。 |
 | Phase 3以降: 任意Capabilityの検証・採用 | Coreから分離した任意機能について、価値、安全性、配布可能性を個別に検証する。 | AI review、Cloud同期、Repair Lab | 各Capability固有の昇格条件を満たしたものだけを正式な製品範囲へ含める。 |
 | 長期候補 | 現在の製品範囲を前提にせず、需要を確認して構想を具体化する。 | Web dashboard、managed service等 | 実需、Coreとの境界、運用・安全上の成立性を確認してから製品フェーズへの昇格を判断する。 |
 
@@ -36,12 +36,13 @@ Phase 2の各候補は実装を約束するbacklogではなく、すべての候
 |---|---|---|
 | 履歴のインタラクティブ検索 | `log`や`show`で、fzfライクなインクリメンタル検索UIから過去の試行を探せるようにする。 | fzfの導入を必須にせず、非interactiveな既存導線を維持する。 |
 | AtCoder Problems catalogと問題選択支援 | 問題catalogと絞り込みを使い、terminal内から問題を選択できるようにする。 | catalog障害や未導入を理由に、公式URLまたは問題IDを使うCore導線を止めない。 |
+| 他ユーザーのAC提出一覧への外部参照 | current problem、AC、current language等で絞り込んだAtCoder提出一覧をdefault browserで開き、別実装から学べるようにする。 | 他ユーザーのcode本文・author・submission IDやCookieを取得・保存せず、未AC時のspoiler確認、contest状態、browser障害を[外部学習資料参照設計](../features/external-learning-resources.md)に従って扱う。 |
 | 追加host環境 | WSL等、MVP外のhost環境へ対応範囲を広げる。 | 既存の`HostPlatform`契約と検証matrixを弱めない。 |
 | 追加の解答言語 | C++、Python、Go、Rust以外の言語を追加する。 | 既存の`LanguageProfile`契約と共通テストを適用できる。 |
 | project build | Cargo、Go module、CMake等を使うprojectを扱えるようにする。 | 単一sourceの既定導線を複雑にせず、実行範囲と設定の安全性を定義できる。 |
 | 外部Editor / Diff Viewer Adapter | Core互換性とは分離して、利用者が既に導入した代表的な外部toolの選択、process-localな呼出方法、設定例を実需に応じて追加する。 | 公式連携の有無をEditorでのCore利用可否と混同せず、個別EditorやViewerの機能をCoreへ組み込まない。Editor本体、plugin、ユーザー設定をinstall、update、変更しない。 |
 | 詳細local test eventと自動checkpoint | MVPで記録する「最初の公開sample通過」だけでなく、複数回のlocal test履歴と、利用者が選択した場合の自動checkpointを検討する。 | opt-inとし、自動保存の範囲、保持方針、SolveAttempt・milestoneとの違いを明確にする。 |
-| 自己振り返り分析 | 同じ問題の解き直し、言語別、期間別等で、本人のSolveAttempt、時間、提出、差分を振り返る。 | 他者rank、公開skill score、単一の成長scoreへ変換せず、時間の短さだけを成長とみなさない。 |
+| 自己振り返り分析 | 同じ問題のfreshな解き直し、snapshotからの再開、言語別、期間別等で、本人のSolveAttempt、時間、提出、差分を振り返る。 | [解き直しworkflow設計](../features/revisit-workflow.md)の履歴分離を維持し、他者rank、公開skill score、単一の成長scoreへ変換せず、時間の短さだけを成長とみなさない。 |
 | AtCoder既存履歴のread-only import | AlgoLoom導入前の提出履歴を参照できるようにする。 | AlgoLoomが記録した履歴と外部から取得した履歴を混同しない。 |
 | 自動backupとrestore UX | local履歴を安全に退避し、回復しやすくする。 | 同期とは別の責任として設計し、復元時に成功済みデータを失わない。 |
 | machine-readable出力と高度なshell / Editor integration | script、task runner、将来のEditor plugin等からCore機能を利用しやすくする。 | 人向けCLIを非公式にparseさせず、その意味と終了statusを変えないversion付き出力契約を定義する。alias、completion、Editor連携は設定例・生成手順を優先し、外部設定を通常commandから編集しない。 |

@@ -15,10 +15,12 @@
 | optional Capability | AI reviewやCloud同期等、Coreの安定した契約を利用して後から追加でき、未導入でもCoreを変化・停止させない機能。 |
 | workspace | 問題directoryを配置し、AlgoLoomが作業対象として認識する通常のdirectory。 |
 | problem metadata | 正規問題ID等、問題directoryの識別に使う宣言的な情報。 |
+| problem checkout | ある問題のsourceを編集する一つの物理directory。同じ問題に複数存在できる。 |
 | source snapshot | checkpointや提出の時点で保存するsource codeの不変記録。 |
 | SolveAttempt | ある問題へ一度取り組む開始から終了までを表し、時間とmilestoneを関連付ける学習記録。 |
 | FocusInterval | SolveAttempt内でpauseを除いて能動的に取り組んだ一つの時間区間。 |
 | context | commandが処理対象とするworkspace、問題、sourceの組み合わせ。 |
+| 外部学習資料 | AtCoder上の問題、解説、他ユーザーの提出code等、内容をAlgoLoomへ保存せず公式ページをbrowserで参照する資料。 |
 
 ## 2. システムアーキテクチャ・技術スタック
 
@@ -30,6 +32,7 @@
 | データベース | ローカルSQLiteを履歴の通常の読み書き先として使用する。基本構成ではPython標準`sqlite3`を使用する。 |
 | データ同期・インフラ | 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。 |
 | 開発環境・エディタ連携 | AlgoLoom Coreは保存済みの通常fileを境界とし、Editor / IDE、plugin、専用project fileに依存しない。閲覧や差分表示で外部toolを起動する場合だけ、ユーザーが既に導入したEditor / Viewerを任意Adapter経由で一時起動する。Editor本体、plugin、ユーザー設定は変更しない。 |
+| 外部学習資料参照 | judge固有URLを`ReferenceLinkProvider`で構成し、OSのdefault browserへ委譲する。解説本文や他ユーザーのcodeをAlgoLoomへ取得・保存しない。 |
 
 ### 2.1. 依存方向
 
@@ -42,6 +45,8 @@ flowchart TB
     CORE --> LP[LanguageProfile Port]
     CORE --> HP[HostPlatform Port]
     CORE --> JA[JudgeAdapter Port]
+    CORE --> RP[ReferenceLinkProvider Port]
+    CORE --> BL[BrowserLauncher Port]
     CORE --> HS[HistoryStore Port]
 
     CPP[C++ Profile] --> LP
@@ -54,6 +59,8 @@ flowchart TB
     WIN[Windows Adapter] --> HP
 
     AT[AtCoder Adapter] --> JA
+    AT --> RP
+    NB[Native Browser Adapter] --> BL
 
     AI[AI Review Capability] --> QR[Snapshot / Verdict / Diff Query]
     QR --> CORE
@@ -72,6 +79,7 @@ flowchart TB
 - Cloud同期はCoreの論理レコードと保存契約へ一方向に依存できる。
 - language profileは別の個別profileへ依存せず、HostPlatform Adapterも別OS Adapterへ依存しない。
 - Editor / Viewer AdapterはCoreの安定した表示要求へ一方向に依存できるが、CoreはEditor名、plugin API、project設定形式を知らない。
+- `ReferenceLinkProvider`は公式URLの構成だけを担い、`BrowserLauncher`はOSへの起動要求だけを担う。どちらも外部本文、browser Cookie、login状態をCoreへ返さない。
 - 個別実装の選択は起動時のcomposition rootまたはregistryへ閉じ込める。
 - 任意機能の失敗は、Coreで確定した成功状態を変更しない。
 
@@ -89,7 +97,7 @@ Core、履歴、snapshotは、特定のcompiler/runtimeの種類とversionでは
 
 将来、user-level設定から拡張子、template、AlgoLoomが利用する既存compiler / runtimeのexecutableと安全なargvを変更できる構成を検討する。この設定は呼出対象と一時的な実行方法を選ぶものであり、toolchainのinstall、update、設定file、永続的な`PATH`や環境変数を変更するものではない。MVPではworkspace内の設定に任意commandの実行権限を与えない。問題directoryと一緒に移動するmetadataは、問題ID等の宣言的情報だけを持つ。設定と外部所有環境の正確な契約は[Core契約](core-contracts.md)を正とする。
 
-Editor / IDEは第三のCore実装軸にせず、保存済みの通常source fileと宣言的metadataを共有する外部所有環境として扱う。Core互換性にEditor固有のplugin、project file、Adapterを要求しない。Remote SSHやdev container等はEditor名ではなく、AlgoLoom process、workspace filesystem、toolchainの実行配置からhost環境を判定する。外部Editor / Viewerの起動はMVP後の任意連携であり、未導入・失敗時もterminal fallbackとCore操作を維持する。
+Editor / IDEは第三のCore実装軸にせず、保存済みの通常source fileと宣言的metadataを共有する外部所有環境として扱う。Core互換性にEditor固有のplugin、project file、Adapterを要求しない。Remote SSHやdev container等はEditor名ではなく、AlgoLoom process、workspace filesystem、toolchainの実行配置からhost環境を判定する。sourceを開く外部Editor / Viewer連携はMVP後とする。一方、公式問題・解説URLをdefault browserで開く参照導線はMVPに含める。どちらも未導入・失敗時にCore操作を損なわない。
 
 言語・OS・開発環境ごとの差異、依存規則、実行配置、検証matrixは[言語・実行環境の可搬性設計](language-and-platform-portability.md)を正とする。
 
@@ -108,6 +116,22 @@ algoloom_workspace/
 4言語へ対応しても、`get`はC++、Python、Go、Rustのsourceを同時生成しない。利用者が選んだ1言語のsourceだけを作り、問題directoryを通常の単一言語projectに近い状態へ保つ。
 
 同じ問題を別言語で解く場合、既定では問題directoryを分ける。各directoryは同じ正規問題IDへ関連付けられるため、履歴上は同一問題の異なる実装として比較できる。利用者が同じdirectoryへ複数sourceを置くことは禁止しないが、複数候補がある場合はhiddenなactive languageや先頭fileから暗黙に一つを選ばず、明示sourceを要求する。
+
+同じ問題をfreshに解き直す場合も、既存sourceをresetせず、新しいsibling checkoutを既定で作る。
+
+```text
+algoloom_workspace/
+├── abc300_a/          # 初回
+│   ├── <problem-metadata>
+│   ├── main.cpp
+│   └── test/
+└── abc300_a--02/      # freshな解き直し
+    ├── <problem-metadata>
+    ├── main.cpp
+    └── test/
+```
+
+両checkoutは同じ正規問題IDへ関連付けるが、別のSolveAttempt、FocusInterval、milestone、snapshotとして保存する。`--02`等のsuffixとdirectory pathは表示上の便宜であり、恒久IDにはしない。詳細は[解き直しworkflow設計](../features/revisit-workflow.md)を正とする。
 
 作成後は、利用者がOS、shell、file manager、Editor / IDEの標準操作でworkspace全体や問題directoryを移動・rename・整理できることを基本契約とする。
 
@@ -146,12 +170,16 @@ aloom submit main.cpp
 | :--- | :--- | :--- |
 | **get** | [問題ID]<br>--lang [言語] | ①Judge Adapter経由で公開sampleをtest/へ取得<br>②宣言的な問題metadataを保存<br>③組み込みlanguage profileから雛形fileを作成。再実行時は編集済みsourceを上書きしない |
 | **attempt** | start / pause / resume / status / finish / abandon | 利用者の明示操作で、現在の問題に対するSolveAttemptとFocusIntervalをローカル履歴へ保存する。`get`や最初の`test`だけでは暗黙に開始せず、時間計測なしでも他のCore操作を利用できる。action名は暫定案とする。 |
+| **redo** | [問題ID]<br>--lang [言語]<br>--from [snapshot] | 同じ問題の新しいSolveAttemptを開始する。既定は新しいsibling checkoutとfresh templateで、過去sourceを上書き・自動copyしない。command名とoptionは暫定案とする。 |
 | **test** | [ファイル名] | 組み込みlanguage profileに基づきbuild（C++等）を行い、test/内の公開sampleとの一致をlocalで確認する。AtCoderでのACを保証する判定とは表現しない。 |
 | **checkpoint** | [ファイル名] | 提出前のsource snapshotを、利用者の明示操作によってローカル履歴へ保存する。外部通信は行わない。 |
 | **submit** | [ファイル名]<br>--review（MVP後） | ①問題contextとAtCoder accountを確認<br>②送信する正確なsource snapshotと提出操作をローカルSQLiteへ耐久保存<br>③Judge Adapter経由でAtCoderへ提出<br>④submission IDを保存し、判定をpolling<br>⑤中断時は状態を保持し、同じ提出の判定だけを再確認<br>⑥将来の同期とAI reviewは、Coreの提出Serviceへ組み込まず、成功状態を変更しない独立したCapabilityとして追加 |
 | **log** | なし | ローカルSQLiteからSolveAttempt、active duration、milestone、checkpoint、提出操作、判定を取得し、通信を待たずにterminalへ一覧表示する。時間を利用者間rankまたは単一skill scoreとして表示しない。 |
 | **show** | [問題IDまたは履歴ID] | ローカルDBから選択したsource snapshotを取得する。MVPはterminal上のplain textで表示し、外部Editor / Viewer連携はMVP後とする。 |
 | **diff** | [問題IDまたは履歴ID] | ローカルDBから利用者が振り返る2つのsource snapshotを取得し、MVPはunified diffで表示する。初回提出と最新AC等を既定候補にしても、比較対象を確認・指定できるようにする。 |
+| **open** | problem / editorial<br>submissions（MVP後） | current problemのAtCoder公式ページをdefault browserで開く。MVPは問題・解説ページ、MVP後にAC提出一覧を検討する。本文・code・CookieをAlgoLoomへ取得せず、browser失敗をCore履歴の失敗にしない。action名は暫定案とする。 |
 | **export** | [保存先] | SolveAttempt、FocusInterval、milestone、checkpoint、提出、判定、source snapshotを、credentialを含まないversion付き形式で持ち出す。 |
 
 一般的なfile・directory操作はこのcommand体系へ含めない。例えば問題directoryの移動には、macOS / Linuxの`mv`、PowerShellの`Move-Item`、各OSのfile manager、Editor / IDEのfile操作等をそのまま利用できるようにする。
+
+問題発見用の`browse`と、current problemの資料を表示する`open`を同じ意味にしない。外部参照のURL、spoiler確認、保存禁止範囲、browser障害の契約は[外部学習資料参照設計](../features/external-learning-resources.md)を正とする。

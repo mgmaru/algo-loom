@@ -276,6 +276,7 @@ class SyncCoordinator(Protocol):
 | SolveAttempt・FocusInterval・learning milestone | 利用者の明示操作とAlgoLoomが観測し、安定IDと状態遷移を持つ学習記録 | ローカルユーザーDBへ保存 | 同期を有効化した場合だけ、同じ安定IDと関連をCloudへ複製 |
 | AIレビュー・ユーザーメモ | AlgoLoomのrevision record | ローカルDBへ追記 | 同じrevisionをCloudへ複製。上書きしない |
 | AtCoder提出ID・判定 | AtCoder | 取得値を保存 | 同じ。AlgoLoomは権威を置き換えない |
+| AtCoderの解説・他ユーザーの提出code | AtCoder公式サイトと各権利者 | 公式URLをbrowserで開くだけで本文を保存しない | Cloud同期対象外。本文・author・submission IDを取り込まない |
 | 問題カタログ・補助metadata | AtCoder Problems等の取得元 | 再取得可能なローカルcache | 同じ。Cloud同期対象外 |
 | 同期状態・再送状態 | その端末 | `DISABLED`またはローカル状態 | sidecarまたはSDK統計。共有業務データにしない |
 | credential | OS keyring等のcredential owner | DB外に保持 | Cloud同期対象外 |
@@ -284,6 +285,8 @@ class SyncCoordinator(Protocol):
 提出履歴では、ローカルDBとCloudは同じUUID、AtCoder submission ID、code hashを持つ1つの論理レコードの保存場所である。ローカルcommitは「この端末で回復・参照可能」、push成功は「共有済みで別端末から取得可能」という保証を追加する。Cloudとローカルが同じ行を独立に更新して真偽を競う設計にはしない。
 
 共有する問題、SolveAttempt、FocusInterval、learning milestone、snapshot、submission、review等の業務recordは、workspaceやcompilerの絶対pathを識別子にしない。端末上のworkspaceを見つけるために絶対pathを保存する場合は、同期対象外のlocal sidecarまたはlocal indexへ置き、別端末では共有metadataと利用者が選んだlocal rootから再構築する。
+
+problem checkoutの現在path、解説本文、画像、PDF、動画、他ユーザーのcode・author・submission ID・個別提出URL、browser Cookie・profile・historyは同期対象にしない。将来、解説等を開いたreference eventをopt-inで記録する場合も、本文を含めず、browser起動と実際の閲覧・理解を混同しない最小recordとして別途採否を決める。
 
 同期利用では、ローカルとCloudの役割を次のように分ける。
 

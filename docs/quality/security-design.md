@@ -1,6 +1,6 @@
 # AlgoLoom セキュリティ設計ガイド
 
-> 対象: AlgoLoomが扱うユーザーコード、CLI入力、SQLite / Turso、外部コマンド、ターミナル、外部Editor / Viewer、LLM Provider、将来のWeb UI
+> 対象: AlgoLoomが扱うユーザーコード、CLI入力、SQLite / Turso、外部コマンド、ターミナル、browser、外部学習資料、外部Editor / Viewer、LLM Provider、将来のWeb UI
 >
 > 状態: 設計方針
 >
@@ -18,6 +18,8 @@
 > - [Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md)
 > - [LLM Provider選択・実行基盤設計](../features/llm-provider-design.md)
 > - [AIレビュー安全設計](../features/ai-review-safety-design.md)
+> - [外部学習資料参照設計](../features/external-learning-resources.md)
+> - [解き直しworkflow設計](../features/revisit-workflow.md)
 > - [AlgoLoom配布方針ガイド](../operations/algoloom-distribution.md)
 
 ---
@@ -52,6 +54,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 - Rich markup、ANSI制御シーケンス等を解釈させない安全な表示
 - LLMレスポンスのSchema検証と、自動適用・自動提出・shell実行の禁止
 - コード、Cookie、トークンを通常ログへ出さない運用
+- 外部学習資料は検証済みscheme・hostの公式URLだけをbrowserへ渡し、HTML、解説本文、他ユーザーのcode、browser CookieをAlgoLoomへ取得しない境界
 - タイムアウト、出力量上限等による偶発的な暴走への対策
 
 コンテナやOS sandboxによる強い隔離は、初期版で自分のコードだけを実行する間は必須としない。他人のコード、共有されたコード、外部からimportしたコードを実行対象へ加える場合に導入を再検討する。
@@ -78,6 +81,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 | データベース | 提出、コード、判定、レビュー、outbox、同期状態 |
 | 外部プロセス | コンパイラ、runtime、online-judge-tools、設定されたEditor / Viewer |
 | ターミナル | コード、ログ、テスト結果、外部プロセス出力、AIレビュー |
+| Browser・外部学習資料 | AtCoder公式問題・解説・提出一覧URL、browser起動。外部本文とCookieは取得対象外 |
 | LLM | prompt、提出コード、テスト結果、Providerレスポンス |
 | Cloud同期 | Tursoへ同期する提出コード、判定、レビュー |
 | 将来のWeb UI | コード、レビュー、履歴のHTML表示とdownload |
@@ -168,6 +172,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 | user-level設定 / 将来のworkspace設定 | ユーザー管理の設定 | 実行commandを定義できる設定は実質的に実行権限を持つ。MVPのworkspace metadataには実行commandを許可しない |
 | DBから取得した行 | 未信頼データ | 手動変更、破損、古いversion、Cloud同期を考慮する |
 | AtCoder / online-judge-tools | 外部データ | HTML、判定、error message等の形式変更を考慮する |
+| 外部参照URL | 構成済み外部作用 | `https`と許可hostを検証し、問題metadataやCLI入力から任意scheme・任意hostを開かない |
 | LLM Provider response | 未信頼データ | Schema違反、markup、制御文字、過大responseを含み得る |
 | コンパイラ・実行コードのstdout / stderr | 未信頼データ | ANSI制御文字、大量出力、invalid encodingを含み得る |
 
@@ -727,6 +732,9 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] temp fileが他ユーザーから読み取れず、異常時も危険なpathを削除しない。
 - [ ] 代表的な通常commandの前後で、AlgoLoom所有領域と明示workspace以外のEditor・shell・plugin・toolchain設定に差分がない。
 - [ ] child process用のoptionと環境変数が、hostの設定fileや永続環境へ書き戻されない。
+- [ ] `BrowserLauncher`が`https`と許可された公式hostだけを開き、`file:`、`javascript:`、`data:`、任意のcustom schemeを受け付けない。
+- [ ] browserへ渡すURLをshell command文字列として組み立てず、OSの安全な起動APIへ一つのURLとして渡している。
+- [ ] browser起動からCookie、profile、history、download、login状態を読取・複製していない。
 
 ### 9.3. Terminal、Editor / Viewer、LLM
 
@@ -752,6 +760,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] Cloud同期OFFではcodeとreviewをCloudへ送らない。
 - [ ] AIレビューOFFではcodeをLLM Providerへ送らない。
 - [ ] crash reportとdebug logをsecret scanできる。
+- [ ] 外部解説本文、画像、PDF、動画、他ユーザーのcode・author・submission ID・個別提出URLをDB、cache、temp、log、telemetry、export、Cloudへ保存していない。
 
 ### 9.5. Test fixture
 
@@ -793,6 +802,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] SolveAttemptの時系列やlearning active durationを、診断に不要なlogまたはtelemetryへ出していないか。
 - [ ] 新しいCloud送信またはProvider送信に明示同意が必要か確認したか。
 - [ ] 失敗時に安全側へ停止し、ローカル保存済みdataを失わないか。
+- [ ] 外部資料の追加が、browser所有の認証情報や第三者コンテンツをAlgoLoomのdata flowへ取り込んでいないか。
 
 ### 外部環境の所有権
 

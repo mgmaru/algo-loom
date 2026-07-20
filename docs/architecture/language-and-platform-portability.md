@@ -17,6 +17,8 @@
 > - [パフォーマンスと待機体験の設計](../quality/performance-and-waiting-design.md)
 > - [セキュリティ設計ガイド](../quality/security-design.md)
 > - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
+> - [解き直しworkflow設計](../features/revisit-workflow.md)
+> - [外部学習資料参照設計](../features/external-learning-resources.md)
 
 ---
 
@@ -76,6 +78,7 @@ flowchart LR
 - 言語差異とOS差異を閉じ込める境界
 - 各言語の初期対応範囲
 - 複数言語sourceが存在する場合のworkspace UX
+- 同じ問題をfreshに解き直す場合のproblem checkout layout
 - Editor / IDEに依存しないCore互換性の境界と保証水準
 - IDE内terminal、task runner、Remote Editor等を含む実行配置の判定原則
 - 異なるOS間で履歴とsource snapshotを可搬にする原則
@@ -109,6 +112,7 @@ flowchart LR
 | toolchain observation | compiler/runtimeの種類、version、診断結果等、その端末で観測した実行環境情報 |
 | judge language resolution | canonical language IDを、対象contestで利用可能なjudge固有の言語ID、処理系、versionへ提出時に解決した結果 |
 | logical source name | snapshotやexportでsourceを説明するための、絶対pathではない可搬な名称 |
+| problem checkout | ある問題のsourceを編集する一つの物理directory。同じ正規問題IDに複数存在でき、移動・rename可能 |
 | Core互換 | Editor固有のplugin、project設定、Adapterなしで、通常fileとCLIからAlgoLoomの主要操作を利用できる状態 |
 | 公式連携 | AlgoLoomから特定の外部toolを起動するAdapterや、将来のplugin等について、対象versionとcapabilityを個別検証した状態 |
 | 実行配置 | Editorの画面、AlgoLoom process、workspace filesystem、toolchainがlocal、remote host、container、WSL等のどこに存在するかという配置 |
@@ -369,7 +373,33 @@ algoloom_workspace/
 
 この既定により、問題directoryを通常の単一言語projectに近い状態へ保ち、Editor、LSP、toolchainの曖昧性を減らす。
 
-### 7.2. 同じ問題を別言語で解く場合
+### 7.2. 同じ問題をfreshに解き直す場合
+
+既存sourceをresetまたは退避せず、新しいsibling checkoutを既定で作る。
+
+```text
+algoloom_workspace/
+├── abc300_a/
+│   ├── <problem-metadata>
+│   ├── main.cpp
+│   └── test/
+└── abc300_a--02/
+    ├── <problem-metadata>
+    ├── main.cpp
+    └── test/
+```
+
+- 両checkoutは同じ正規問題IDを持ち、別のSolveAttemptへ関連付けられる。
+- `--02`等のsuffix、display ordinal、directory pathを問題またはSolveAttemptの恒久IDにしない。
+- 新しいsourceは選択言語の組み込みtemplateから作り、前回sourceを自動copyしない。
+- 利用者自身のsnapshotから開始する場合は、開始元を明示して新しいcheckoutへmaterializeする。
+- 検証済みのlocal sampleを新しい`test/`へ安全にcopyできるが、symlinkまたはhard linkを既定にしない。
+- checkoutを移動・renameしても、各command開始時にmetadataから再認識する。
+- checkout削除を、保存済みSolveAttemptまたはsnapshotの削除として扱わない。
+
+problem checkoutとSolveAttemptを恒久的な1対1関係にせず、現在のcheckoutで新しいin-place attemptを明示開始することも許容する。ただし、fresh revisitとは表示上区別する。詳細は[解き直しworkflow設計](../features/revisit-workflow.md)を正とする。
+
+### 7.3. 同じ問題を別言語で解く場合
 
 既定では別directoryを推奨する。
 
@@ -388,7 +418,7 @@ algoloom_workspace/
 - 履歴では問題ID、snapshot ID、canonical language IDにより比較できる。
 - directory名の付け方をAlgoLoom固有規則として強制しない。
 
-### 7.3. 同じdirectoryへ複数sourceを置いた場合
+### 7.4. 同じdirectoryへ複数sourceを置いた場合
 
 利用者が自分で複数言語sourceを置くことは禁止しない。
 
@@ -602,6 +632,9 @@ materialize時は次を守る。
 ### Workspace UX
 
 - [ ] `get`が選択した1言語のsourceだけを作る。
+- [ ] freshな解き直しが既存sourceを上書きせず、新しいsibling checkoutを作る。
+- [ ] 解き直し用directoryのsuffix、ordinal、絶対pathを履歴の恒久IDにしていない。
+- [ ] checkoutを移動・rename・削除しても、保存済みSolveAttemptとsnapshotの意味を変更していない。
 - [ ] 同一問題の別directoryを自動mergeしない。
 - [ ] 複数source候補があるとき暗黙に一つを選ばない。
 - [ ] source、言語、問題contextを外部作用前に確認できる。
@@ -634,6 +667,7 @@ AlgoLoomの拡張性は、すべてを動的設定へすることではなく、
 host OSを追加する   → HostPlatform Adapterを追加する
 Editor / IDEで編集する → Adapterを追加せず、通常のworkspace fileを共有する
 外部表示連携を追加する → 任意のEditor / Viewer Adapterを追加する
+同じ問題を解き直す → 同じ正規問題IDのsibling checkoutと新しいSolveAttemptを作る
 judgeを追加する     → JudgeAdapterを追加する
 AIを追加する        → Coreの安定した参照契約を利用する任意Capabilityを追加する
 Cloud同期を追加する → local-firstの保存契約を利用する任意Capabilityを追加する
