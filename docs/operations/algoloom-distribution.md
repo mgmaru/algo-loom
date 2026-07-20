@@ -669,6 +669,8 @@ algoloom_workspace/
 
 除外設定だけに依存せず、リリース前に成果物の内容を一覧表示して検査する。
 
+本節はAlgoLoom自身のsource repositoryと配布物を対象とし、利用者が自分の解答codeを公開するためのrepository構成を定義するものではない。将来その公開支援を採用する場合も、workspace全体や完全版exportを公開対象にせず、[公開用solution bundle将来設計](../features/public-solution-bundle-design.md)のallowlistに基づくlocal bundleとして分離する。
+
 ---
 
 ## 13. 配布版の安全機能

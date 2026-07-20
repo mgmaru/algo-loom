@@ -24,7 +24,7 @@
 | 製品フェーズ | 目的 | 主な対象 | 次へ進む判断 |
 |---|---|---|---|
 | Phase 1: MVP Core | AtCoderの終了済み過去問について、問題開始から履歴の振り返りまでの主要導線を成立させる。 | `get`、`test`、任意の学習時間計測、freshな解き直し、checkpoint、`submit`、`log`、`show`、`diff`、公式問題・解説ページへのbrowser参照、export | MVP文書の実装開始条件と完了条件を満たす。 |
-| Phase 2: Core安定化・近接拡張 | Coreの意味を変えず、実需に基づいて日常利用と対応範囲を改善する。 | 問題選択支援、問題・解法タグ、履歴検索、他ユーザーのAC提出一覧へのbrowser参照、追加host・言語・build方式、外部Adapter、backup・restore等 | install、日常command、offline履歴を複雑にせず追加できることを候補ごとに確認する。 |
+| Phase 2: Core安定化・近接拡張 | Coreの意味を変えず、実需に基づいて日常利用と対応範囲を改善する。 | 問題選択支援、問題・解法タグ、履歴検索、他ユーザーのAC提出一覧へのbrowser参照、公開用solution bundle、追加host・言語・build方式、外部Adapter、backup・restore等 | install、日常command、offline履歴を複雑にせず追加できることを候補ごとに確認する。 |
 | Phase 3以降: 任意Capabilityの検証・採用 | Coreから分離した任意機能について、価値、安全性、配布可能性を個別に検証する。 | AI review、Cloud同期、Repair Lab | 各Capability固有の昇格条件を満たしたものだけを正式な製品範囲へ含める。 |
 | 長期候補 | 現在の製品範囲を前提にせず、需要を確認して構想を具体化する。 | 学習データアクセス基盤、Web dashboard、Hosted API、managed service等 | 実需、Coreとの境界、運用・安全上の成立性を確認してから製品フェーズへの昇格を判断する。 |
 
@@ -48,6 +48,7 @@ Phase 2の各候補は実装を約束するbacklogではなく、すべての候
 | 自己振り返り分析 | 同じ問題のfreshな解き直し、snapshotからの再開、言語別、期間別等で、本人のSolveAttempt、時間、提出、差分を振り返る。 | [解き直しworkflow設計](../features/revisit-workflow.md)の履歴分離を維持し、他者rank、公開skill score、単一の成長scoreへ変換せず、時間の短さだけを成長とみなさない。 |
 | AtCoder既存履歴のread-only import | AlgoLoom導入前の提出履歴を参照できるようにする。 | AlgoLoomが記録した履歴と外部から取得した履歴を混同しない。 |
 | 自動backupとrestore UX | local履歴を安全に退避し、回復しやすくする。 | 同期とは別の責任として設計し、復元時に成功済みデータを失わない。 |
+| 公開用solution bundle | 明示選択した自作sourceを、GitHub等へ利用者自身が公開する前の最小構成としてlocalへ切り出す。 | 完全版`export`と分離し、一問・一source、allowlist、終了済みcontest、source originとhashのpreview、secret・外部content・履歴の除外、原子的生成を検証する。GitHub認証、repository作成、commit、push、visibility変更は実装しない。詳細は[公開用solution bundle将来設計](../features/public-solution-bundle-design.md)を参照する。 |
 | machine-readable出力と高度なshell / Editor integration | script、task runner、将来のEditor plugin等からCore機能を利用しやすくする。 | 人向けCLIを非公式にparseさせず、その意味と終了statusを変えないversion付き出力契約を定義する。alias、completion、Editor連携は設定例・生成手順を優先し、外部設定を通常commandから編集しない。 |
 | 境界づけられたuser preference | 表示、反復入力の既定値、AlgoLoomが利用する既存外部toolの参照と一時的な呼出方法等を、利用者の環境へなじませる。 | 利用者検証で反復的な摩擦を確認し、user preferenceなしの標準導線、Coreの意味と安全契約、旧設定の互換性、設定errorの局所化を維持する。外部tool本体や永続設定をカスタマイズ対象にせず、shellで自然に実現できるalias等は標準toolへ委ねる方法を先に検討する。 |
 

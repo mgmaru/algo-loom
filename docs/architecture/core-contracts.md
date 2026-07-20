@@ -499,6 +499,8 @@ AtCoderは2026年8月以降、拒否設定が反映されていない提出sourc
 - export作成中のDB更新によって不整合な組み合わせを出力しない。
 - exportを新しいDBへ自動restoreする機能はMVP対象外だが、形式を文書化し、sourceをAlgoLoomなしでも回収できるようにする。
 
+この`export`は、学習履歴を欠損なく持ち出す私的な可搬性・退避を目的とし、公開用にdataを最小化した成果物ではない。GitHub等へそのまま公開することを安全な標準導線として案内しない。自分のsourceだけをallowlist方式でlocalへ切り出す公開候補bundleはMVP後の別機能候補とし、GitHub認証、repository作成、commit、push、visibility変更をCoreまたは`export`へ追加しない。詳細は[公開用solution bundle将来設計](../features/public-solution-bundle-design.md)を参照する。
+
 自動backup、世代管理、Cloudへの暗号化backup、完全なrestore UXはMVP後とする。
 
 ---

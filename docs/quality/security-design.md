@@ -27,7 +27,7 @@
 
 ## ドキュメント概要
 
-本書は、ユーザーcodeや外部入力を扱う際の脅威モデルと信頼境界を示し、DB、process、path、terminal、Editor / Viewer、LLM、同期、将来のWeb UI・学習データAPIに適用する安全要件を定義します。
+本書は、ユーザーcodeや外部入力を扱う際の脅威モデルと信頼境界を示し、DB、process、path、terminal、Editor / Viewer、LLM、同期、将来の公開用solution bundle・Web UI・学習データAPIに適用する安全要件を定義します。
 
 ## 0. 結論
 
@@ -56,6 +56,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 - LLMレスポンスのSchema検証と、自動適用・自動提出・shell実行の禁止
 - コード、Cookie、トークンを通常ログへ出さない運用
 - 外部学習資料は検証済みscheme・hostの公式URLだけをbrowserへ渡し、HTML、解説本文、他ユーザーのcode、browser CookieをAlgoLoomへ取得しない境界
+- 公開候補bundleを将来採用する場合はworkspaceのcopyではなくallowlistで最小構成にし、Git・GitHubの認証と外部変更をAlgoLoomから行わない境界
 - タイムアウト、出力量上限等による偶発的な暴走への対策
 
 コンテナやOS sandboxによる強い隔離は、初期版で自分のコードだけを実行する間は必須としない。他人のコード、共有されたコード、外部からimportしたコードを実行対象へ加える場合に導入を再検討する。
@@ -667,6 +668,22 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - 外部runtimeへ渡す環境変数を明示的に構成し、AtCoder Cookie、Turso token、他Providerのcredentialを除外する。
 - reviewごとにsessionと一時directoryを破棄し、responseはModel APIと同じSchema Validatorを通す。
 
+### 6.13. 公開用solution bundle
+
+公開候補bundleはnetwork送信を行わないが、外部公開を意図したfileを生成するため、通常のcopyや完全版exportより厳しいdata最小化を必要とする。MVP対象外とし、採用する場合は[公開用solution bundle将来設計](../features/public-solution-bundle-design.md)を正とする。
+
+| 境界 | 必須要件 |
+|---|---|
+| source選択 | workspace file、checkpoint、submission snapshotの由来を区別し、複数候補から暗黙に選ばない |
+| 含有data | workspaceのcopyではなくallowlistで新規構成し、source、README、manifest等の全生成fileを確認可能にする |
+| 除外data | sample、問題文、解説、他者code、履歴、内部ID、絶対path、DB、backup、完全版export、credentialを含めない |
+| contest状態 | 開催中、状態不明、個別ruleを安全に解釈できない場合はfail closedにする |
+| filesystem | 明示された空の生成先、path正規化、symlink非追跡、既存file非上書き、一時directoryからのatomic renameを使う |
+| secret検査 | 既知patternを検査しても完全な安全保証とは表示せず、利用者による全file確認を必要とする |
+| 外部tool | Git・GitHubのcommand、API、認証を実行せず、credential helper、SSH key、login cacheを探索しない |
+
+公開候補生成の成功を外部公開の成功と表示しない。remote visibility、fork、clone、削除状態を追跡せず、外部providerのpush protection等をAlgoLoom側の検査の代替または完全性の根拠にしない。
+
 ---
 
 ## 7. コマンド別の安全要件
@@ -681,6 +698,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 | `show` | DB、temp file、Editor / Viewer Adapter | 安全なtemp file、argv、対応toolの読み取り専用mode、terminal fallback |
 | `diff` | DB、2つのtemp file、Diff Viewer Adapter | `show`と同じ要件、各pathの独立検証、unified diff fallback |
 | `sync` | local DB、token、Turso | keyring、最小権限、Schema検証、保存状態の分離表示 |
+| 将来の公開候補bundle | source、snapshot、filesystem、contest policy | 明示選択、allowlist、data最小化、secret検査、atomic生成、Git・GitHub操作禁止 |
 | 将来のWeb UI | DB、browser | 認証・認可、context別escape、CSP、token非配布 |
 | 将来の学習データAPI | DB / Cloud、外部client | read-only、ownership、最小scope、versioning、pagination、rate limit、secret・path非返却 |
 
@@ -711,6 +729,8 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - keyring、token失効、端末単位credential
 - Cloud取得行のSchema・size検証
 - backup・dump・wheel・sdistへのユーザーデータ混入検査
+- 公開候補bundleを採用する場合のallowlist、contest状態、source origin、secret、path、atomic生成の検査
+- 公開候補bundleからのGit・GitHub credential非参照とrepository・commit・push・visibility操作禁止
 - dependency scan、secret scan、release artifact検査
 - 古いCLIと新しいSchemaが混在する場合のfail closed
 - セキュリティ問題の報告窓口とtoken漏えい時の手順
@@ -777,6 +797,8 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] wheel、sdist、release archiveにDB、workspace、backup、credentialが含まれない。
 - [ ] Cloud同期OFFではcodeとreviewをCloudへ送らない。
 - [ ] AIレビューOFFではcodeをLLM Providerへ送らない。
+- [ ] 公開候補bundleを採用する場合、完全版export、履歴、外部content、内部ID、絶対path、credentialが混入しない。
+- [ ] GitHub token、SSH key、Git credential helper、login cacheを探索・読取・保存しない。
 - [ ] crash reportとdebug logをsecret scanできる。
 - [ ] 外部解説本文、画像、PDF、動画、他ユーザーのcode・author・submission ID・個別提出URLをDB、cache、temp、log、telemetry、export、Cloudへ保存していない。
 
@@ -836,6 +858,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] 他人のcodeを実行する機能になっていないか。
 - [ ] Web表示を追加した場合、保存型XSSと認可を検討したか。
 - [ ] LLMへ新しいtool権限や自動操作を追加していないか。
+- [ ] 公開候補生成がrepository作成、commit、push、visibility変更またはremote状態追跡へ拡大していないか。
 - [ ] Cloud Schema変更時に古いclientの挙動を検証したか。
 
 ---

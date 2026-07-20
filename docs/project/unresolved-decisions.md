@@ -35,7 +35,7 @@
 |---|---|
 | 決定済み | 1.3、2.4、4.4 |
 | 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、1.9、1.10、2.2、2.3、3.2、3.4、3.5、4.2、5.3 |
-| 条件付き決定 | 3.1、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
+| 条件付き決定 | 3.1、3.6、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
 | 未決 | 2.1、3.3、6.1 |
 | 外部確認待ち | 5.2、8.1 |
 
@@ -322,6 +322,20 @@
 **決めること:** user tagの最小導線と語彙を利用者検証で確定し、外部タグは精度、出典、継続性、spoiler制御を満たすProviderだけを個別採用する。
 
 出典: [問題選択・カタログ設計 §10.4](../features/problem-selection-and-catalog.md#104-問題タグとsolveattempt解法タグ)、[ロードマップ §3](../product/roadmap.md#3-phase-2-core安定化近接拡張)
+
+### 3.6 公開用solution bundleを正式に採用するか
+
+**状態:** 条件付き決定
+
+**決定済みの境界:** GitHub等へのrepository作成、認証、commit、push、visibility変更はAlgoLoomの責任にしない。MVPの完全版`export`は学習履歴の可搬性・退避を目的とし、公開用成果物として扱わない。公開支援に実需がある場合は、MVP後のPhase 2候補として、一問・一source、provider非依存、networkなし、allowlist方式のlocal bundleを先に検証する。source originとhash、含有file、除外data、contest状態を生成前に確認可能にし、sample、問題文、他者code、履歴、内部ID、絶対path、credentialを既定で含めない。開催中・状態不明・個別ruleを解釈できない場合はfail closedとし、既存fileを上書きせず原子的に生成する。
+
+**残る未決:** 公開候補bundleを正式採用するか。最終command名と完全版`export`からのCLI分離、source候補の提示順、README・manifestの既定、secret検査範囲、contest状態の判定元、license案内、複数問題bundleを将来提供するか。
+
+**決めること:** Core安定後に、利用者が手動で自分の解答を公開するときの誤混入、反復作業、必要metadataを検証する。AlgoLoom固有の切り出し支援が必要と確認できた場合だけlocal bundleを試作し、内容、privacy、contest rule、filesystem、失敗回復の受け入れ条件に合格した後に正式採用を判断する。GitHub APIや自動pushはAlgoLoomの製品範囲へ含めず、local bundleで解決できない需要も公式の外部toolと手順、または別applicationで満たす。
+
+**原文:** 「公開を支援する設計は考慮するが、GitHub連携ではなく、選択した自作sourceから公開候補物をlocalに作り、標準toolへ引き渡す境界までとする。」
+
+出典: [公開用solution bundle将来設計](../features/public-solution-bundle-design.md)、[製品ビジョン §3.3](../product/vision.md#33-自己比較を中心とする学習)、[Core契約 §7.3](../architecture/core-contracts.md#73-export)、[ロードマップ §3](../product/roadmap.md#3-phase-2-core安定化近接拡張)
 
 ## 4. Cloud同期・データ共有
 

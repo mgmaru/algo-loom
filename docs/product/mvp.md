@@ -199,6 +199,7 @@ MVPのサポートと利用者検証は、終了済みのAtCoder Algorithm問題
 - TUI、Web dashboard、Editor plugin、専用Editor
 - 外部Editor / Diff Viewerとの高度な連携
 - TUI、Editor plugin、常駐daemon等によるtimerの常時表示
+- 公開用solution bundle、GitHub等のrepository作成・認証・commit・push・visibility変更
 
 #### 履歴・同期データ管理
 
@@ -233,6 +234,8 @@ MVPのサポートと利用者検証は、終了済みのAtCoder Algorithm問題
 - 他者またはLLMが書いた未信頼codeの実行とRepair Lab
 
 MVP対象外の機能について、将来の設定項目、空の画面、毎回の案内をCoreへ置かない。利用者が使えない機能を先に見せて日常操作を複雑にしない。
+
+MVPの`export`は、本人の学習履歴を欠損なく持ち出す私的な可搬性・退避のための機能であり、公開用の安全な成果物を意味しない。自分のsourceだけを外部公開前の最小構成へ切り出す候補と、Git・GitHub等へ委ねる公開操作の境界は、MVP後に[公開用solution bundle将来設計](../features/public-solution-bundle-design.md)に従って別途採否を判断する。
 
 ### 3.3. MVPの依存関係
 
