@@ -139,6 +139,22 @@ flowchart LR
 
 時間計測はこの原則の下で提供する。測定値は学習者の能力そのものではなく、その試行の条件を含む観測である。中断、解き直し、使用言語、toolchain、hint等の条件が異なる値を、同じ競争上のscoreとして扱わない。
 
+#### 学習データの所有と表示方法の自由
+
+AlgoLoomが記録した自分のsource、試行、提出、時間、振り返りは、利用者自身の学習資産として扱う。利用者はversion付きexportで持ち出せるだけでなく、将来は安定した読み取りinterfaceを通じて、好みのUI、script、notebook、LLM等から利用できるようにする。
+
+EditorをAlgoLoomが固定しないのと同様に、学習データのfrontendも公式dashboardだけへ固定しない。一方、保存DBのtableや内部Schemaを直接の公開契約にはせず、観測事実と説明可能な派生指標を共通のQuery・Analytics契約から提供する。
+
+| 提供するもの | 提供しないもの |
+|---|---|
+| 本人のSolveAttempt、時間、milestone、提出、snapshot等の観測事実 | 利用者間leaderboardや他者平均との差 |
+| 定義、単位、期間、母数、欠損を追跡できる自己振り返り指標 | 時間や提出回数等を合成した単一skill score |
+| CLI、個人用UI、公式dashboard、外部toolが共有できるversion付きRead Model | SQLite table、secret、端末固有path、外部所有本文の直接公開 |
+
+公式dashboardは、設定不要の標準UI、指標の説明、accessibility、公開契約の検証を担うreference clientとして提供できる。ただし唯一の表示方法とはせず、同じQuery契約を個人用frontendからも利用できる方向を目指す。localのexport、machine-readable出力、将来のlocal data accessはCloud accountなしで利用できる状態を先に成立させ、Hosted APIはCloud、認証、privacy、継続運用の条件を満たした後の長期候補とする。
+
+詳細は[学習データアクセス・可視化API将来設計](../features/learning-data-access-api-design.md)を参照する。
+
 #### 外部学習資料と自己比較の境界
 
 AtCoderの解説や他ユーザーの提出codeは有効な学習資料だが、AlgoLoomが所有する履歴または利用者間比較の材料にはしない。AlgoLoomは資料の所在を示して公式ページをbrowserで開き、解説本文や他ユーザーのcodeを取得、保存、再表示しない。

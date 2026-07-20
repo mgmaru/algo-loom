@@ -379,6 +379,18 @@
 
 出典: [Turso設計ガイド §5.5.3](../integrations/turso-design-guide.md#553-再検討が必要になる条件)
 
+### 4.5 学習データアクセス基盤・Hosted APIの具体仕様
+
+**状態:** 一部決定済み
+
+**決定済みの内容:** 学習データアクセスはMVP対象外の長期候補とする。MVPのversion付きexport、MVP後のmachine-readable出力、共通Query・Analytics契約、local data access、公式dashboard、Hosted APIの順に責任を分けるが、local data accessとdashboardは実需に応じて前後または並行できる。公式dashboardは唯一の表示経路ではなく、共通契約を利用するreference clientとする。APIは本人の観測事実と説明可能な複数の自己振り返り指標を提供し、単一skill score、他者rank、DB Schema、secret、端末固有path、外部所有本文を提供しない。初期APIはread-onlyとし、集計・履歴metadataとsource・review本文を別scopeにする。localの基本経路はCloud accountなしで無料、Hosted APIの本人readも無料提供を目標とするが、rate limitとfair-useを設けられる。
+
+**残る未決:** local interfaceをlibrary、subprocess protocol、localhost HTTP APIのどれにするか。Hosted APIのREST / GraphQL等の形式、endpoint、認証、OAuth flow、scope名、CORS、token lifetime、API version support期間、source accessの既定、指標の最小母数・統計定義、無料枠の具体上限、公式dashboardの配置、第三者client登録、AlgoLoom Cloudとの提供順序。
+
+**決めること:** exportとmachine-readable出力の利用実績を確認した上で、必要なRead Model、指標定義、local interfaceを確定する。Hosted APIはCloud上のデータ権威、認証・ownership、privacy、運用費、rate limit、service終了時のexportを検証してから正式採用を判断する。
+
+出典: [学習データアクセス・可視化API将来設計](../features/learning-data-access-api-design.md)、[ロードマップ §5](../product/roadmap.md#5-長期候補)、[セキュリティ設計ガイド §6.8](../quality/security-design.md#68-将来のweb-uiと保存型xss)
+
 ## 5. AIレビューのルール適用
 
 ### 5.1 開催中AHCの専用プロファイル

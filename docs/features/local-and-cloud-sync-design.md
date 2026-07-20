@@ -15,6 +15,7 @@
 > - [AlgoLoom Turso設計ガイド](../integrations/turso-design-guide.md)
 > - [AlgoLoom Turso移行互換性設計](../integrations/turso-migration-compatibility-design.md)
 > - [AlgoLoom LLM Provider選択・実行基盤設計](llm-provider-design.md)
+> - [学習データアクセス・可視化API将来設計](learning-data-access-api-design.md)
 >
 > 注意: TursoのSDK、同期方式、対応OS、料金、制約は変更される可能性がある。実装開始時とリリース前に公式資料と配布wheelを再確認すること。
 
@@ -771,8 +772,11 @@ sequenceDiagram
 - Turso Platform APIトークンの保護
 - 不正利用、課金、障害、退会処理
 - ユーザーごとのexport・削除
+- Hosted APIを提供する場合のclient認証、user ownership、scope、versioning、rate limit、incident対応
 
 初期OSS版の必須要件にはせず、BYOCの利用状況を確認した後に別サービスとして判断する。
+
+個人作成frontendから学習データを参照するHosted APIは、AlgoLoom Cloudと同時に自動採用される機能ではない。Cloud上のデータ権威、認証・認可、privacy、継続運用費を別途検証し、初期はread-onlyかつ本人の同期済みデータだけを対象とする。browserへTurso tokenや管理credentialを配布せず、本人の基本readは無料提供を目標にしつつ、rate limitとfair-useを定義する。詳細は[学習データアクセス・可視化API将来設計](learning-data-access-api-design.md)を参照する。
 
 ---
 

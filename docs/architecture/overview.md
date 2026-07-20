@@ -21,6 +21,7 @@
 | FocusInterval | SolveAttempt内でpauseを除いて能動的に取り組んだ一つの時間区間。 |
 | context | commandが処理対象とするworkspace、問題、sourceの組み合わせ。 |
 | 外部学習資料 | AtCoder上の問題、解説、他ユーザーの提出code等、内容をAlgoLoomへ保存せず公式ページをbrowserで参照する資料。 |
+| LearningDataQuery | 本人の学習履歴と説明可能な派生指標を、DB Schemaや表示方法から分離したversion付きRead Modelとして返す将来の読み取り境界。 |
 
 ## 2. システムアーキテクチャ・技術スタック
 
@@ -33,6 +34,7 @@
 | データ同期・インフラ | 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。 |
 | 開発環境・エディタ連携 | AlgoLoom Coreは保存済みの通常fileを境界とし、Editor / IDE、plugin、専用project fileに依存しない。閲覧や差分表示で外部toolを起動する場合だけ、ユーザーが既に導入したEditor / Viewerを任意Adapter経由で一時起動する。Editor本体、plugin、ユーザー設定は変更しない。 |
 | 外部学習資料参照 | judge固有URLを`ReferenceLinkProvider`で構成し、OSのdefault browserへ委譲する。解説本文や他ユーザーのcodeをAlgoLoomへ取得・保存しない。 |
+| 学習データアクセス・可視化 | MVPのversion付きexportとMVP後のmachine-readable出力を起点に、将来は`LearningDataQuery`を介してlocal data access、公式dashboard、Hosted APIへ同じRead Modelと指標定義を提供する。DB tableを外部契約にせず、初期APIはread-onlyとする。 |
 
 ### 2.1. 依存方向
 
@@ -65,9 +67,13 @@ flowchart TB
     AI[AI Review Capability] --> QR[Snapshot / Verdict / Diff Query]
     QR --> CORE
     SYNC[Sync Capability] --> HS
+    DATA[Learning Data Access Capability] --> LQ[LearningDataQuery]
+    DASH[Official Dashboard] --> LQ
+    LQ --> CORE
 
     CORE -. 禁止 .-> AI
     CORE -. 禁止 .-> SYNC
+    CORE -. 禁止 .-> DATA
 
     style CORE fill:#dbeafe,stroke:#2563eb,stroke-width:2px
     style AI fill:#f3e8ff,stroke:#9333ea
@@ -77,6 +83,7 @@ flowchart TB
 - CoreはAI Provider、review設定、同期SDK、同期状態を知らない。
 - AI reviewはCoreの不変snapshot、verdict、diffの読み取り契約へ一方向に依存できる。
 - Cloud同期はCoreの論理レコードと保存契約へ一方向に依存できる。
+- 学習データアクセスと公式dashboardは、Coreの安定した`LearningDataQuery`へ一方向に依存できる。CoreはHTTP、Web UI、client SDK、認証serviceを知らず、SQLite tableを外部clientへ直接公開しない。
 - language profileは別の個別profileへ依存せず、HostPlatform Adapterも別OS Adapterへ依存しない。
 - Editor / Viewer AdapterはCoreの安定した表示要求へ一方向に依存できるが、CoreはEditor名、plugin API、project設定形式を知らない。
 - `ReferenceLinkProvider`は公式URLの構成だけを担い、`BrowserLauncher`はOSへの起動要求だけを担う。どちらも外部本文、browser Cookie、login状態をCoreへ返さない。
@@ -84,6 +91,8 @@ flowchart TB
 - 任意機能の失敗は、Coreで確定した成功状態を変更しない。
 
 AI reviewを将来追加する場合、submissionやsnapshotへAI固有のnullable列を加えず、安定IDを参照する追記型review revisionとして保存する。`submit --review`等の複合UXを設ける場合も、Presentation / Application orchestrationがCoreの提出結果と独立したreview結果を組み合わせ、Coreの提出ServiceからReview Backendを呼び出さない。
+
+学習データアクセスを将来追加する場合、観測事実、派生指標、第三者clientが生成した値を区別する。公式dashboardだけにDB直結の特別経路を作らず、CLIのmachine-readable出力、local data access、公式dashboard、Hosted APIでRead Modelと指標定義を共有する。Hosted APIは同期済みデータだけを認証・認可済みbackendから読み取り、browserへTurso tokenや管理credentialを配布しない。詳細は[学習データアクセス・可視化API将来設計](../features/learning-data-access-api-design.md)を参照する。
 
 ## 3. 解答言語・host OS・開発環境・設定管理
 

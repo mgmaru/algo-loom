@@ -1,6 +1,6 @@
 # AlgoLoom セキュリティ設計ガイド
 
-> 対象: AlgoLoomが扱うユーザーコード、CLI入力、SQLite / Turso、外部コマンド、ターミナル、browser、外部学習資料、外部Editor / Viewer、LLM Provider、将来のWeb UI
+> 対象: AlgoLoomが扱うユーザーコード、CLI入力、SQLite / Turso、外部コマンド、ターミナル、browser、外部学習資料、外部Editor / Viewer、LLM Provider、将来のWeb UI・学習データAPI
 >
 > 状態: 設計方針
 >
@@ -20,13 +20,14 @@
 > - [AIレビュー安全設計](../features/ai-review-safety-design.md)
 > - [外部学習資料参照設計](../features/external-learning-resources.md)
 > - [解き直しworkflow設計](../features/revisit-workflow.md)
+> - [学習データアクセス・可視化API将来設計](../features/learning-data-access-api-design.md)
 > - [AlgoLoom配布方針ガイド](../operations/algoloom-distribution.md)
 
 ---
 
 ## ドキュメント概要
 
-本書は、ユーザーcodeや外部入力を扱う際の脅威モデルと信頼境界を示し、DB、process、path、terminal、Editor / Viewer、LLM、同期に適用する安全要件を定義します。
+本書は、ユーザーcodeや外部入力を扱う際の脅威モデルと信頼境界を示し、DB、process、path、terminal、Editor / Viewer、LLM、同期、将来のWeb UI・学習データAPIに適用する安全要件を定義します。
 
 ## 0. 結論
 
@@ -85,6 +86,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 | LLM | prompt、提出コード、テスト結果、Providerレスポンス |
 | Cloud同期 | Tursoへ同期する提出コード、判定、レビュー |
 | 将来のWeb UI | コード、レビュー、履歴のHTML表示とdownload |
+| 将来の学習データAPI | 本人の履歴・集計・sourceを返すlocal interfaceまたは認証付きHosted API |
 
 ### 1.3. 対象外
 
@@ -569,6 +571,19 @@ Web dashboardを追加する場合、DBへ保存済みのcode、review、problem
 - Turso tokenをbrowserへ配布せず、認証・認可を行うbackendを介する。
 - 複数ユーザー対応時は、すべてのqueryでuser ownershipを検証する。
 
+#### 学習データAPIを追加する場合
+
+- 初期APIはread-onlyとし、履歴変更、削除、AtCoder提出、code実行、AI review実行を同じscopeへ含めない。
+- SQLite table、Turso Schema、任意SQLを公開せず、許可されたfilterとversion付きRead Modelだけを提供する。
+- 学習集計・履歴metadataとsource・review本文を別scopeにし、source本文は既定で第三者clientへ許可しない。
+- AtCoder Cookie、Turso token、Provider credential、環境変数、不要な絶対pathをresponseへ含めない。
+- local HTTP interfaceを採用する場合はloopbackだけへbindし、DNS rebinding、CSRF、無関係なWeb pageからの読取を考慮する。
+- Hosted APIは認証済み主体とrecordのuser ownershipをqueryごとに検証し、tokenを失効可能にする。
+- browserへDB tokenや管理credentialを配布せず、認証・認可を行うbackendを介する。
+- pagination、request / response size、rate limit、timeout、同時実行数を制限する。
+- source、履歴、tokenをaccess log、error log、analyticsへ記録しない。
+- API version、deprecation、scope変更を、既存clientへ予告なく破壊的に適用しない。
+
 ### 6.9. `test`による任意コード実行とresource制限
 
 `aloom test`はユーザーが指定したcodeを意図的に実行する機能である。これはcommand injectionとは別の、製品仕様上許可されたcode executionである。
@@ -667,6 +682,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 | `diff` | DB、2つのtemp file、Diff Viewer Adapter | `show`と同じ要件、各pathの独立検証、unified diff fallback |
 | `sync` | local DB、token、Turso | keyring、最小権限、Schema検証、保存状態の分離表示 |
 | 将来のWeb UI | DB、browser | 認証・認可、context別escape、CSP、token非配布 |
+| 将来の学習データAPI | DB / Cloud、外部client | read-only、ownership、最小scope、versioning、pagination、rate limit、secret・path非返却 |
 
 ---
 
@@ -707,6 +723,8 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - 保存型XSS対策、CSP、security header
 - request size、rate limit、session管理
 - 複数ユーザーを前提とした監査ログ
+- 学習集計とsource本文のscope分離、API versioning、deprecation、client token失効
+- local APIを採用する場合のloopback制限、DNS rebinding・CSRF対策
 
 ---
 
