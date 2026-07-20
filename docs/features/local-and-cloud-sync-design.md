@@ -274,17 +274,19 @@ class SyncCoordinator(Protocol):
 | 編集中のコード | 各端末のワークスペース | workspace file | 同じ。原則としてCloud同期しない |
 | 提出履歴・source snapshot | AlgoLoomがUUID・code hash付きで保存する不変レコード | ローカルユーザーDBへ保存 | 先にローカルDBへ保存し、同じレコードをCloudへ複製 |
 | SolveAttempt・FocusInterval・learning milestone | 利用者の明示操作とAlgoLoomが観測し、安定IDと状態遷移を持つ学習記録 | ローカルユーザーDBへ保存 | 同期を有効化した場合だけ、同じ安定IDと関連をCloudへ複製 |
+| user sourceの問題タグ・SolveAttempt解法タグ | 利用者の明示操作で作成・変更する学習記録 | scope、stable tag ID、sourceをローカルユーザーDBへ保存 | タグ機能採用後、同じassignmentをCloudへ複製。外部tag cacheと混同しない |
 | AIレビュー・ユーザーメモ | AlgoLoomのrevision record | ローカルDBへ追記 | 同じrevisionをCloudへ複製。上書きしない |
 | AtCoder提出ID・判定 | AtCoder | 取得値を保存 | 同じ。AlgoLoomは権威を置き換えない |
 | AtCoderの解説・他ユーザーの提出code | AtCoder公式サイトと各権利者 | 公式URLをbrowserで開くだけで本文を保存しない | Cloud同期対象外。本文・author・submission IDを取り込まない |
 | 問題カタログ・補助metadata | AtCoder Problems等の取得元 | 再取得可能なローカルcache | 同じ。Cloud同期対象外 |
+| 外部tag Providerの問題タグ | 各Provider | 出典・revision付きの再取得可能なローカルcache | Cloud同期対象外。別端末でProviderから再構築する |
 | 同期状態・再送状態 | その端末 | `DISABLED`またはローカル状態 | sidecarまたはSDK統計。共有業務データにしない |
 | credential | OS keyring等のcredential owner | DB外に保持 | Cloud同期対象外 |
 | バックアップ | 正本ではない | 独立した世代別コピー | 同じ。同期とは別に保持 |
 
 提出履歴では、ローカルDBとCloudは同じUUID、AtCoder submission ID、code hashを持つ1つの論理レコードの保存場所である。ローカルcommitは「この端末で回復・参照可能」、push成功は「共有済みで別端末から取得可能」という保証を追加する。Cloudとローカルが同じ行を独立に更新して真偽を競う設計にはしない。
 
-共有する問題、SolveAttempt、FocusInterval、learning milestone、snapshot、submission、review等の業務recordは、workspaceやcompilerの絶対pathを識別子にしない。端末上のworkspaceを見つけるために絶対pathを保存する場合は、同期対象外のlocal sidecarまたはlocal indexへ置き、別端末では共有metadataと利用者が選んだlocal rootから再構築する。
+共有する問題、SolveAttempt、FocusInterval、learning milestone、snapshot、submission、user tag assignment、review等の業務recordは、workspaceやcompilerの絶対pathを識別子にしない。端末上のworkspaceを見つけるために絶対pathを保存する場合は、同期対象外のlocal sidecarまたはlocal indexへ置き、別端末では共有metadataと利用者が選んだlocal rootから再構築する。
 
 problem checkoutの現在path、解説本文、画像、PDF、動画、他ユーザーのcode・author・submission ID・個別提出URL、browser Cookie・profile・historyは同期対象にしない。将来、解説等を開いたreference eventをopt-inで記録する場合も、本文を含めず、browser起動と実際の閲覧・理解を混同しない最小recordとして別途採否を決める。
 
@@ -495,7 +497,9 @@ flowchart TD
 | データ | 新しいWindows端末での扱い |
 |---|---|
 | problem、SolveAttempt、FocusInterval、learning milestone、checkpoint、submission、verdict | 同じUUIDと業務IDでbootstrapする |
+| user sourceの問題タグ・SolveAttempt解法タグ | stable tag ID、scope、sourceを保持してbootstrapする |
 | source snapshot | 正確なbytesとcode hashを保持し、`show`、`diff`、exportから参照できる |
+| 外部tag Providerのcache | 同期せず、必要な端末で出典から再取得する |
 | macOSのworkspace絶対path | 取得・再利用しない |
 | 未提出・未checkpointのworkspace file | 同期されない |
 | build artifact、cache | 同期せず、Windows上で再生成する |
@@ -712,6 +716,7 @@ Embedded Replicaを暫定採用する場合も、ユーザーへ「Cloud版のAl
 - compiler/runtime executableとbuild artifactのpath
 - コンパイラやエディタの個人設定
 - Turso Platform APIトークン
+- 問題カタログと外部tag Providerの再取得可能なcache
 
 AlgoLoomが利用する既存Editor / Viewerの選択とprocess-localな呼出設定は端末固有設定として扱い、共有DBへ同期しない。これは表示先を参照・起動するためのAlgoLoom側の設定であり、Editor / Viewer本体、plugin、ユーザー設定を変更するものではない。`show`と`diff`が取得する論理データは全端末で共通にするが、その表示先は各端末のユーザーが自由に選択できる。共有テーブルへworkspace・source・compiler・エディタ固有の絶対path、URI、plugin設定等を保存せず、特定OSやEditorの有無によって履歴参照の可否を変えない。
 
@@ -842,6 +847,7 @@ flowchart LR
 - [ ] Cloud障害時もローカルへ保存し、履歴を参照できる。
 - [ ] 新端末へbootstrapできる。
 - [ ] SolveAttempt、FocusInterval、learning milestoneのID、順序、関連、durationがbootstrap前後で一致する。
+- [ ] タグ機能を採用した場合、user tag assignmentのstable ID、scope、sourceがbootstrap前後で一致し、外部tag cacheは同期されない。
 - [ ] macOS、Linux、Windowsの異なるOS間でbootstrapし、絶対pathなしで`log`、`show`、`diff`、exportを実行できる。
 - [ ] 元端末のworkspace、compiler、Editorの絶対pathが共有DBへ含まれない。
 - [ ] source bytesとcode hashが異なるOSへのbootstrap前後で一致する。

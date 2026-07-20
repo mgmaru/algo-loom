@@ -77,6 +77,7 @@ flowchart LR
 - AtCoder Problemsが停止・遅延しても、既知の問題やAtCoder公式URLから開始できるようにする。
 - 問題カタログとユーザーの提出履歴を混同しない。
 - AtCoderとAtCoder Problemsへのアクセスを必要最小限にする。
+- 製品Phase 2では、問題一般の分類と利用者が各SolveAttemptで使った解法を、出典付きの複数タグとして振り返れるようにする。
 
 ### 1.2. 初期版の対象外
 
@@ -86,6 +87,7 @@ flowchart LR
 - AtCoder ProblemsのユーザーアカウントやGitHub OAuthトークンを管理すること
 - CLIのローカル履歴だけでAtCoderアカウント全体のAC状況を断定すること
 - 開催中問題の安全判定を、AtCoder Problemsへの掲載有無だけで行うこと
+- タグから利用者の苦手分野や能力を自動で断定し、単一scoreへ変換すること
 
 ---
 
@@ -101,6 +103,9 @@ flowchart LR
 | コンテストID | AtCoder上でコンテストを識別する文字列。例: `abc300` |
 | 問題カタログ | 問題ID、タイトル、Difficulty等を検索するためのローカルデータ |
 | 補助メタデータ | Difficulty、solver count、推定値等、問題を選びやすくする情報 |
+| 問題タグ | 問題一般に関連するalgorithm、data structure、technique等を表す複数の分類。特定の解法だけが必須だと断定する意味ではない |
+| SolveAttempt解法タグ | 利用者があるSolveAttemptで実際に使ったalgorithm、data structure、technique等の記録 |
+| tag source | タグを付けた主体または取得元。`user`、`external_curated`、将来の`ai_suggested`等を区別する |
 | ユーザーデータ | ユーザーが開始した問題、提出、コード、判定、レビュー等 |
 | Difficulty | AtCoder Problemsが推定する問題難易度。すべての問題に存在するとは限らない |
 | local status | AlgoLoomが保存した履歴だけから判断した挑戦・AC状態 |
@@ -150,6 +155,8 @@ AtCoder Problemsの公開資料には、次のJSONリソースが掲載されて
 | `problem-models.json` | Difficulty、実験的推定かどうか等 | 難易度検索 |
 | `merged-problems.json` | 得点、solver count等を含む詳細情報 | 将来の高度な絞り込み |
 | `contest-problem.json` | コンテストと問題の対応 | 再利用問題等の補助確認 |
+
+これらの基本リソースには、AlgoLoomが正本として利用できるalgorithm tagは含まれない。外部のtag datasetを将来追加する場合も、AtCoder ProblemsのDifficulty等とは別Provider・別出典として扱い、利用者が入力したタグを上書きしない。
 
 Phase 2のCLIカタログでは、次の3つを基本とする。
 
@@ -254,7 +261,9 @@ flowchart TD
     AP[AtCoder Problems] -->|補助情報| D[Difficulty・統計・検索]
     AP -->|補助情報| L[問題カタログ]
 
-    T[Turso / ユーザーDB] -->|ユーザーの正本| U[開始・提出・コード・レビュー]
+    ET[外部tag Provider] -->|任意・出典付き| X[外部問題タグcache]
+
+    T[Turso / ユーザーDB] -->|ユーザーの正本| U[開始・提出・コード・タグ・レビュー]
 
     C[端末ローカルキャッシュ] -->|再取得可能| L
 ```
@@ -266,6 +275,9 @@ flowchart TD
 | コンテスト開始・終了 | AtCoder公式 | AI安全判定では公式情報を優先 |
 | Difficulty | AtCoder Problems | 欠損・更新を許容する補助値 |
 | solver count等 | AtCoder Problems | 検索用の補助値 |
+| 利用者が付けた問題タグ・解法タグ | ユーザーDB | user sourceを持つ学習記録。同期・export対象 |
+| 外部問題タグ | 各tag Provider | Provider名・version・取得時刻を持つ再取得可能な補助情報 |
+| AIによるタグ候補 | AI suggestion record | 利用者が承認するまでuser tagへ昇格させない |
 | ユーザーの提出・コード | ユーザーDB | 共有・同期対象 |
 | 全問題カタログの元データ | AtCoder Problems | 端末ごとにキャッシュし、公式サイトで存在を確認 |
 
@@ -704,6 +716,56 @@ abc300_a       ── get ──>    atcoder:abc300_a
 
 別DB間の外部キーは作らない。ユーザーDBは、カタログを削除しても独立して履歴を表示できるようにする。
 
+### 10.4. 問題タグとSolveAttempt解法タグ
+
+タグは単一の`category`列やcomma区切り文字列へ保存せず、複数タグを関連付けられる論理モデルにする。一つの問題に複数の有効な解法があり、同じ利用者が解き直しで異なる解法を使う可能性があるため、問題とSolveAttemptのタグを分離する。
+
+```mermaid
+flowchart LR
+    P[Problem] --> PT[ProblemTag assignment]
+    A[SolveAttempt] --> AT[AttemptTag assignment]
+    T[Tag definition] --> PT
+    T --> AT
+
+    U[User input] -->|source=user| PT
+    U -->|source=user| AT
+    E[External curated Provider] -->|source付き・再取得可能| PT
+    AI[AI suggestion] -. 利用者が承認 .-> PT
+    AI -. 利用者が承認 .-> AT
+```
+
+| 論理entity | 主なfield | 保存先・責任 |
+|---|---|---|
+| Tag definition | stable tag ID、canonical name、display name、任意のalias | 組み込み語彙またはユーザーDB。表示名の変更で関連を失わない |
+| ProblemTag assignment | stable assignment ID、canonical problem ID、tag ID、source、created at、任意のProvider revision | user sourceはユーザーDB、外部sourceは再取得可能なcatalog cache |
+| AttemptTag assignment | stable assignment ID、SolveAttempt ID、tag ID、source、created at | ユーザーDB。今回実際に使った解法として同期・exportする |
+| AI tag suggestion | 対象ID、候補tag、根拠の最小metadata、作成時刻、承認状態 | AI機能を採用した後の独立record。未承認候補をuser assignmentにしない |
+
+タグ機能を正式採用したversionのexportには、user sourceのTag definition、ProblemTag assignment、AttemptTag assignmentをstable IDとscope付きで含める。外部tag Providerのcacheは再取得可能な補助情報として既定のexport・Cloud同期へ含めず、AI suggestionはAI機能側の送信・保存同意とexport契約に従う。
+
+#### 語彙と自由入力
+
+- 最初は二分探索、全探索、動的計画法、グラフ、累積和等の小さなcontrolled vocabularyを提供する。
+- 利用者はcustom tagを追加できる。custom tagはユーザーデータとして扱い、全利用者共通の分類へ自動昇格させない。
+- `binary-search`、`二分探索`、`bisect`等の表記揺れは、表示名の上書きではなくaliasまたは明示的なmergeで扱う。
+- 大分類と小分類の階層は、検索上の実需を確認してから追加する。初期実装で巨大なtaxonomyを必須にしない。
+- タグの有無だけから「このalgorithmが苦手」「この問題にはこの解法が必須」と断定しない。
+- user tagのremoveは同期や復元で再出現しない論理的な変更として扱う。Cloud同期採用時のrevision、tombstone、同時add / remove競合は、物理DELETEを実装する前に同期契約で確定する。
+
+#### spoiler境界
+
+問題タグ、とくにalgorithmやtechniqueは解法のhintになり得る。外部由来のタグは、current SolveAttemptが未ACの場合に既定表示しない。
+
+| 状況 | 既定の表示 |
+|---|---|
+| 利用者が自分で付けたタグ | 表示する |
+| AC済み問題の外部タグ | 出典付きで表示できる |
+| 未AC問題を通常導線で開く | 外部タグを隠す。自動表示や自動通知をしない |
+| `二分探索を練習する`等、タグを明示して問題選択 | 選んだ練習軸だけを表示できる。問題に付いた全解法タグを自動展開しない |
+| AIが推定したタグ | suggestionと明示し、利用者の承認前は確定タグとして表示・集計しない |
+
+タグを開催中判定、AI review安全判定、問題の存在確認の正本にしない。外部tag Providerが停止、遅延、誤分類しても、`get`、`test`、提出、既存のユーザータグを利用できるようにする。
+
 ---
 
 ## 11. コマンド設計
@@ -729,6 +791,9 @@ abc300_a       ── get ──>    atcoder:abc300_a
 | `aloom catalog clear` | ユーザー履歴を残してカタログだけ削除する |
 | `aloom catalog doctor` | スキーマ、件数、ETag、SQLite整合性を診断する |
 | `aloom open submissions` | current problemのAC提出一覧をAtCoder公式サイト上でbrowser表示する近接拡張。外部codeは取得しない。概念名 |
+| `aloom tag add TAG` | current problemまたは明示したSolveAttemptへuser tagを追加する。対象を曖昧にしない概念名 |
+| `aloom tag remove TAG` | user assignmentだけを削除する。外部Providerのcacheや別attemptのタグを暗黙に変更しない概念名 |
+| `aloom tag list` | 問題タグとSolveAttempt解法タグをscope・source付きで表示する。spoiler境界に従う概念名 |
 
 ### Phase 3
 
@@ -738,6 +803,7 @@ abc300_a       ── get ──>    atcoder:abc300_a
 | `aloom pick --difficulty MIN..MAX` | Difficultyで絞り込む |
 | `aloom pick --contest abc` | コンテスト種別で絞り込む |
 | `aloom pick --status local-unsolved` | AlgoLoomの履歴上で未ACの問題に絞る |
+| `aloom pick --tag binary-search` | 明示した練習軸で問題候補を絞る。選択tag以外のspoiler-sensitiveな外部タグは自動展開しない |
 
 ### `catalog status`表示例
 
@@ -859,6 +925,18 @@ flowchart LR
 - [ ] 開催中問題は別の安全判定へ渡す。
 - [ ] `contest_mode`の挙動が問題選択経路によって変わらない。
 
+### 15.5. タグ
+
+- [ ] 一つの問題とSolveAttemptへ複数タグを付けられる。
+- [ ] 問題タグとSolveAttempt解法タグを混同しない。
+- [ ] user、external curated、AI suggestionのsourceを保持する。
+- [ ] user tagの変更が外部tag cacheを上書きせず、外部更新がuser tagを削除しない。
+- [ ] custom tagとaliasを扱ってもstable tag IDとの関連を失わない。
+- [ ] 未AC問題の外部解法タグを通常導線で自動表示しない。
+- [ ] `pick --tag`では明示した練習軸以外の解法タグを自動展開しない。
+- [ ] tag Provider障害時もuser tagとCore導線を利用できる。
+- [ ] tagだけから苦手分野、能力、必須解法を断定しない。
+
 ---
 
 ## 16. 段階的な実装
@@ -879,6 +957,8 @@ flowchart LR
 - 問題ごとの行ハッシュとトランザクションによる差分更新を実装する。
 - 全問題カタログを端末ローカルに分離する。
 - Difficulty欠損を許容する。
+- user sourceの問題タグ・SolveAttempt解法タグとcustom tagをユーザーDBへ保存する。
+- tagのscopeとsourceを表示する非interactiveな追加・削除・一覧導線を先に成立させる。
 
 ### Phase 3: `pick`とfzf
 
@@ -886,6 +966,7 @@ flowchart LR
 - fzfまたはRichの選択UIを追加する。
 - 選択後に`get`共通処理を呼ぶ。
 - 復習候補や直近のWA問題等、AlgoLoom独自フィルターを追加する。
+- user tagと、利用者が明示的に表示した外部tagによる絞り込みを追加する。
 
 ### Phase 4: 任意のremote status
 
@@ -910,6 +991,7 @@ flowchart LR
 - [ ] 問題IDとAtCoder公式URLの両方を受け付ける。
 - [ ] `pick`が独自の開始処理を持たず、`get`を再利用する。
 - [ ] local statusをAtCoder全体の状態と誤認させない。
+- [ ] 未AC問題の外部解法タグを、通常の問題開始・履歴表示で露出しない。
 
 ### 更新
 

@@ -110,6 +110,7 @@ flowchart LR
 | BuildPlan | shell文字列ではなくargv、working directory、入力、生成物、timeout区分等で表すbuild計画 |
 | RunPlan | argv、working directory、stdin、実行対象、resource上限区分等で表す実行計画 |
 | toolchain observation | compiler/runtimeの種類、version、診断結果等、その端末で観測した実行環境情報 |
+| process measurement | process duration、peak memory等、特定のHostPlatformと実行環境で得たnullableな観測値 |
 | judge language resolution | canonical language IDを、対象contestで利用可能なjudge固有の言語ID、処理系、versionへ提出時に解決した結果 |
 | logical source name | snapshotやexportでsourceを説明するための、絶対pathではない可搬な名称 |
 | problem checkout | ある問題のsourceを編集する一つの物理directory。同じ正規問題IDに複数存在でき、移動・rename可能 |
@@ -329,6 +330,7 @@ flowchart LR
 | terminal | POSIX terminal | PowerShell、cmd、Windows Terminal等 | `TerminalCapabilities` |
 | symlink | 一般的に利用可能 | 作成条件や権限が異なる | path/context契約 |
 | resource制限 | POSIX APIを利用できる場合がある | Job Object等、別方式が必要 | `ProcessSupervisor` |
+| process計測 | duration、resource usage API等を利用できるが、OS間で意味が完全には一致しない | duration、Job Object / process API等の個別検証が必要 | `ProcessSupervisor`、共通`ProcessMeasurement` |
 
 ### 6.2. 正規化するprocess結果
 
@@ -345,6 +347,17 @@ flowchart LR
 - process state unknown
 
 signal番号等のOS固有詳細は診断情報へ残せるが、Domainの状態遷移や通常表示の主分類にはしない。
+
+process結果には、基本分類とは独立したnullableな`ProcessMeasurement`を関連付けられる。MVPではcompileとrunのdurationを共通観測とし、local peak memoryはHostPlatformごとの検証後に追加する。
+
+| field | 意味 | 契約 |
+|---|---|---|
+| `duration` | 対象processの経過時間 | 可能な限りmonotonic clockで計測し、compileとrunを分離する |
+| `peak_memory` | 対象範囲の最大memory観測 | 値、単位、`peak_rss`等のkind、子processを含むかを伴い、未対応はnullableにする |
+| `measurement_method` | OS APIやsupervisor方式を表す安定した識別子 | raw command文字列や絶対pathを可搬Schemaにしない |
+| `environment` | HostPlatformとtoolchain observationへの参照 | judge環境の値と同一条件だとみなさない |
+
+計測値の欠損または取得失敗はprocess分類を`success`から失敗へ変更しない。一方、timeout、強制memory上限超過、異常終了等は計測欠損ではなく、従来どおりprocess結果の主分類として返す。
 
 ### 6.3. native Windowsの検証
 
@@ -625,6 +638,9 @@ materialize時は次を守る。
 ### HostPlatform
 
 - [ ] macOS、Linux、Windowsが同じprocess結果分類を返す。
+- [ ] compileとrunのdurationを分離し、可能な限りmonotonic clockで取得する。
+- [ ] nullableなprocess measurementの欠損がprocessの成功・失敗分類を変更しない。
+- [ ] peak memoryを追加するOSでは、値、単位、kind、子process範囲、measurement methodを検証し、未対応環境を`0`として返さない。
 - [ ] timeoutと出力量超過で子孫processが残らない。
 - [ ] path、temp、atomic writeのOS差異がAdapter外へ漏れていない。
 - [ ] WSLを未検証のまま対応済みと表示しない。

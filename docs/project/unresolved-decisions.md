@@ -34,7 +34,7 @@
 | 状態 | 項目 |
 |---|---|
 | 決定済み | 1.3、2.4、4.4 |
-| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、1.9、1.10、2.2、2.3、3.2、3.4、4.2、5.3 |
+| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、1.9、1.10、2.2、2.3、3.2、3.4、3.5、4.2、5.3 |
 | 条件付き決定 | 3.1、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
 | 未決 | 2.1、3.3、6.1 |
 | 外部確認待ち | 5.2、8.1 |
@@ -107,11 +107,11 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** MVPの`show`はterminal上のplain text、`diff`はunified diffをfallbackとする。成功、部分成功、回復可能errorの情報順序は「主結果、追加失敗、影響を受けないもの、次の行動」とし、詳細情報は既定で大量表示せず確認方法を示す。
+**決定済みの内容:** MVPの`show`はterminal上のplain text、`diff`はunified diffをfallbackとする。成功、部分成功、回復可能errorの情報順序は「主結果、追加失敗、影響を受けないもの、次の行動」とし、詳細情報は既定で大量表示せず確認方法を示す。Editor save、明示checkpoint、提出前の必須submission snapshot、FocusIntervalを別の保存境界として扱い、AlgoLoomはEditorの未保存bufferを取得・保存しない。MVP後の自動checkpointはopt-inかつevent駆動を優先し、失敗しても成功済みのpause、test、milestone、提出を変更しない。
 
-**残る未決:** 同一sourceへの重複操作の具体表示、色・spinner・table layout、進捗の見た目、診断command名、Viewer fallbackの表示量。
+**残る未決:** 同一sourceへの重複操作の具体表示、色・spinner・table layout、進捗の見た目、診断command名、Viewer fallbackの表示量。MVP後の自動checkpointを採用するか、採用する場合の対象event、保持期間、容量上限、重複表示、無効化、export・同期範囲。
 
-**決めること:** 同一sourceへの重複操作の見せ方、terminal表示の色・spinner・table layout、進捗表示、統一診断入口、Viewer fallbackの表示量。
+**決めること:** 同一sourceへの重複操作の見せ方、terminal表示の色・spinner・table layout、進捗表示、統一診断入口、Viewer fallbackの表示量、および利用者検証後の自動checkpoint採否と保持契約。
 
 **原文:** 「同じsourceに対する重複操作をどう見せるかは機能設計で決めるが、無断で別のsourceへ差し替えない。」
 
@@ -165,9 +165,9 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** 時間計測はMVPへ含めるが任意とし、利用者の明示操作でSolveAttemptを開始する。`get`、file保存、最初の`test`から暗黙に開始せず、pauseを除いたFocusIntervalからactive durationを計算する。最初の公開sample通過、初回提出、初ACを別のmilestoneとして記録し、初ACのdurationには判定polling時間を加えない。常駐daemon、Editor plugin、全local test event、自動checkpointはMVPへ含めない。時間を他者rankまたは単一skill scoreへ変換しない。
+**決定済みの内容:** 時間計測はMVPへ含めるが任意とし、利用者の明示操作でSolveAttemptを開始する。`get`、file保存、最初の`test`から暗黙に開始せず、pauseを除いたFocusIntervalからactive durationを計算する。最初の公開sample通過、初回提出、初ACを別のmilestoneとして記録し、初ACのdurationには判定polling時間を加えない。`status`相当を現在状態とactive durationの正規の確認経路とし、通常画面で秒単位timerを常時再描画しない。`test`やcheckpoint後の補助表示は計測中だけ短く表示できる。常駐daemon、Editor plugin、全local test event、自動checkpointはMVPへ含めない。時間を他者rankまたは単一skill scoreへ変換しない。
 
-**残る未決:** start / pause / resume / status / finish / abandonの最終command名と引数、`get --start`相当の明示optionを提供するか、表示精度と丸め、activeな別試行がある場合の具体的な対話、時計の後退・飛躍・未終了intervalに対する確認・訂正UX、AC後に追加作業を続ける場合の既定導線。
+**残る未決:** start / pause / resume / status / finish / abandonの最終command名と引数、`get --start`相当の明示optionを提供するか、表示精度と丸め、補助表示を既定にする操作、activeな別試行がある場合の具体的な対話、時計の後退・飛躍・未終了intervalに対する確認・訂正UX、AC後に追加作業を続ける場合の既定導線、MVP後に`status --watch`やmachine-readable連携を採用するか。
 
 **決めること:** 明示性を保ちながら記録忘れを増やさない最終CLI、時計異常時に履歴を黙って書き換えない回復方法、通常表示で時間をどの粒度と強さで示すか。
 
@@ -229,11 +229,11 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** compileとrunのtimeoutを分け、stdout/stderrに上限を設け、timeout時は各`HostPlatform`がprocess treeを終了する。DB lockは有限時間とし、外部通信ではconnection・request・polling全体の上限を分ける。foregroundとbackgroundはasync APIの採否ではなく利用者の主目的と制御返却点で分け、中断して破棄できない処理は必要な状態を先に耐久保存する。初期段階ではbackground化のための常駐daemonを導入しない。初期性能目標として`log` p95 100ms、`show` p95 150ms、`diff` p95 250ms等の計測仮説が定義されている。
+**決定済みの内容:** compileとrunのtimeoutを分け、stdout/stderrに上限を設け、timeout時は各`HostPlatform`がprocess treeを終了する。MVPの`test`はcompile時間とsampleごとのlocal run時間を可能な限りmonotonic clockで計測して表示するが、全local test eventは保存しない。AtCoderが返すjudge execution time / memoryはnullableなremote観測として保存し、local値と同一条件のbenchmarkにしない。local peak memoryはOSごとの意味と取得範囲を検証してからMVP後に段階導入する。DB lockは有限時間とし、外部通信ではconnection・request・polling全体の上限を分ける。foregroundとbackgroundはasync APIの採否ではなく利用者の主目的と制御返却点で分け、中断して破棄できない処理は必要な状態を先に耐久保存する。初期段階ではbackground化のための常駐daemonを導入しない。初期性能目標として`log` p95 100ms、`show` p95 150ms、`diff` p95 250ms等の計測仮説が定義されている。
 
-**残る未決:** 実測後に固定するtimeout・出力量・保持期間・resource上限・SLO、対応OSごとの強制memory/process制限、compiler/runtime version matrix。
+**残る未決:** 実測後に固定するtimeout・出力量・保持期間・resource上限・SLO、local durationの表示精度と丸め、対応OSごとのpeak memory取得方法・子process範囲・強制memory/process制限、compiler/runtime version matrix。
 
-**決めること:** timeout、出力量、保持期間、compile/runのresource上限、性能SLOを固定する値と計測対象環境。
+**決めること:** timeout、出力量、保持期間、compile/runのresource上限、local計測の表示精度、OS別peak memoryの対応可否、性能SLOを固定する値と計測対象環境。
 
 **原文:** 「timeout、出力量、保持期間等の具体値」「compilerとruntimeの細かなversion matrix」
 
@@ -291,7 +291,7 @@
 
 **残る未決:** 各候補を実際に採用するか、および候補間の優先順位。
 
-**決めること:** WSL、追加言語、project build、Editor / Diff Viewer、catalog、opt-in自動checkpoint、既存履歴import、自動backup/restore、machine-readable出力を、Core安定後にどの順で採用するか。
+**決めること:** WSL、追加言語、project build、Editor / Diff Viewer、catalog、問題・解法タグ、local peak memory、opt-in自動checkpoint、継続timer表示、既存履歴import、自動backup/restore、machine-readable出力を、Core安定後にどの順で採用するか。
 
 **原文:** 「Phase 2: Core安定化・近接拡張」
 
@@ -310,6 +310,18 @@
 **原文:** 「fzfがない環境では、次のいずれかへフォールバックする。」
 
 出典: [問題選択・カタログ設計 §7.3](../features/problem-selection-and-catalog.md#73-fzf連携)
+
+### 3.5 問題タグ・SolveAttempt解法タグ
+
+**状態:** 一部決定済み
+
+**決定済みの内容:** タグは製品Phase 2候補とし、単一category列ではなく複数付与できる関係として扱う。問題一般の分類であるProblemTagと、今回実際に使った解法を表すSolveAttempt解法タグを分離する。user、external curated、将来のAI suggestionのsourceを保持し、利用者が入力したタグを外部更新で上書きしない。外部のalgorithm tagは未AC時のspoilerになり得るため通常導線で既定表示せず、明示したタグで分野別練習を行う場合も他の解法タグを自動展開しない。タグを安全判定の正本、苦手分野の断定、単一scoreへ使用しない。
+
+**残る未決:** 初期controlled vocabularyとstable tag ID、custom tag・alias・mergeの具体UX、最終command名、問題とSolveAttemptのscope指定、user tag removeのrevision・tombstone・同時競合、外部tag Providerを採用するか、Provider revisionとcache更新、未ACからACへ変化したときの表示、タグ検索を履歴と`pick`のどちらから先に提供するか。
+
+**決めること:** user tagの最小導線と語彙を利用者検証で確定し、外部タグは精度、出典、継続性、spoiler制御を満たすProviderだけを個別採用する。
+
+出典: [問題選択・カタログ設計 §10.4](../features/problem-selection-and-catalog.md#104-問題タグとsolveattempt解法タグ)、[ロードマップ §3](../product/roadmap.md#3-phase-2-core安定化近接拡張)
 
 ## 4. Cloud同期・データ共有
 

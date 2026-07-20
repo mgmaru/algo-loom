@@ -11,7 +11,7 @@
 | Core | AI review、Cloud同期、外部Viewer等の任意機能に依存しないAlgoLoomの中核機能。 |
 | Judge Adapter | sample取得、提出、判定確認等のjudge固有処理をCoreから分離する接続境界。 |
 | LanguageProfile | 言語ごとの拡張子、template、toolchain診断、安全なBuildPlan / RunPlanを提供する組み込み境界。 |
-| HostPlatform | OS固有のprocess起動・終了、path、terminal、file操作をCoreとlanguage profileから分離する境界。 |
+| HostPlatform | OS固有のprocess起動・終了・計測、path、terminal、file操作をCoreとlanguage profileから分離する境界。 |
 | optional Capability | AI reviewやCloud同期等、Coreの安定した契約を利用して後から追加でき、未導入でもCoreを変化・停止させない機能。 |
 | workspace | 問題directoryを配置し、AlgoLoomが作業対象として認識する通常のdirectory。 |
 | problem metadata | 正規問題ID等、問題directoryの識別に使う宣言的な情報。 |
