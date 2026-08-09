@@ -114,29 +114,31 @@ flowchart LR
 
 ### 2.2. 機能一覧
 
-| ID | 機能 | 利用者の入力・契機 | 主な結果 | 依存 |
+「概要」は各機能の責務を一行で示します。要件と完了条件は「詳細」の節を正とします。
+
+| ID | 機能 | 概要 | 依存 | 詳細 |
 |---|---|---|---|---|
-| `MVP-SYS-01` | 初回起動・環境診断 | 初回起動、明示診断 | Core、DB、選択言語の準備状態と次の行動 | ― |
-| `MVP-CTX-01` | workspace context解決 | current directory、明示source | workspace、問題、sourceの一意なcontext | `MVP-SYS-01` |
-| `MVP-GET-01` | 問題識別・公式確認 | 正規問題IDまたはAtCoder公式URL | 正規化済み問題context | `MVP-SYS-01` |
-| `MVP-GET-02` | sample取得・checkout作成 | 問題context、canonical language ID | metadata、source、公開sampleを持つcheckout | `MVP-GET-01` |
-| `MVP-RDO-01` | freshな解き直し | 問題、言語 | 新しいsibling checkoutとSolveAttempt | `MVP-GET-02`, `MVP-ATT-01` |
-| `MVP-ATT-01` | SolveAttempt状態管理 | start、pause、resume、status、finish、abandon | 状態、FocusInterval、現在状態の表示 | `MVP-CTX-01`, `MVP-DAT-01` |
-| `MVP-ATT-02` | active duration・milestone | attempt操作、sample通過、提出、AC | active durationと3種のmilestone | `MVP-ATT-01`, `MVP-TST-01`, `MVP-SUB-03` |
-| `MVP-TST-01` | build・sample実行・比較 | source、取得済み公開sample | compile、実行、比較、計測の結果 | `MVP-CTX-01`, `MVP-GET-02` |
-| `MVP-CHK-01` | 明示checkpoint | 保存済みsource | 不変source snapshot | `MVP-CTX-01`, `MVP-DAT-01` |
-| `MVP-AUTH-01` | AtCoder認証状態確認 | 明示確認、提出前確認 | account identityまたは所有者を示した認証error | `MVP-SYS-01` |
-| `MVP-SUB-01` | 提出準備 | source、AtCoder session、明示同意 | account確認済みの提出operationとsnapshot | `MVP-CTX-01`, `MVP-DAT-01`, `MVP-AUTH-01` |
-| `MVP-SUB-02` | AtCoder提出 | `PREPARED` operation | submission IDまたは送信状態不明の記録 | `MVP-SUB-01` |
-| `MVP-SUB-03` | 判定確認・再確認 | submission ID | pendingまたは最終verdictの観測 | `MVP-SUB-02` |
-| `MVP-HIS-01` | 履歴一覧 | current contextまたは明示対象 | attempt、checkpoint、提出、判定の一覧 | `MVP-CTX-01`, `MVP-DAT-01` |
-| `MVP-HIS-02` | snapshot表示 | snapshotまたは履歴の選択 | terminal上のplain text | `MVP-HIS-01` |
-| `MVP-HIS-03` | snapshot差分 | 二つのsnapshot | 比較対象を明示したunified diff | `MVP-HIS-01` |
-| `MVP-REF-01` | 公式問題ページ参照 | current problem、明示操作 | default browserへの起動要求 | `MVP-CTX-01` |
-| `MVP-REF-02` | 解説ページ参照 | current problem、明示操作 | spoiler確認後のbrowser起動要求 | `MVP-CTX-01` |
-| `MVP-EXP-01` | 学習履歴export | 保存先、明示操作 | version付きの可搬なexport | `MVP-DAT-01` |
-| `MVP-DAT-01` | ローカル保存・migration | Coreの業務操作、schema更新 | transaction済みSQLiteと復旧可能な退避 | `MVP-SYS-01` |
-| `MVP-UX-01` | 共通出力・待機・回復 | 全commandの結果表示、長時間処理、部分失敗 | 主結果、保持data、未完了処理、次の一手 | 全機能 |
+| `MVP-SYS-01` | 初回起動・環境診断 | 初回起動と明示診断で、Core、DB、選択言語の準備状態を確認し、不足toolの影響範囲と次の行動を示す | ― | [§3.1](#31-初回起動環境診断mvp-sys-01) |
+| `MVP-CTX-01` | workspace context解決 | 各command開始時にfilesystemとmetadataから対象のworkspace、問題、sourceを再解決し、安全に一意なときだけ処理を続ける | `MVP-SYS-01` | [§3.3](#33-workspace-contextmvp-ctx-01) |
+| `MVP-GET-01` | 問題識別・公式確認 | 正規問題IDまたは公式URLを正規化し、AtCoder公式で一件の問題を確認する。対象外は作用前に拒否する | `MVP-SYS-01` | [§4.1](#41-問題取得mvp-get-01-mvp-get-02) |
+| `MVP-GET-02` | sample取得・checkout作成 | 確認済みの問題から、metadata、選択した一言語のtemplate、公開sampleを持つproblem checkoutを一件だけ作る | `MVP-GET-01` | [§4.1](#41-問題取得mvp-get-01-mvp-get-02), [§4.2](#42-問題metadataと公開sample) |
+| `MVP-RDO-01` | freshな解き直し | 既存sourceを残したまま、同じ問題の新しいsibling checkoutと新しいSolveAttemptをfresh templateから作る | `MVP-GET-02`, `MVP-ATT-01` | [§4.3](#43-freshな解き直しmvp-rdo-01) |
+| `MVP-ATT-01` | SolveAttempt状態管理 | 明示操作だけでSolveAttemptをstart、pause、resume、finish、abandonし、状態とFocusIntervalを耐久保存する | `MVP-CTX-01`, `MVP-DAT-01` | [§5.1](#51-solveattempt状態mvp-att-01), [§5.3](#53-現在状態の表示) |
+| `MVP-ATT-02` | active duration・milestone | FocusIntervalからactive durationを算出し、最初の公開sample通過、初回提出、初ACを別のmilestoneとして記録する | `MVP-ATT-01`, `MVP-TST-01`, `MVP-SUB-03` | [§5.2](#52-active-durationとmilestonemvp-att-02) |
+| `MVP-TST-01` | build・sample実行・比較 | 選択言語の`BuildPlan` / `RunPlan`をresource上限付きで実行し、取得済み公開sampleとの一致をlocalで確認する | `MVP-CTX-01`, `MVP-GET-02` | [§6](#6-local-testmvp-tst-01) |
+| `MVP-CHK-01` | 明示checkpoint | 利用者の明示操作で、保存済みsourceを不変snapshotとして履歴へ残す。外部通信は行わない | `MVP-CTX-01`, `MVP-DAT-01` | [§7.1](#71-保存表示対象) |
+| `MVP-AUTH-01` | AtCoder認証状態確認 | 提出より前に現在のsessionのaccountを確認し、失敗原因と次の行動を示す。localのCore操作は止めない | `MVP-SYS-01` | [§8.1](#81-atcoder認証状態確認mvp-auth-01) |
+| `MVP-SUB-01` | 提出準備 | 提出対象と外部作用を利用者へ確認し、送信するsource snapshotと提出operationを送信前に耐久保存する | `MVP-CTX-01`, `MVP-DAT-01`, `MVP-AUTH-01` | [§8.2](#82-提出前確認mvp-sub-01) |
+| `MVP-SUB-02` | AtCoder提出 | `PREPARED`なoperationを一件だけ送信し、submission IDまたは送信状態不明を記録する。無条件の再送はしない | `MVP-SUB-01` | [§8.3](#83-提出状態mvp-sub-02) |
+| `MVP-SUB-03` | 判定確認・再確認 | submission IDを基準に判定をpollingし、取得時刻付きの観測として追記する。中断後も同じ提出を再確認できる | `MVP-SUB-02` | [§8.4](#84-判定観測mvp-sub-03) |
+| `MVP-HIS-01` | 履歴一覧 | local DBだけからattempt、時間、milestone、checkpoint、提出、判定を取得し、状態を混同せず一覧する | `MVP-CTX-01`, `MVP-DAT-01` | [§7.1](#71-保存表示対象) |
+| `MVP-HIS-02` | snapshot表示 | 利用者が選んだsnapshotを、read-onlyのplain textとしてterminalへ表示する | `MVP-HIS-01` | [§7.1](#71-保存表示対象) |
+| `MVP-HIS-03` | snapshot差分 | 利用者が選んだ二つのsnapshotをunified diffで比較する。暗黙の最良版を作らない | `MVP-HIS-01` | [§7.1](#71-保存表示対象) |
+| `MVP-REF-01` | 公式問題ページ参照 | 明示操作または`get`の補助動作として、公式問題ページのURLを構成しdefault browserへ起動要求する | `MVP-CTX-01` | [§9](#9-外部学習資料mvp-ref-01-mvp-ref-02) |
+| `MVP-REF-02` | 解説ページ参照 | contest終了とspoilerの確認を経て、AtCoderの問題別解説ページをdefault browserで開く。本文は取得しない | `MVP-CTX-01` | [§9](#9-外部学習資料mvp-ref-01-mvp-ref-02) |
+| `MVP-EXP-01` | 学習履歴export | 明示操作で、学習履歴とsource snapshotを、credentialを含まないversion付き形式へ持ち出す | `MVP-DAT-01` | [§10.3](#103-exportmvp-exp-01) |
+| `MVP-DAT-01` | ローカル保存・migration | Coreの業務操作をtransactionでlocal SQLiteへ保存し、schema version管理、退避付きmigration、障害分類を担う | `MVP-SYS-01` | [§10.1](#101-sqliteとmigrationmvp-dat-01), [§10.2](#102-同時実行と保守処理) |
+| `MVP-UX-01` | 共通出力・待機・回復 | 全commandの出力順序、error分類、進捗と中止、統一診断入口、非対話実行の共通契約を提供する | 全機能 | [§11](#11-共通出力待機回復mvp-ux-01) |
 
 ### 2.3. 外部作用の有無
 
