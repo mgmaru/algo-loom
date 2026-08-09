@@ -31,7 +31,7 @@ derived_from:
 | 機能横断の品質要件 | タイムアウト、出力量、サイズ、保持期間の具体値 |
 | 実装順序と受け入れシナリオ | メタデータファイルとエクスポートファイルの最終形式 |
 
-本書は単独で読めるように書きます。各節の先頭にある「背景」は、その要件がなぜそうなったかを確認するための参照先であり、機能を理解するために開く必要はありません。
+本書は単独で読めるように書きます。`docs/`の設計文書への参照は[§18](#18-背景と正本の対応)へ集約してあり、機能を理解するために開く必要はありません。
 
 - 共通の不変条件は[Core開発契約](core-contracts.md)、MVPの境界は[MVP実装範囲](scope.md)を優先します。
 - 本書と`docs/`の設計文書が矛盾する場合は、[正本と優先順位](README.md#3-正本と優先順位)に従い、`docs/`を優先して不整合を修正します。
@@ -67,7 +67,7 @@ MVPに含めない主な能力を次に示します。Coreへ設定項目、空�
 
 ### 1.3. 用語
 
-本書に出てくる語をすべて定義します。定義の正本は[Core契約 §1](../docs/architecture/core-contracts.md#1-用語)と[アーキテクチャ概要 §1](../docs/architecture/overview.md#1-用語)です。
+本書に出てくる語をすべて定義します。定義の正本は[§18](#18-背景と正本の対応)を参照します。
 
 #### 製品と範囲
 
@@ -174,7 +174,7 @@ MVPに含めない主な能力を次に示します。Coreへ設定項目、空�
 - `get`、`test`、`submit`等の操作名は責任を示す概念名であり、最終的なサブコマンド名を確定しません。
 - 「〜しない」と書いた項目は禁止事項であり、実装判断で緩和できません。
 - 各節の先頭にある「正本」は、要件の背景と判断理由を確認する`docs/`側の参照先です。
-- 日本語と英語の使い分けは[ドキュメント表記規則](../docs/project/writing-conventions.md)に従います。バッククォートで囲んだ語はコード上の名前です。
+- 日本語と英語の使い分けは[§18](#18-背景と正本の対応)の表記規則に従います。バッククォートで囲んだ語はコード上の名前です。
 
 ## 2. MVPの機能構成
 
@@ -249,8 +249,6 @@ flowchart LR
 
 ### 3.1. 初回起動・環境診断（`F-BASE-01`）
 
-> 背景: [ストレスフリーUX設計 §3.1](../docs/quality/stress-free-ux-design.md#31-インストール前の選択と前提環境)、[Core契約 §2.4](../docs/architecture/core-contracts.md#24-設定と実行commandの信頼境界)、[配布方針ガイド §9.1](../docs/operations/algoloom-distribution.md#91-第1段階-github--pypi)
-
 | # | 要件 | 完了条件 |
 |---|---|---|
 | R1 | 設定ファイルの手編集を要求しない | インストール後、推奨導線だけで最初のローカルテストへ進める |
@@ -269,8 +267,6 @@ flowchart LR
 - 外部ツールのインストール、更新、設定ファイルの編集、`PATH`の変更を通常操作で行いません。
 
 ### 3.2. 保存領域と作業領域の構成
-
-> 背景: [Core契約 §2.4](../docs/architecture/core-contracts.md#24-設定と実行commandの信頼境界)、[アーキテクチャ概要 §4](../docs/architecture/overview.md#4-ディレクトリ構成ハイブリッド型)
 
 | 領域 | 内容 | 通常コマンドで許可すること |
 |---|---|---|
@@ -307,8 +303,6 @@ algoloom_workspace/
 
 ### 3.3. 作業領域コンテキスト（`F-BASE-02`）
 
-> 背景: [Core契約 §2.3](../docs/architecture/core-contracts.md#23-workspaceとcontext)、[ストレスフリーUX設計 §4.1](../docs/quality/stress-free-ux-design.md#41-現在地と対象fileの曖昧さ)
-
 | 状況 | 動作 |
 |---|---|
 | 現在ディレクトリから一意に解決できる | 認識した作業領域、問題、ソースコードを表示して使用する |
@@ -326,8 +320,6 @@ algoloom_workspace/
 ## 4. 問題開始と解き直し
 
 ### 4.1. 問題取得（`F-PROBLEM-01`, `F-PROBLEM-02`）
-
-> 背景: [Core契約 §3.1](../docs/architecture/core-contracts.md#31-取得対象)、[同 §3.2](../docs/architecture/core-contracts.md#32-冪等性と部分失敗)、[問題選択・カタログ設計 §6.3](../docs/features/problem-selection-and-catalog.md#63-getの処理)
 
 ```text
 入力を正規化
@@ -366,8 +358,6 @@ algoloom_workspace/
 
 ### 4.2. 問題メタデータと公開入出力例
 
-> 背景: [Core契約 §2.2](../docs/architecture/core-contracts.md#22-データの権威)、[同 §2.3](../docs/architecture/core-contracts.md#23-workspaceとcontext)
-
 | 対象 | 保持する内容 | 契約 |
 |---|---|---|
 | 問題メタデータ | 正規問題ID、ジャッジ、スキーマバージョン等の宣言的情報 | 問題ディレクトリと一緒に移動できる通常ファイルにする |
@@ -378,8 +368,6 @@ algoloom_workspace/
 - 検証できないローカルの入出力例は、`F-PROBLEM-01`の契約に従って一問分だけ再取得します。
 
 ### 4.3. 白紙からの解き直し（`F-PROBLEM-03`）
-
-> 背景: [解き直しworkflow設計](../docs/features/revisit-workflow.md)、[Core契約 §3.3](../docs/architecture/core-contracts.md#33-解き直し用problem-checkout)
 
 MVPで扱う開始方法を次のとおり区別します。
 
@@ -406,8 +394,6 @@ MVPで扱う開始方法を次のとおり区別します。
 - 他ユーザーのコードや外部解説のサンプルコードを開始元にしません。
 
 ## 5. SolveAttemptと学習時間
-
-> 背景: [Core契約 §5.6](../docs/architecture/core-contracts.md#56-solveattemptと学習時間)、[ストレスフリーUX設計 §4.8](../docs/quality/stress-free-ux-design.md#48-時間計測による焦りと記録忘れ)
 
 ### 5.1. SolveAttempt状態（`F-ATTEMPT-01`）
 
@@ -459,8 +445,6 @@ stateDiagram-v2
 
 ## 6. ローカルテスト（`F-TEST-01`）
 
-> 背景: [Core契約 §4](../docs/architecture/core-contracts.md#4-local-test契約)、[ストレスフリーUX設計 §3.4](../docs/quality/stress-free-ux-design.md#34-日常的なテストとerror表示)、[パフォーマンスと待機体験の設計 §3.4](../docs/quality/performance-and-waiting-design.md#34-compiletestのresource制限)
-
 ### 6.1. 実行段階
 
 | 段階 | 入力 | 結果の分類 |
@@ -509,8 +493,6 @@ stateDiagram-v2
 
 ## 7. スナップショットと振り返り
 
-> 背景: [Core契約 §5.2](../docs/architecture/core-contracts.md#52-snapshotの不変条件)、[同 §5.3](../docs/architecture/core-contracts.md#53-checkpoint)、[同 §5.4](../docs/architecture/core-contracts.md#54-履歴表示と差分)
-
 ### 7.1. 保存・表示対象
 
 | 機能 | 保存・表示対象 | 必須条件 |
@@ -543,8 +525,6 @@ stateDiagram-v2
 
 ### 8.1. AtCoder認証状態確認（`F-SUBMIT-01`）
 
-> 背景: [ストレスフリーUX設計 §3.2](../docs/quality/stress-free-ux-design.md#32-atcoder認証の開始期限切れ障害)、[Core契約 §6.5](../docs/architecture/core-contracts.md#65-atcoderアカウント)
-
 | # | 要件 | 完了条件 |
 |---|---|---|
 | R1 | 初回提出より前に確認できる | 提出を試さずに現在のセッションのアカウントを確認できる |
@@ -559,8 +539,6 @@ stateDiagram-v2
 - 複数のAtCoderアカウントの統合管理はMVP対象外です。
 
 ### 8.2. 提出前確認（`F-SUBMIT-02`）
-
-> 背景: [Core契約 §6.1](../docs/architecture/core-contracts.md#61-原則)、[配布方針ガイド §6.1](../docs/operations/algoloom-distribution.md#61-基本方針)、[セキュリティ設計ガイド §5.1](../docs/quality/security-design.md#51-コードを保存時に改変しない)
 
 | 確認対象 | 拒否条件 |
 |---|---|
@@ -622,8 +600,6 @@ PREPARED
 
 ## 9. 外部学習資料（`F-REFERENCE-01`, `F-REFERENCE-02`）
 
-> 背景: [外部学習資料参照設計](../docs/features/external-learning-resources.md)、[Core契約 §3.4](../docs/architecture/core-contracts.md#34-外部学習資料への参照)
-
 | 機能 | 許可する処理 | 安全条件 | 保存 |
 |---|---|---|---|
 | 公式問題ページ | 公式URLを既定のブラウザへ渡す | 明示操作または`get`の補助動作 | 本文を保存しない |
@@ -661,8 +637,6 @@ PREPARED
 
 ### 10.1. SQLiteとマイグレーション（`F-STORAGE-01`）
 
-> 背景: [Core契約 §7.1](../docs/architecture/core-contracts.md#71-ローカル保存)、[同 §7.2](../docs/architecture/core-contracts.md#72-migration)
-
 | # | 要件 | 完了条件 |
 |---|---|---|
 | R1 | Python標準の`sqlite3`を唯一のMVP保存方式にする | Turso SDKとクラウドのアカウントなしで全Core履歴を扱える |
@@ -675,8 +649,6 @@ PREPARED
 
 ### 10.2. 同時実行と保守処理
 
-> 背景: [パフォーマンスと待機体験の設計 §3.1](../docs/quality/performance-and-waiting-design.md#31-db同時実行wal保守処理)、[未決事項 2.4](../docs/project/unresolved-decisions.md#24-db保守の実行規約)
-
 | 競合し得る操作 | 必要な挙動 |
 |---|---|
 | 複数プロセスの同時保存 | トランザクションを短く保ち、有限時間だけ待機または安全に再試行する |
@@ -685,8 +657,6 @@ PREPARED
 | DBロックの上限超過 | 無期限に待機せず、使用中である事実、保存済みデータへの影響、再試行方法を示す |
 
 ### 10.3. エクスポート（`F-STORAGE-02`）
-
-> 背景: [Core契約 §7.3](../docs/architecture/core-contracts.md#73-export)
 
 | 含める | 含めない |
 |---|---|
@@ -701,8 +671,6 @@ PREPARED
 - 復元、クラウドバックアップ、公開用の成果物生成はMVP対象外です。
 
 ## 11. 共通出力・待機・回復（`F-OUTPUT-01`）
-
-> 背景: [ストレスフリーUX設計 §8](../docs/quality/stress-free-ux-design.md#8-出力とerrorの共通形式)、[Core契約 §2.6](../docs/architecture/core-contracts.md#26-出力とerror)
 
 ### 11.1. 出力順序
 
@@ -745,8 +713,6 @@ PREPARED
 | 任意の依存が未導入 | ヘルプ、`F-HISTORY-02`〜`F-HISTORY-04`が起動と表示に成功する |
 
 ## 12. アーキテクチャへの配置
-
-> 背景: [アーキテクチャ概要 §2.1](../docs/architecture/overview.md#21-依存方向)、[Core契約 §8](../docs/architecture/core-contracts.md#8-内部境界)
 
 | 機能領域 | 境界 | 実装側の責任 |
 |---|---|---|
@@ -805,7 +771,7 @@ flowchart TB
 
 | 順序 | 実装単位 | 完了条件 |
 |---:|---|---|
-| 1 | `JudgeAdapter`の技術検証 | 入出力例の取得、アカウント確認、提出、提出ID、判定確認が成立する |
+| 1 | `JudgeAdapter`の技術検証 | 入出力例の取得、アカウント確認、提出、提出ID、判定確認が成立する（[技術検証計画](../docs/project/judge-adapter-verification.md)のP0を満たす） |
 | 2 | `LanguageProfile`と`HostPlatform` | 4言語、3つのOSの契約テストと通しの検証マトリクスがある |
 | 3 | ローカルDB、マイグレーション、コンテキスト | トランザクション、排他、移動・名前変更、曖昧性、障害回復を検証できる |
 | 4 | 初回診断、問題取得 | クリーンな環境から一件のチェックアウトを安全に作成できる |
@@ -900,18 +866,44 @@ flowchart TB
 
 | 領域 | 本書で確定しないこと | 参照先 |
 |---|---|---|
-| CLI | サブコマンド、引数、オプション、エイリアス、補完 | [未決事項 1.1](../docs/project/unresolved-decisions.md#11-日常commandの最終仕様) |
-| 作業領域 | メタデータの名称・形式・バージョン、探索上限、明示オプション | [未決事項 1.2](../docs/project/unresolved-decisions.md#12-workspace-metadataとcontext指定) |
-| 保存領域 | AlgoLoom所有領域の具体的なパス、設定・DB・キャッシュの配置 | [未決事項 2.1](../docs/project/unresolved-decisions.md#21-実装技術の最終形) |
-| ローカルテスト | 空白・改行の正規化規則、浮動小数の既定の許容誤差、近似判定の表示文言 | [未決事項 2.5](../docs/project/unresolved-decisions.md#25-ローカルテストの比較方式) |
-| 履歴 | ツールチェーン観測を履歴へ保存するか。Core契約と可搬性設計の記述が一致していない | [未決事項 2.6](../docs/project/unresolved-decisions.md#26-ツールチェーン観測を履歴へ保存するか) |
-| 外部通信 | User-Agentへ記載する情報 | [未決事項 8.1](../docs/project/unresolved-decisions.md#81-公開ベータ前にatcoderへ確認する事項) |
-| 認証 | 認証状態を確認する具体的な操作と表示 | [未決事項 1.6](../docs/project/unresolved-decisions.md#16-任意機能の具体的な導線) |
-| 時間計測 | 最終的なCLI、表示精度、時計異常の訂正方法 | [未決事項 1.8](../docs/project/unresolved-decisions.md#18-学習時間計測のcliと時計異常からの回復) |
-| 外部資料 | 最終的なCLI、ネタバレ確認の文言、非対話時の明示オプション | [未決事項 1.9](../docs/project/unresolved-decisions.md#19-外部学習資料のcliとspoiler確認) |
-| 外部資料の表示手段 | ターミナル内で表示崩れの少ない表示手段の選定と、対応OSごとの保証範囲 | [未決事項 1.11](../docs/project/unresolved-decisions.md#111-外部資料のターミナル内表示手段) |
-| 解き直し | 最終的なCLI、チェックアウトの安定した識別方法、途中状態のマーカー | [未決事項 1.10](../docs/project/unresolved-decisions.md#110-freshな解き直しのcliと回復) |
-| 表示 | 色、スピナー、表、進捗、詳細表示量 | [未決事項 1.4](../docs/project/unresolved-decisions.md#14-履歴表示診断の細部) |
-| 構造化出力 | 終了コード、機械可読な形式 | [未決事項 1.5](../docs/project/unresolved-decisions.md#15-exit-codeとmachine-readable出力) |
-| 実装 | CLIフレームワーク、モジュール、テーブル、カラム、ファイル形式 | [未決事項 2.1](../docs/project/unresolved-decisions.md#21-実装技術の最終形) |
-| 制限値・性能 | タイムアウト、出力量、サイズ、保持期間、性能目標の確定値 | [未決事項 2.3](../docs/project/unresolved-decisions.md#23-実行保持性能の具体値) |
+| CLI | サブコマンド、引数、オプション、エイリアス、補完 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.1 |
+| 作業領域 | メタデータの名称・形式・バージョン、探索上限、明示オプション | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.2 |
+| 保存領域 | AlgoLoom所有領域の具体的なパス、設定・DB・キャッシュの配置 | [未決事項一覧](../docs/project/unresolved-decisions.md) 2.1 |
+| ローカルテスト | 空白・改行の正規化規則、浮動小数の既定の許容誤差、近似判定の表示文言 | [未決事項一覧](../docs/project/unresolved-decisions.md) 2.5 |
+| 履歴 | ツールチェーン観測を履歴へ保存するか。Core契約と可搬性設計の記述が一致していない | [未決事項一覧](../docs/project/unresolved-decisions.md) 2.6 |
+| 外部通信 | User-Agentへ記載する情報 | [未決事項一覧](../docs/project/unresolved-decisions.md) 8.1 |
+| 認証 | 認証状態を確認する具体的な操作と表示 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.6 |
+| 時間計測 | 最終的なCLI、表示精度、時計異常の訂正方法 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.8 |
+| 外部資料 | 最終的なCLI、ネタバレ確認の文言、非対話時の明示オプション | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.9 |
+| 外部資料の表示手段 | ターミナル内で表示崩れの少ない表示手段の選定と、対応OSごとの保証範囲 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.11 |
+| 解き直し | 最終的なCLI、チェックアウトの安定した識別方法、途中状態のマーカー | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.10 |
+| 表示 | 色、スピナー、表、進捗、詳細表示量 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.4 |
+| 構造化出力 | 終了コード、機械可読な形式 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.5 |
+| 実装 | CLIフレームワーク、モジュール、テーブル、カラム、ファイル形式 | [未決事項一覧](../docs/project/unresolved-decisions.md) 2.1 |
+| 制限値・性能 | タイムアウト、出力量、サイズ、保持期間、性能目標の確定値 | [未決事項一覧](../docs/project/unresolved-decisions.md) 2.3 |
+
+## 18. 背景と正本の対応
+
+本書は単独で読めます。この表は、各節の要件が**なぜそうなったか**を確認したいときの参照先であり、実装時に開く必要はありません。
+
+| 対象 | 正本 |
+|---|---|
+| 用語の定義 | [Core契約](../docs/architecture/core-contracts.md) §1、[アーキテクチャ概要](../docs/architecture/overview.md) §1 |
+| 日本語と英語の使い分け | [ドキュメント表記規則](../docs/project/writing-conventions.md) |
+| §3.1 初回起動・環境診断 | [ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §3.1、[Core契約](../docs/architecture/core-contracts.md) §2.4、[配布方針ガイド](../docs/operations/algoloom-distribution.md) §9.1 |
+| §3.2 保存領域と作業領域の構成 | [Core契約](../docs/architecture/core-contracts.md) §2.4、[アーキテクチャ概要](../docs/architecture/overview.md) §4 |
+| §3.3 作業領域コンテキスト | [Core契約](../docs/architecture/core-contracts.md) §2.3、[ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §4.1 |
+| §4.1 問題取得 | [Core契約](../docs/architecture/core-contracts.md) §3.1、§3.2、[問題選択・カタログ設計](../docs/features/problem-selection-and-catalog.md) §6.3 |
+| §4.2 問題メタデータと公開入出力例 | [Core契約](../docs/architecture/core-contracts.md) §2.2、§2.3 |
+| §4.3 白紙からの解き直し | [解き直しworkflow設計](../docs/features/revisit-workflow.md)、[Core契約](../docs/architecture/core-contracts.md) §3.3 |
+| §5 SolveAttemptと学習時間 | [Core契約](../docs/architecture/core-contracts.md) §5.6、[ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §4.8 |
+| §6 ローカルテスト | [Core契約](../docs/architecture/core-contracts.md) §4、[ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §3.4、[パフォーマンスと待機体験の設計](../docs/quality/performance-and-waiting-design.md) §3.4 |
+| §7 スナップショットと振り返り | [Core契約](../docs/architecture/core-contracts.md) §5.2、§5.3、§5.4 |
+| §8.1 AtCoder認証状態確認 | [ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §3.2、[Core契約](../docs/architecture/core-contracts.md) §6.5 |
+| §8.2 提出前確認 | [Core契約](../docs/architecture/core-contracts.md) §6.1、[配布方針ガイド](../docs/operations/algoloom-distribution.md) §6.1、[セキュリティ設計ガイド](../docs/quality/security-design.md) §5.1 |
+| §9 外部学習資料 | [外部学習資料参照設計](../docs/features/external-learning-resources.md)、[Core契約](../docs/architecture/core-contracts.md) §3.4 |
+| §10.1 SQLiteとマイグレーション | [Core契約](../docs/architecture/core-contracts.md) §7.1、§7.2 |
+| §10.2 同時実行と保守処理 | [パフォーマンスと待機体験の設計](../docs/quality/performance-and-waiting-design.md) §3.1、[未決事項一覧](../docs/project/unresolved-decisions.md) 2.4 |
+| §10.3 エクスポート | [Core契約](../docs/architecture/core-contracts.md) §7.3 |
+| §11 共通出力・待機・回復 | [ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §8、[Core契約](../docs/architecture/core-contracts.md) §2.6 |
+| §12 アーキテクチャへの配置 | [アーキテクチャ概要](../docs/architecture/overview.md) §2.1、[Core契約](../docs/architecture/core-contracts.md) §8 |

@@ -266,7 +266,7 @@ MVPは次を必須条件とする。
 
 機能ごとの詳細設計へ進む前に、本書を正本として受け入れる。実装開始時には、さらに次を満たす。
 
-1. `JudgeAdapter`の技術検証計画と合格条件がある。
+1. `JudgeAdapter`の技術検証計画と合格条件がある。→ [JudgeAdapter技術検証計画](../project/judge-adapter-verification.md)
 2. 現在のAtCoderでsample取得、account確認、提出、submission ID取得、判定確認を小さく検証できる。
 3. C++、Python、Go、Rustの組み込みlanguage profile案と共通契約テストがある。
 4. native macOS、native Linux、native Windowsの`HostPlatform`契約と、4言語×3 OSの検証matrixがある。
