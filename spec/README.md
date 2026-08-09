@@ -21,9 +21,10 @@ derived_from:
 |---|---|
 | [製品・実装原則](principles.md) | 実装方法を変えても維持する製品上の不変条件 |
 | [MVP実装範囲](scope.md) | 対象利用者、対応環境、実装対象、対象外、開始・完了条件 |
+| [MVP機能設計](features.md) | 機能ID、依存関係、機能別要件、実装順序、受け入れシナリオ |
 | [Core開発契約](core-contracts.md) | workspace、test、履歴、提出、保存、errorと回復の契約 |
 
-個別interface、永続化Schema、CLI、acceptance test等は、設計上の未決事項が確定した段階で追加します。未確定の詳細を`spec/`で先に確定したように扱いません。
+個別interface、永続化Schema、CLI契約、実行可能なacceptance test仕様等は、設計上の未決事項が確定した段階で追加します。未確定の詳細を`spec/`で先に確定したように扱いません。
 
 ## 3. 正本と優先順位
 
