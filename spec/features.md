@@ -903,13 +903,13 @@ flowchart TB
 | CLI | サブコマンド、引数、オプション、エイリアス、補完 | [未決事項 1.1](../docs/project/unresolved-decisions.md#11-日常commandの最終仕様) |
 | 作業領域 | メタデータの名称・形式・バージョン、探索上限、明示オプション | [未決事項 1.2](../docs/project/unresolved-decisions.md#12-workspace-metadataとcontext指定) |
 | 保存領域 | AlgoLoom所有領域の具体的なパス、設定・DB・キャッシュの配置 | [未決事項 2.1](../docs/project/unresolved-decisions.md#21-実装技術の最終形) |
-| ローカルテスト | 空白・改行の正規化規則、浮動小数の既定の許容誤差、近似判定の表示文言 | 本書§6.2、[Core契約 §4.1](../docs/architecture/core-contracts.md#41-testが保証すること) |
-| 履歴 | ツールチェーン観測を履歴へ保存するか（[Core契約 §5.1](../docs/architecture/core-contracts.md#51-mvpで保存する履歴)と[可搬性設計 §4.2](../docs/architecture/language-and-platform-portability.md#42-境界ごとの責任)の整合確認が必要） | 設計レビューで解消する |
+| ローカルテスト | 空白・改行の正規化規則、浮動小数の既定の許容誤差、近似判定の表示文言 | [未決事項 2.5](../docs/project/unresolved-decisions.md#25-ローカルテストの比較方式) |
+| 履歴 | ツールチェーン観測を履歴へ保存するか。Core契約と可搬性設計の記述が一致していない | [未決事項 2.6](../docs/project/unresolved-decisions.md#26-ツールチェーン観測を履歴へ保存するか) |
 | 外部通信 | User-Agentへ記載する情報 | [未決事項 8.1](../docs/project/unresolved-decisions.md#81-公開ベータ前にatcoderへ確認する事項) |
 | 認証 | 認証状態を確認する具体的な操作と表示 | [未決事項 1.6](../docs/project/unresolved-decisions.md#16-任意機能の具体的な導線) |
 | 時間計測 | 最終的なCLI、表示精度、時計異常の訂正方法 | [未決事項 1.8](../docs/project/unresolved-decisions.md#18-学習時間計測のcliと時計異常からの回復) |
 | 外部資料 | 最終的なCLI、ネタバレ確認の文言、非対話時の明示オプション | [未決事項 1.9](../docs/project/unresolved-decisions.md#19-外部学習資料のcliとspoiler確認) |
-| 外部資料の表示手段 | ターミナル内で表示崩れの少ない表示手段の選定と、対応OSごとの保証範囲 | [外部学習資料参照設計 §4.6](../docs/features/external-learning-resources.md#46-ターミナル内での表示) |
+| 外部資料の表示手段 | ターミナル内で表示崩れの少ない表示手段の選定と、対応OSごとの保証範囲 | [未決事項 1.11](../docs/project/unresolved-decisions.md#111-外部資料のターミナル内表示手段) |
 | 解き直し | 最終的なCLI、チェックアウトの安定した識別方法、途中状態のマーカー | [未決事項 1.10](../docs/project/unresolved-decisions.md#110-freshな解き直しのcliと回復) |
 | 表示 | 色、スピナー、表、進捗、詳細表示量 | [未決事項 1.4](../docs/project/unresolved-decisions.md#14-履歴表示診断の細部) |
 | 構造化出力 | 終了コード、機械可読な形式 | [未決事項 1.5](../docs/project/unresolved-decisions.md#15-exit-codeとmachine-readable出力) |

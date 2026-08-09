@@ -2,7 +2,7 @@
 
 > 作成日: 2026年7月18日
 >
-> 状態確認日: 2026年7月20日
+> 状態確認日: 2026年8月10日
 >
 > 目的: リポジトリ内に分散している未決事項を、原文の判断を変えずに確認できるよう集約する。
 >
@@ -34,9 +34,9 @@
 | 状態 | 項目 |
 |---|---|
 | 決定済み | 1.3、2.4、4.4 |
-| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、1.9、1.10、2.2、2.3、3.2、3.4、3.5、4.2、5.3 |
-| 条件付き決定 | 3.1、3.6、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
-| 未決 | 2.1、3.3、6.1 |
+| 一部決定済み | 1.1、1.2、1.4、1.5、1.6、1.7、1.8、1.9、1.10、2.2、2.3、2.5、3.2、3.4、3.5、4.2、5.3 |
+| 条件付き決定 | 1.11、3.1、3.6、3.7、4.1、4.3、5.1、6.2、6.3、7.1、7.2、8.2 |
+| 未決 | 2.1、2.6、3.3、6.1 |
 | 外部確認待ち | 5.2、8.1 |
 
 ## 用語
@@ -63,7 +63,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。aliasはまずshell側へ委ね、将来AlgoLoom内で提供する場合もcanonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、再帰、raw shell構文、AlgoLoom外のcommand実行を許可しない。`get`、SolveAttemptの開始・pause・resume・終了、freshな解き直し、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、公式問題・解説ページへの外部参照、`export`の責任分割もMVP契約として定義されている。
+**決定済みの内容:** 製品名は`AlgoLoom`、正式commandは`aloom`、互換commandは`algoloom`とする。`al`は利用者が任意に設定するaliasであり、AlgoLoomは自動登録しない。`loom`は使用しない。aliasはまずshell側へ委ね、将来AlgoLoom内で提供する場合もcanonicalなAlgoLoom commandとargv prefixへの短縮に限定し、組み込みcommandの上書き、再帰、raw shell構文、AlgoLoom外のcommand実行を許可しない。`get`、SolveAttemptの開始・pause・resume・終了、freshな解き直し、`test`、`checkpoint`、`submit`、`log`、`show`、`diff`、問題一覧ページと公式問題・解説ページへの外部参照、`export`の責任分割もMVP契約として定義されている。
 
 **残る未決:** 各subcommand・引数・optionの最終名称、aliasとcompletionの詳細、各表示例を正式契約にする範囲。
 
@@ -107,7 +107,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** MVPの`show`はterminal上のplain text、`diff`はunified diffをfallbackとする。成功、部分成功、回復可能errorの情報順序は「主結果、追加失敗、影響を受けないもの、次の行動」とし、詳細情報は既定で大量表示せず確認方法を示す。Editor save、明示checkpoint、提出前の必須submission snapshot、FocusIntervalを別の保存境界として扱い、AlgoLoomはEditorの未保存bufferを取得・保存しない。MVP後の自動checkpointはopt-inかつevent駆動を優先し、失敗しても成功済みのpause、test、milestone、提出を変更しない。
+**決定済みの内容:** MVPの`show`はterminal上のplain text、`diff`はunified diffをfallbackとする。成功、部分成功、回復可能errorの情報順序は「主結果、追加失敗、影響を受けないもの、次の行動」とし、詳細情報は既定で大量表示せず確認方法を示す。Editor save、明示checkpoint、提出前の必須submission snapshot、FocusIntervalを別の保存境界として扱い、AlgoLoomはEditorの未保存bufferを取得・保存しない。MVP後の自動checkpointはopt-inかつevent駆動を優先し、失敗しても成功済みのpause、test、milestone、提出を変更しない。非公式・非公認であることは、バージョン表示と最上位のヘルプで示し、サブコマンドのヘルプ、通常のコマンド出力、初回起動では繰り返さない。
 
 **残る未決:** 同一sourceへの重複操作の具体表示、色・spinner・table layout、進捗の見た目、診断command名、Viewer fallbackの表示量。MVP後の自動checkpointを採用するか、採用する場合の対象event、保持期間、容量上限、重複表示、無効化、export・同期範囲。
 
@@ -177,7 +177,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** MVPではAtCoder公式問題ページと問題別解説ページをdefault browserで開く。解説本文、画像、PDF、動画、sample codeはAlgoLoomへ取得・保存しない。他ユーザーのAC提出一覧はMVP後のPhase 2候補とし、他ユーザーのcode本文・author・submission IDや、Cookie、browser profileを取得・保存しない。`ReferenceLinkProvider`と`BrowserLauncher`を分け、browser起動失敗はCore履歴を変更しない。未AC時はspoilerを確認し、contest終了を確認できない場合は開かない。`browse`は問題発見、`open`相当はcurrent problemの資料参照として責任を分ける。
+**決定済みの内容:** MVPではAtCoder公式問題ページと問題別解説ページをdefault browserで開く。解説本文、画像、PDF、動画、sample codeはAlgoLoomへ取得・保存しない。他ユーザーのAC提出一覧はMVP後のPhase 2候補とし、他ユーザーのcode本文・author・submission IDや、Cookie、browser profileを取得・保存しない。`ReferenceLinkProvider`と`BrowserLauncher`を分け、browser起動失敗はCore履歴を変更しない。未AC時はspoilerを確認し、contest終了を確認できない場合は開かない。`browse`は問題発見、`open`相当はcurrent problemの資料参照として責任を分ける。一覧ページをブラウザで開く`browse`相当はMVPへ含め、カタログの取得・保存とターミナル内検索はMVP対象外とする。一覧の提供元が非公式サービスである旨を開く前に示す。
 
 **残る未決:** `open problem / editorial / submissions`相当の最終command・action・option名、未AC時の対話文、non-interactiveで明示確認を表すoption、初回のADT・virtual contest注意表示、URL変更時のfallback、browserがない環境でURLをどこまで表示するか。
 
@@ -196,6 +196,18 @@
 **決めること:** 既存sourceを壊さず、同じ操作の再実行でcheckout・SolveAttemptを重複させないCLI、metadata、transaction、回復UXを機能設計で確定する。
 
 出典: [解き直しworkflow設計](../features/revisit-workflow.md)、[Core契約 §3.3](../architecture/core-contracts.md#33-解き直し用problem-checkout)、[言語・実行環境の可搬性設計 §7.2](../architecture/language-and-platform-portability.md#72-同じ問題をfreshに解き直す場合)
+
+### 1.11 外部資料のターミナル内表示手段
+
+**状態:** 条件付き決定
+
+**決定済みの内容:** ターミナルから離れずに資料を読めるよう、利用者が導入したターミナル内で動作する表示手段へURLを渡す構成をMVP後の候補として採用する。AlgoLoomはURLと起動要求だけを渡し、資料の本文を取得・保存しない。表示手段が未導入または利用不能でも、既定のブラウザへの委譲とCore操作を停止させない。起動の共通要件として、表示言語の指定、一操作あたり一URL、非対話実行と非TTYでの自動起動の抑止、利用者が指定した表示手段の尊重、ターミナルを占有し得る手段を補助動作に使わないこと、起動失敗時のURL提示を定めている。
+
+**残る判断:** 表示崩れの少ない表示手段の選定と、対応OSごとの保証範囲。
+
+**決めること:** 数式、表、図、日英併記を含む実際の問題ページで表示品質を確認し、検証したOSの組み合わせだけを正式対応と表示する。
+
+出典: [外部学習資料参照設計 §4.5](../features/external-learning-resources.md#45-起動の共通要件)、[同 §4.6](../features/external-learning-resources.md#46-ターミナル内での表示)、[ロードマップ §3](../product/roadmap.md#3-phase-2-core安定化近接拡張)
 
 ## 2. Core実装・性能パラメータ
 
@@ -253,6 +265,28 @@
 
 出典: [パフォーマンスと待機体験の設計 §7](../quality/performance-and-waiting-design.md#7-実装順序と非目標)
 
+### 2.5 ローカルテストの比較方式
+
+**状態:** 一部決定済み
+
+**決定済みの内容:** 標準出力と公開入出力例の出力を比較する。コンパイルエラー、実行時エラー、タイムアウト、シグナルによる終了、出力量超過を不一致と混同せず、別の分類として示す。どの入出力例がどの理由で失敗したかを確認できる。AtCoderのジャッジを再現できない形式は、近似判定であることを表示するか、未対応として停止する。
+
+**残る未決:** 空白と改行の正規化規則、浮動小数の既定の許容誤差、近似判定の表示文言。
+
+**決めること:** 上記が確定するまでは、近似判定を「AtCoderのジャッジと一致する」と表示しない。
+
+出典: [Core契約 §4.1](../architecture/core-contracts.md#41-testが保証すること)、[MVP機能設計 §6.2](../../spec/features.md#62-比較方式)
+
+### 2.6 ツールチェーン観測を履歴へ保存するか
+
+**状態:** 未決
+
+**現在の不整合:** [Core契約 §5.1](../architecture/core-contracts.md#51-mvpで保存する履歴)がMVPで保存する履歴として挙げる項目に、ツールチェーン観測は含まれない。一方で[可搬性設計 §4.2](../architecture/language-and-platform-portability.md#42-境界ごとの責任)は`HistoryStore`の責任に「toolchain観測」を含めている。両文書の記述が一致していない。
+
+**決めること:** ツールチェーン観測を履歴へ保存するか。保存する場合の項目、端末固有情報の扱い、exportと将来の同期での範囲。決定後、両文書の記述を一致させる。
+
+出典: [Core契約 §5.1](../architecture/core-contracts.md#51-mvpで保存する履歴)、[可搬性設計 §4.2](../architecture/language-and-platform-portability.md#42-境界ごとの責任)、[同 §9.1](../architecture/language-and-platform-portability.md#91-共有可能な論理データと端末固有データ)
+
 ## 3. MVP後の機能採否
 
 ### 3.1 AI reviewを正式に採用するか
@@ -301,7 +335,7 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** 初期版の主経路はAtCoder Problemsで発見し、`get`で開始する。Phase 3の`pick`も独自のworkspace作成処理を持たず、選択後に共通`get`を呼ぶ。local statusはAtCoder全体の提出状態と明確に区別する。
+**決定済みの内容:** 初期版の主経路はAtCoder Problemsで発見し、`get`で開始する。一覧ページをブラウザで開く導線はMVPへ含め、カタログ取得はPhase 2、`pick`はPhase 3とする。Phase 3の`pick`も独自のworkspace作成処理を持たず、選択後に共通`get`を呼ぶ。local statusはAtCoder全体の提出状態と明確に区別する。
 
 **残る未決:** `pick`を正式採用するか、インタラクティブUIの実装方式、fzfがない場合のfallback選択。
 
@@ -336,6 +370,18 @@
 **原文:** 「公開を支援する設計は考慮するが、GitHub連携ではなく、選択した自作sourceから公開候補物をlocalに作り、標準toolへ引き渡す境界までとする。」
 
 出典: [公開用solution bundle将来設計](../features/public-solution-bundle-design.md)、[製品ビジョン §3.3](../product/vision.md#33-自己比較を中心とする学習)、[Core契約 §7.3](../architecture/core-contracts.md#73-export)、[ロードマップ §3](../product/roadmap.md#3-phase-2-core安定化近接拡張)
+
+### 3.7 統合開発環境を採用するか
+
+**状態:** 条件付き決定
+
+**決定済みの内容:** エディタ、ファイルマネージャ、ブラウザをAlgoLoom自身へ内蔵しない。内蔵エディタを既定にすると利用者が選んだ編集環境を中心にする原則に反し、任意にすれば内蔵する意味が薄い。ターミナルはHTMLを描画しないため内蔵ブラウザはテキストブラウザ相当に留まり、実際のレンダリングにはデスクトップアプリ化が必要で、配布方針と環境非侵襲性が成立しなくなる。一つの画面へまとめたい需要には、利用者が既に導入したツールの構成案内で応える。
+
+**残る判断:** 長期候補から製品フェーズへ昇格させるか。
+
+**決めること:** 利用者検証で環境構築の失敗が主要な離脱理由だと確認でき、既存のエディタとIDEに対する優位を説明でき、エディタ非依存の原則を見直す判断を行った場合にだけ再評価する。
+
+出典: [製品ビジョン §3.1](../product/vision.md#31-エディタ非依存)、[可搬性設計 §8.6](../architecture/language-and-platform-portability.md#86-一つの画面へまとめる場合の案内)、[ロードマップ §5](../product/roadmap.md#5-長期候補)
 
 ## 4. Cloud同期・データ共有
 
