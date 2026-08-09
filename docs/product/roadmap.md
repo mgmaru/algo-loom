@@ -99,6 +99,7 @@ Repair LabはAtCoder Coreとは異なる教材を扱うが、別application相�
 | Web dashboard | 共通Query契約を利用し、チャート等を用いた標準UIをreference clientとして提供する。 | CLIとoffline履歴の価値を弱めず、指標の根拠、自己比較中心の原則、accessibility、Web公開時の認証・Security・運用責任を定義できる。 |
 | Hosted API | 認証済みの本人へ同期済み学習データをnetwork経由で提供し、個人作成frontendや外部toolから利用できるようにする。 | Cloud上のデータ権威、user ownership、認証、scope、versioning、privacy、rate limit、無料提供の継続可能性を検証できる。初期はread-onlyとする。 |
 | managed service | 同期、Hosted API等の運用をAlgoLoom側で提供する可能性を検討する。 | 利用者需要、費用、認証、法務、privacy、OSS版との責任境界を確認できる。 |
+| 統合開発環境 | 編集、資料の閲覧、コマンド実行を一つの画面へまとめた専用環境を提供する。 | エディタ非依存の原則を見直す判断が前提となる。利用者検証で環境構築の失敗が主要な離脱理由だと確認でき、既存のエディタとIDEに対する優位を説明できること。それまでは[可搬性設計 §8.6](../architecture/language-and-platform-portability.md#86-一つの画面へまとめる場合の案内)の構成案内で代替する。 |
 
 ```mermaid
 flowchart LR
