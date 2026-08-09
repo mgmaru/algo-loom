@@ -43,6 +43,7 @@ Phase 2の各候補は実装を約束するbacklogではなく、すべての候
 | project build | Cargo、Go module、CMake等を使うprojectを扱えるようにする。 | 単一sourceの既定導線を複雑にせず、実行範囲と設定の安全性を定義できる。 |
 | local peak memory計測 | local testでpeak RSS等の最大memory観測を参考表示し、極端な確保へ気付けるようにする。 | native macOS、Linux、Windowsごとに値の意味、子process範囲、単位、取得方法を検証する。未対応・取得失敗を`0`やtest失敗にせず、judge memoryや他環境と同一条件で比較しない。 |
 | 外部Editor / Diff Viewer Adapter | Core互換性とは分離して、利用者が既に導入した代表的な外部toolの選択、process-localな呼出方法、設定例を実需に応じて追加する。 | 公式連携の有無をEditorでのCore利用可否と混同せず、個別EditorやViewerの機能をCoreへ組み込まない。Editor本体、plugin、ユーザー設定をinstall、update、変更しない。 |
+| ターミナル内での資料表示 | 利用者が導入したターミナル内で動作する表示手段へURLを渡し、ターミナルから離れずに公式の問題ページと解説ページを読めるようにする。 | 採用方針は決定済みとし、残る判断は表示手段の選定とする。数式、表、図、日英併記を含む実際の問題ページで表示崩れを確認し、対応OSごとに検証した組み合わせだけを正式対応と表示する。本文をAlgoLoomへ取得せず、起動要求だけを渡す境界は[外部学習資料参照設計](../features/external-learning-resources.md)を維持する。 |
 | 詳細local test eventと自動checkpoint | MVPで記録する「最初の公開sample通過」だけでなく、複数回のlocal test履歴と、利用者が選択した場合のevent駆動checkpointを検討する。 | opt-inとし、Editorの未保存bufferは扱わない。明示pause、明示test、最初の全sample通過等の候補event、保存範囲、保持方針、重複表示、SolveAttempt・milestone・必須submission snapshotとの違いを明確にする。 |
 | 継続timer表示と外部連携 | 明示的な`status --watch`相当やmachine-readable出力により、希望者がshell prompt、task runner、将来のEditor連携から現在状態を確認できるようにする。 | 秒単位の常時表示を既定にせず、常駐daemon、Editor plugin、外部設定変更をCore要件にしない。時間計測を使わない利用者へ案内を繰り返さない。 |
 | 自己振り返り分析 | 同じ問題のfreshな解き直し、snapshotからの再開、言語別、期間別等で、本人のSolveAttempt、時間、提出、差分を振り返る。 | [解き直しworkflow設計](../features/revisit-workflow.md)の履歴分離を維持し、他者rank、公開skill score、単一の成長scoreへ変換せず、時間の短さだけを成長とみなさない。 |
