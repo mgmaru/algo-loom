@@ -14,7 +14,7 @@ derived_from:
 
 本書は、Coreの実装が機能横断で満たす不変条件を、実装とテストで参照できる単位に整理します。完全な定義と設計理由は[Core契約](../docs/architecture/core-contracts.md)を正とし、個別機能の詳細は各設計文書を参照してください。
 
-用語の定義は[MVP機能設計 §1.2](features.md#12-用語)、表記の規則は[ドキュメント表記規則](../docs/project/writing-conventions.md)に従います。
+用語の定義は[MVP機能設計 §1.3](features.md#13-用語)、表記の規則は[ドキュメント表記規則](../docs/project/writing-conventions.md)に従います。
 
 ## 2. 共通契約
 
