@@ -312,6 +312,8 @@ aloom browse --user hiroaki
 
 `browse`はAtCoder Problemsの一覧画面をデフォルトブラウザで開く。基本的な一覧の閲覧に、AtCoder ProblemsのログイントークンをAlgoLoomが扱う必要はない。
 
+一覧ページをブラウザで開くこの導線はMVPへ含める。カタログの取得・保存はPhase 2、`pick`はPhase 3であり、MVPの対象外とする。AtCoder Problemsは非公式サービスであるため、開く前にその旨を示す。
+
 ### 6.2. 問題を開始する
 
 問題IDを指定する。

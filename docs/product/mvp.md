@@ -162,6 +162,7 @@ MVPのサポートと利用者検証は、終了済みのAtCoder Algorithm問題
 | 能力 | MVPで保証すること |
 |---|---|
 | install・初期診断 | 任意機能や設定fileの手編集なしで最初のlocal testへ進める |
+| 問題発見 | AtCoder Problems等の問題一覧ページを既定のブラウザで開く。カタログを取得・保存せず、非公式サービスであることを示す |
 | 問題取得 | 一つの正規問題IDまたはAtCoder公式URLから公開sampleと宣言的metadataを取得する |
 | workspace作成 | Editor固有pluginやproject fileを要求しない通常のdirectoryとsource fileを作り、任意のEditorで編集できる |
 | freshな解き直し | 既存sourceを上書きせず、同じ正規問題IDを持つ新しいsibling checkoutと新しいSolveAttemptを作り、前回履歴と比較できる |
@@ -180,7 +181,9 @@ MVPのサポートと利用者検証は、終了済みのAtCoder Algorithm問題
 
 `get`、`test`、`submit`、`log`、`show`、`diff`、`checkpoint`、`export`、SolveAttemptの開始・pause・resume・終了操作は責任を説明する仮称であり、最終的なCLI名ではない。
 
-解き直しの`redo`、外部資料参照の`open problem / editorial`等も概念名であり、最終的なcommand名とoptionは機能設計で決める。
+解き直しの`redo`、問題発見の`browse`、外部資料参照の`open problem / editorial`等も概念名であり、最終的なcommand名とoptionは機能設計で決める。
+
+問題発見としてMVPへ含めるのは、一覧ページをブラウザで開くことだけとする。カタログの取得・保存、terminal内の検索、`pick`はMVP対象外であり、[問題選択・カタログ設計](../features/problem-selection-and-catalog.md)の後続Phaseで扱う。
 
 ### 3.2. MVPに含めない能力
 

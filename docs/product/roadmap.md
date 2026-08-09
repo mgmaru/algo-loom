@@ -23,7 +23,7 @@
 
 | 製品フェーズ | 目的 | 主な対象 | 次へ進む判断 |
 |---|---|---|---|
-| Phase 1: MVP Core | AtCoderの終了済み過去問について、問題開始から履歴の振り返りまでの主要導線を成立させる。 | `get`、`test`、任意の学習時間計測、freshな解き直し、checkpoint、`submit`、`log`、`show`、`diff`、公式問題・解説ページへのbrowser参照、export | MVP文書の実装開始条件と完了条件を満たす。 |
+| Phase 1: MVP Core | AtCoderの終了済み過去問について、問題開始から履歴の振り返りまでの主要導線を成立させる。 | 問題一覧ページへのbrowser参照、`get`、`test`、任意の学習時間計測、freshな解き直し、checkpoint、`submit`、`log`、`show`、`diff`、公式問題・解説ページへのbrowser参照、export | MVP文書の実装開始条件と完了条件を満たす。 |
 | Phase 2: Core安定化・近接拡張 | Coreの意味を変えず、実需に基づいて日常利用と対応範囲を改善する。 | 問題選択支援、問題・解法タグ、履歴検索、他ユーザーのAC提出一覧へのbrowser参照、公開用solution bundle、追加host・言語・build方式、外部Adapter、backup・restore等 | install、日常command、offline履歴を複雑にせず追加できることを候補ごとに確認する。 |
 | Phase 3以降: 任意Capabilityの検証・採用 | Coreから分離した任意機能について、価値、安全性、配布可能性を個別に検証する。 | AI review、Cloud同期、Repair Lab | 各Capability固有の昇格条件を満たしたものだけを正式な製品範囲へ含める。 |
 | 長期候補 | 現在の製品範囲を前提にせず、需要を確認して構想を具体化する。 | 学習データアクセス基盤、Web dashboard、Hosted API、managed service等 | 実需、Coreとの境界、運用・安全上の成立性を確認してから製品フェーズへの昇格を判断する。 |
