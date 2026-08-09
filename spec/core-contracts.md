@@ -12,94 +12,96 @@ derived_from:
 
 ## 1. 本書の役割
 
-本書は、Coreの実装が機能横断で満たす不変条件を、実装とtestで参照できる単位に整理します。完全な定義と設計理由は[Core契約](../docs/architecture/core-contracts.md)を正とし、個別機能の詳細は各設計文書を参照してください。
+本書は、Coreの実装が機能横断で満たす不変条件を、実装とテストで参照できる単位に整理します。完全な定義と設計理由は[Core契約](../docs/architecture/core-contracts.md)を正とし、個別機能の詳細は各設計文書を参照してください。
+
+用語の定義は[MVP機能設計 §1.2](features.md#12-用語)、表記の規則は[ドキュメント表記規則](../docs/project/writing-conventions.md)に従います。
 
 ## 2. 共通契約
 
 - 任意機能を設定しなくてもCoreを利用できなければなりません。
-- 外部提出、source送信、削除等を、利用者の明示操作なしに行ってはなりません。
-- 同じ操作の再実行で、既存source、sample、metadata、履歴または外部提出を重複・破壊してはなりません。
-- 部分失敗時は、成功済みの事実と保持されたデータを先に示し、未完了状態と次の安全な操作を示さなければなりません。
-- ローカルで完了できる主目的を、無関係なnetwork、保守処理または任意機能の完了待ちにしてはなりません。
-- 外部通信またはcode実行は無期限に待たず、timeoutまたは取消後の状態確認と再試行経路を持たなければなりません。
+- 外部提出、ソースコードの送信、削除等を、利用者の明示操作なしに行ってはなりません。
+- 同じ操作の再実行で、既存のソースコード、入出力例、メタデータ、履歴または外部提出を重複・破壊してはなりません。
+- 部分失敗時は、成功済みの事実と保持されたデータを先に示し、未完了の状態と次の安全な操作を示さなければなりません。
+- ローカルで完了できる主目的を、無関係なネットワーク通信、保守処理または任意機能の完了待ちにしてはなりません。
+- 外部通信またはコード実行は無期限に待たず、タイムアウトまたは取消後の状態確認と再試行の経路を持たなければなりません。
 
 ## 3. データの権威
 
 | データ | 権威 |
 |---|---|
-| 編集中のsource | workspace上の保存済み通常file |
-| 問題ID、問題ページ、公開sampleの取得元 | AtCoder |
-| submission ID、judge判定、judge execution timeとmemory | AtCoder |
-| AlgoLoom導入後のsnapshotと操作履歴 | ローカルAlgoLoom DB |
-| SolveAttempt、FocusInterval、milestone | 明示操作とCore eventを保存するローカルAlgoLoom DB |
-| credentialとsession | 利用者または外部toolの適切なsecret store |
-| 問題・解説・他ユーザーcodeの本文 | AtCoder公式サイトと各権利者。AlgoLoomへ保存しない |
+| 編集中のソースコード | 作業領域上の保存済み通常ファイル |
+| 問題ID、問題ページ、公開入出力例の取得元 | AtCoder |
+| 提出ID、ジャッジ判定、ジャッジ実行時間とメモリ | AtCoder |
+| AlgoLoom導入後のスナップショットと操作履歴 | ローカルのAlgoLoom DB |
+| SolveAttempt、FocusInterval、学習マイルストーン | 明示操作とCoreのイベントを保存するローカルのAlgoLoom DB |
+| 認証情報とセッション | 利用者または外部ツールが持つ適切な秘密情報保管庫 |
+| 問題・解説・他ユーザーのコードの本文 | AtCoder公式サイトと各権利者。AlgoLoomへ保存しない |
 
-workspaceの移動、renameまたは削除を、保存済み履歴の削除として扱いません。
+作業領域の移動、名前変更または削除を、保存済み履歴の削除として扱いません。
 
-## 4. Workspaceとcontext
+## 4. 作業領域とコンテキスト
 
-- workspaceと問題directoryは通常のfilesystem操作で移動・rename可能とします。
-- 絶対path、directory名、生成suffixを、問題、checkout、SolveAttemptまたは履歴の恒久IDにしません。
-- contextは現在directory、明示source、親directoryのmetadataから、安全に一意な場合だけ解決します。
-- 複数候補、欠損または矛盾がある場合は暗黙に一つを選びません。
-- context不明は、test実行またはAtCoderへの提出等の作用前に検出します。
-- 同じ問題の別言語またはfreshな解き直しには、別checkoutを既定とします。
-- problem checkoutとSolveAttemptを同一概念または恒久的な1対1関係にしません。
-- Editor固有fileを生成・要求・実行設定として解釈しません。
-- 各command開始時にfilesystemとmetadataからcontextを再検証し、file watcherを正しさの条件にしません。
+- 作業領域と問題ディレクトリは通常のファイルシステム操作で移動・名前変更が可能とします。
+- 絶対パス、ディレクトリ名、生成した接尾辞を、問題、問題チェックアウト、SolveAttemptまたは履歴の恒久IDにしません。
+- コンテキストは現在ディレクトリ、明示されたソースコード、親ディレクトリのメタデータから、安全に一意な場合だけ解決します。
+- 複数の候補、欠損または矛盾がある場合は暗黙に一つを選びません。
+- コンテキスト不明は、テスト実行またはAtCoderへの提出等の作用前に検出します。
+- 同じ問題の別言語または白紙からの解き直しには、別の問題チェックアウトを既定とします。
+- 問題チェックアウトとSolveAttemptを同一概念または恒久的な1対1関係にしません。
+- エディタ固有のファイルを生成・要求せず、実行設定として解釈しません。
+- 各コマンドの開始時にファイルシステムとメタデータからコンテキストを再検証し、ファイル監視を正しさの条件にしません。
 
-## 5. 設定とprocess
+## 5. 設定とプロセス
 
-- workspace metadataは宣言的な問題情報に限定し、実行command、credentialまたは外部endpointを含めません。
-- MVPではworkspaceから任意のcompile/run commandを定義できるようにしません。
-- `LanguageProfile`はshell文字列ではなく、argv、working directory、source、artifact、timeout区分等からなるBuildPlanまたはRunPlanを返します。
-- processは`HostPlatform`を介してargv配列で起動し、pathや利用者入力をshell commandへ連結しません。
-- 子processにはAtCoder sessionや不要な環境変数を渡しません。
-- success、compile error、runtime error、timeout、出力量超過、取消をOS間で共通分類へ正規化します。
-- user preferenceはCoreの意味、状態遷移、データの権威、不変性、安全性、privacyまたは外部作用への同意を変更できません。
+- 作業領域のメタデータは宣言的な問題情報に限定し、実行コマンド、認証情報または外部エンドポイントを含めません。
+- MVPでは作業領域から任意のコンパイル・実行コマンドを定義できるようにしません。
+- `LanguageProfile`はシェル文字列ではなく、`argv`、作業ディレクトリ、ソースコード、生成物、タイムアウト区分等からなる`BuildPlan`または`RunPlan`を返します。
+- プロセスは`HostPlatform`を介して`argv`配列で起動し、パスや利用者入力をシェルコマンドへ連結しません。
+- 子プロセスにはAtCoderセッションや不要な環境変数を渡しません。
+- 成功、コンパイルエラー、実行時エラー、タイムアウト、出力量超過、取消をOS間で共通の分類へ正規化します。
+- 利用者設定はCoreの意味、状態遷移、データの権威、不変性、安全性、プライバシーまたは外部作用への同意を変更できません。
 
 ## 6. 問題取得と外部資料
 
-- 一件ずつ明示された正規問題IDまたは公式URLを対象とし、一括・background crawlを行いません。
-- local test用には、公開sampleだけを取得します。
-- 同じ場所への再取得で編集済みsourceを上書きしません。
-- directory、metadata、sample、template、DB保存の完了段階を識別し、途中失敗後の再実行で破損や重複を増やしません。
-- freshな解き直しは既存sourceを変更せず、新しいcheckoutとSolveAttemptを作ります。
-- 問題・解説ページはdefault browserへ委譲し、本文をprocess、DB、cache、temp、logまたはexportへ取り込みません。
-- spoiler-sensitiveな資料は終了状態を確認し、未ACの場合は明示確認後にだけ開きます。終了状態を確認できない場合は開きません。
-- browser起動失敗によって、workspace、test、提出または履歴の成功状態を変更しません。
+- 一件ずつ明示された正規問題IDまたは公式URLを対象とし、一括取得や背後でのクロールを行いません。
+- ローカルテスト用には、公開されている入出力例だけを取得します。
+- 同じ場所への再取得で編集済みのソースコードを上書きしません。
+- ディレクトリ、メタデータ、入出力例、テンプレート、DB保存の完了段階を識別し、途中失敗後の再実行で破損や重複を増やしません。
+- 白紙からの解き直しは既存のソースコードを変更せず、新しい問題チェックアウトとSolveAttemptを作ります。
+- 問題・解説ページは既定のブラウザへ委譲し、本文をプロセス、DB、キャッシュ、一時領域、ログまたはエクスポートへ取り込みません。
+- ネタバレを含み得る資料は終了状態を確認し、未ACの場合は明示確認後にだけ開きます。終了状態を確認できない場合は開きません。
+- ブラウザの起動失敗によって、作業領域、テスト、提出または履歴の成功状態を変更しません。
 
-## 7. Local test
+## 7. ローカルテスト
 
-- `test`が保証するのは、取得済み公開sampleに対するlocal実行結果であり、AtCoder上のACではありません。
-- compile、sample実行、比較を別の段階として扱います。
-- compile error、runtime error、timeout、出力量超過、signal終了、不一致を区別します。
-- compileとrunには別々のtimeoutを設け、stdout、stderr、生成file、process数等へ妥当な上限を設けます。
-- timeoutまたは取消時は、対応するprocess treeを終了します。
-- compile durationとsampleごとのlocal run durationは、対象と単位を明示します。
-- local値とjudge値を同一環境のbenchmarkとして比較しません。取得不能な観測値を`0`で補いません。
-- 未信頼codeを実行対象へ加える前に、filesystem、network、process、CPU、memory等の隔離を再設計します。
+- `test`が保証するのは、取得済みの公開入出力例に対するローカル実行結果であり、AtCoder上のACではありません。
+- コンパイル、入出力例の実行、比較を別の段階として扱います。
+- コンパイルエラー、実行時エラー、タイムアウト、出力量超過、シグナルによる終了、不一致を区別します。
+- コンパイルと実行には別々のタイムアウトを設け、標準出力、標準エラー出力、生成ファイル、プロセス数等へ妥当な上限を設けます。
+- タイムアウトまたは取消時は、対応するプロセスツリーを終了します。
+- コンパイル所要時間と入出力例ごとのローカル実行時間は、対象と単位を明示します。
+- ローカルの値とジャッジの値を同一環境のベンチマークとして比較しません。取得できない観測値を`0`で補いません。
+- 信頼できないコードを実行対象へ加える前に、ファイルシステム、ネットワーク、プロセス、CPU、メモリ等の隔離を再設計します。
 
-## 8. SolveAttempt、履歴、snapshot
+## 8. SolveAttempt、履歴、スナップショット
 
-- 時間計測は明示的に開始したSolveAttemptだけを対象とします。`get`、`test`またはfile保存を暗黙の開始にしません。
-- active、paused、completed、abandonedを区別し、状態遷移を冪等にします。
-- 別のSolveAttemptを開始するとき、既存attemptを暗黙にpause、終了、放棄またはmergeしません。
-- active durationは妥当なFocusIntervalの合計とし、wall elapsedやprocess durationと区別します。
-- 時計の後退、極端な飛躍または欠損intervalを、推測した正常値や負のdurationとして保存しません。
-- 最初のsample通過、初回提出、初ACを別のmilestoneとし、それぞれの観測時点に対応するactive durationを保持します。
-- checkpointは利用者の明示操作でのみ作り、作成時に外部通信しません。
-- snapshotは保存後にsource本文を上書きせず、正確なsource bytesからhashを計算します。
-- 提出snapshotは外部送信に使ったsource bytesと一致しなければなりません。
-- 履歴表示はlocal DBから行い、checkpoint、提出待ち、提出済み、判定待ち、最終判定を混同しません。
-- `show`はsnapshotを読み取り専用で表示し、`diff`は比較対象を確認可能にします。
+- 時間計測は明示的に開始したSolveAttemptだけを対象とします。`get`、`test`またはファイル保存を暗黙の開始にしません。
+- `ACTIVE`、`PAUSED`、`COMPLETED`、`ABANDONED`を区別し、状態遷移を冪等にします。
+- 別のSolveAttemptを開始するとき、既存の試行を暗黙に一時停止、終了、放棄または統合しません。
+- 能動時間は妥当なFocusIntervalの合計とし、実経過時間や処理時間と区別します。
+- 時計の後退、極端な飛躍または欠損した区間を、推測した正常値や負の時間として保存しません。
+- 最初の入出力例の通過、初回提出、初ACを別の学習マイルストーンとし、それぞれの観測時点に対応する能動時間を保持します。
+- チェックポイントは利用者の明示操作でのみ作り、作成時に外部通信しません。
+- スナップショットは保存後にソースコード本文を上書きせず、正確なバイト列からハッシュを計算します。
+- 提出スナップショットは外部送信に使ったバイト列と一致しなければなりません。
+- 履歴表示はローカルDBから行い、チェックポイント、提出待ち、提出済み、判定待ち、最終判定を混同しません。
+- `show`はスナップショットを読み取り専用で表示し、`diff`は比較対象を確認可能にします。
 
 ## 9. 提出
 
-AtCoderへの送信とlocal DBのcommitは原子的にできないため、提出を回復可能な状態遷移として実装します。
+AtCoderへの送信とローカルDBのコミットは原子的にできないため、提出を回復可能な状態遷移として実装します。
 
-外部送信前に、一意なoperation ID、問題、judge、account identity、言語とjudge固有言語、正確なsource snapshotとhash、作成時刻、operation stateを耐久保存します。
+外部送信前に、一意な操作ID、問題、ジャッジ、アカウント識別情報、言語とジャッジ固有の言語、正確なソーススナップショットとハッシュ、作成時刻、操作の状態を耐久保存します。
 
 少なくとも次の状態を意味として区別します。実際の識別子名は実装設計で変更できます。
 
@@ -107,28 +109,28 @@ AtCoderへの送信とlocal DBのcommitは原子的にできないため、提�
 PREPARED
   ├─ 外部送信前の失敗 → FAILED_BEFORE_SEND
   └─ 送信開始 → SEND_STARTED
-                    ├─ ID取得 → REMOTE_ACCEPTED → VERDICT_PENDING → FINAL
+                    ├─ 提出IDの取得 → REMOTE_ACCEPTED → VERDICT_PENDING → FINAL
                     └─ 応答不明 → REMOTE_STATUS_UNKNOWN
 ```
 
 - `SEND_STARTED`以降は外部へ到達した可能性があるため、無条件に再送しません。
-- submission ID取得後は、そのIDの確認によって回復し、codeを再提出しません。
-- 判定polling timeoutを提出失敗として扱いません。
-- 状態が不明で一意に回復できない場合は、公式提出一覧と利用者確認へ委ねます。
-- AtCoder提出、local保存、判定確認を別々の結果として表示します。
-- account identityを確認できない場合、または以前と異なるaccountを検出した場合は送信前に停止します。
-- verdictは取得時刻付きの観測として保存し、欠損値を`0`または推測値で補いません。
+- 提出IDの取得後は、そのIDの確認によって回復し、コードを再提出しません。
+- 判定のポーリングがタイムアウトしても、提出失敗として扱いません。
+- 状態が不明で一意に回復できない場合は、公式の提出一覧と利用者の確認へ委ねます。
+- AtCoderへの提出、ローカル保存、判定確認を別々の結果として表示します。
+- アカウント識別情報を確認できない場合、または以前と異なるアカウントを検出した場合は送信前に停止します。
+- 判定は取得時刻付きの観測として保存し、欠損値を`0`または推測値で補いません。
 
-## 10. 保存、migration、export
+## 10. 保存、マイグレーション、エクスポート
 
-- MVPの履歴保存は、Python標準`sqlite3`によるlocal SQLiteを既定かつ唯一の方式とします。
-- 一つの業務操作に必要なDB更新は、明示transactionでcommitまたはrollbackします。
-- foreign key、unique constraint、schema versionを有効にします。
-- migration前に復旧可能なlocal退避を作り、失敗時に旧Schemaを破壊したまま通常起動しません。
-- 未知の将来Schemaを自動downgradeしません。
-- exportにはformat version、作成時刻、AlgoLoom versionと、MVP履歴の関連を欠損なく含めます。
-- exportにはcredential、secret、不要な絶対path、外部コンテンツ本文を含めません。
-- export中のDB更新による不整合を防ぎ、AlgoLoomなしでもsourceを回収可能にします。
+- MVPの履歴保存は、Python標準の`sqlite3`によるローカルSQLiteを既定かつ唯一の方式とします。
+- 一つの業務操作に必要なDB更新は、明示的なトランザクションでコミットまたはロールバックします。
+- 外部キー、一意制約、スキーマバージョンを有効にします。
+- マイグレーション前に復旧可能なローカル退避を作り、失敗時に旧スキーマを破壊したまま通常起動しません。
+- 未知の将来スキーマを自動でダウングレードしません。
+- エクスポートには形式バージョン、作成時刻、AlgoLoomのバージョンと、MVP履歴の関連を欠損なく含めます。
+- エクスポートには認証情報、秘密情報、不要な絶対パス、外部コンテンツ本文を含めません。
+- エクスポート中のDB更新による不整合を防ぎ、AlgoLoomなしでもソースコードを回収可能にします。
 
 ## 11. 内部境界
 
@@ -136,35 +138,35 @@ PREPARED
 
 | 境界 | 責任 |
 |---|---|
-| CLI / Application | 入出力と業務状態遷移を分離する |
+| CLI / Application | 入出力と業務の状態遷移を分離する |
 | `JudgeAdapter` | AtCoder固有の取得、認証、提出、判定確認を閉じ込める |
 | `ReferenceLinkProvider` | 外部本文を取得せず、公式URLを構成する |
 | `BrowserLauncher` | OSへのURL起動要求とページ表示結果を分ける |
-| `HistoryStore` | transaction、履歴状態、queryをSQLite詳細から分ける |
-| `LanguageProfile` | 言語固有のtemplate、診断、BuildPlan、RunPlanを閉じ込める |
-| `HostPlatform` / `ProcessRunner` | process、timeout、出力上限、path等のOS差異を閉じ込める |
-| workspace context | path探索とmetadata検証を各commandから分ける |
+| `HistoryStore` | トランザクション、履歴状態、クエリをSQLiteの詳細から分ける |
+| `LanguageProfile` | 言語固有のテンプレート、診断、`BuildPlan`、`RunPlan`を閉じ込める |
+| `HostPlatform` / `ProcessRunner` | プロセス、タイムアウト、出力上限、パス等のOS差異を閉じ込める |
+| 作業領域コンテキスト | パス探索とメタデータ検証を各コマンドから分ける |
 
-MVPで実装しないAI、Cloud同期、Web API等の型、SDK、設定、状態をCoreへ持ち込みません。
+MVPで実装しないAI、クラウド同期、Web API等の型、SDK、設定、状態をCoreへ持ち込みません。
 
-## 12. Securityとprivacy
+## 12. セキュリティとプライバシー
 
-- SQL値はparameter bindし、動的識別子は許可リストで制限します。
-- path、problem ID、language、file type、sizeを作用前に検証します。
-- atomic write、安全な一時directory、適切なpermission、cleanupを実装します。
-- 外部文字列、compiler出力、sourceをterminalへ出す前に、制御文字とmarkupを安全に扱います。
-- credential、source、raw HTTP header、raw errorを通常logへ出しません。
-- 自動telemetry、crash report送信、Cloud同期をMVP Coreへ追加しません。
-- 問題取得と提出にはrequest timeout、上限付きretry、適切な間隔を設けます。
-- hidden test取得、一括crawl、CAPTCHA回避、session共有を実装しません。
+- SQLの値はパラメータとして束縛し、動的な識別子は許可リストで制限します。
+- パス、問題ID、言語、ファイル種別、サイズを作用前に検証します。
+- 原子的な書き込み、安全な一時ディレクトリ、適切な権限、後始末を実装します。
+- 外部文字列、コンパイラ出力、ソースコードをターミナルへ出す前に、制御文字とマークアップを安全に扱います。
+- 認証情報、ソースコード、生のHTTPヘッダー、生のエラーを通常ログへ出しません。
+- 自動テレメトリ、クラッシュレポートの送信、クラウド同期をMVPのCoreへ追加しません。
+- 問題取得と提出にはリクエストのタイムアウト、上限付きの再試行、適切な間隔を設けます。
+- 非公開テストの取得、一括クロール、CAPTCHAの回避、セッションの共有を実装しません。
 
-## 13. 契約testの最低範囲
+## 13. 契約テストの最低範囲
 
-- `get`、freshな解き直し、状態遷移の各段階における強制終了と安全な再実行
-- source、metadata、path、外部文字列への境界値と攻撃的入力
-- 4言語のbuild/run計画と3 OSのprocess分類、timeout、process tree終了
-- DB transaction、constraint、lock、disk full、migration失敗、未知Schema
-- 提出前保存失敗、送信直後の通信断、判定timeout、状態不明からの回復
-- snapshot bytesと送信bytesのhash一致、不変性、exportからのsource回収
-- credential、外部コンテンツ、不要なpathがlog、DB、export、配布物へ混入しないこと
-- AI、Cloud、Viewerを設定しない状態でCore主要導線を完了できること
+- `get`、白紙からの解き直し、状態遷移の各段階における強制終了と安全な再実行
+- ソースコード、メタデータ、パス、外部文字列への境界値と攻撃的な入力
+- 4言語のビルド・実行計画と、3つのOSでのプロセス分類、タイムアウト、プロセスツリーの終了
+- DBのトランザクション、制約、ロック、ディスク容量不足、マイグレーション失敗、未知スキーマ
+- 提出前の保存失敗、送信直後の通信断、判定のタイムアウト、状態不明からの回復
+- スナップショットのバイト列と送信バイト列のハッシュ一致、不変性、エクスポートからのソースコード回収
+- 認証情報、外部コンテンツ、不要なパスがログ、DB、エクスポート、配布物へ混入しないこと
+- AI、クラウド、ビューアを設定しない状態でCoreの主要導線を完了できること

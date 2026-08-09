@@ -8,118 +8,120 @@ derived_from:
 
 # AlgoLoom MVP実装範囲
 
+表記の規則は[ドキュメント表記規則](../docs/project/writing-conventions.md)に従います。
+
 ## 1. MVPで実証する価値
 
-AlgoLoomのMVPは、AtCoderの終了済み過去問について、問題取得、任意のEditorでの編集、公開sampleによるlocal test、明示的な提出、ローカル履歴による振り返りを、EditorやCloudへ利用者を囲い込まず、部分失敗から回復できる一つの導線として提供します。
+AlgoLoomのMVPは、AtCoderの終了済み過去問について、問題取得、任意のエディタでの編集、公開入出力例によるローカルテスト、明示的な提出、ローカル履歴による振り返りを、エディタやクラウドへ利用者を囲い込まず、部分失敗から回復できる一つの導線として提供します。
 
 機能数ではなく、次の導線が壊れずに成立することをMVPの価値とします。
 
 ```text
 問題を取得する
   → 必要ならSolveAttemptを開始する
-  → 任意のEditorで書く
-  → 公開sampleでtestする
-  → 必要ならcheckpointを残す
+  → 任意のエディタで書く
+  → 公開入出力例でテストする
+  → 必要ならチェックポイントを残す
   → 明示的に提出する
   → 判定を確認する
-  → 履歴、source、差分を振り返る
+  → 履歴、ソースコード、差分を振り返る
   → 必要なら別のSolveAttemptとして解き直す
-  → exportで学習資産を持ち出す
+  → エクスポートで学習資産を持ち出す
 ```
 
-記載した操作名は責任を示す概念名であり、最終的なsubcommand名またはoption名を確定しません。
+記載した操作名は責任を示す概念名であり、最終的なサブコマンド名またはオプション名を確定しません。
 
 ## 2. 対象利用者と利用形態
 
 - AtCoderの終了済み過去問を、自分のPCと自分のAtCoderアカウントで学習する個人利用者を対象とします。
-- terminalで短いcommandを実行できることを前提としますが、shellやcompiler設定への習熟は要求しません。
+- ターミナルで短いコマンドを実行できることを前提としますが、シェルやコンパイラ設定への習熟は要求しません。
 - 一人、一つのAtCoderアカウント、一台の端末を保証範囲とします。
-- 一つ以上のworkspaceと、offlineで参照できるローカル履歴を扱います。
-- 通常の非interactiveなAtCoder Algorithm問題と、利用者自身が書いたcodeを対象とします。
+- 一つ以上の作業領域と、オフラインで参照できるローカル履歴を扱います。
+- 通常の非対話的なAtCoder Algorithm問題と、利用者自身が書いたコードを対象とします。
 
 ## 3. 初期対応環境
 
 | 項目 | MVP保証範囲 |
 |---|---|
-| host OS | native macOS、native Linux、native Windows |
+| ホストOS | ネイティブmacOS、ネイティブLinux、ネイティブWindows |
 | 解答言語 | C++、Python、Go、Rust |
-| source構成 | 一つの問題directoryに一つのsourceを既定とする単一source |
-| toolchain | 各言語の組み込み`LanguageProfile`で定義する標準toolchain |
-| Editor | 保存済みの通常fileを編集できる任意のEditorまたはIDE |
+| ソース構成 | 一つの問題ディレクトリに一つのソースコードを既定とする単一ソース |
+| ツールチェーン | 各言語の組み込み`LanguageProfile`で定義する標準ツールチェーン |
+| エディタ | 保存済みの通常ファイルを編集できる任意のエディタまたはIDE |
 
-WSL、追加言語、複数fileの一般的なproject build、Remote SSH、container等は、個別検証なしに対応済みと表示しません。言語固有差異は`LanguageProfile`、OS固有差異は`HostPlatform`へ分離します。
+WSL、追加言語、複数ファイルの一般的なプロジェクトビルド、Remote SSH、コンテナ等は、個別検証なしに対応済みと表示しません。言語固有の差異は`LanguageProfile`、OS固有の差異は`HostPlatform`へ分離します。
 
 ## 4. MVPに含める能力
 
-1. install後の初期診断と、設定fileの手編集なしで最初のlocal testへ進める導線
-2. 一件の正規問題IDまたはAtCoder公式URLからの公開sample取得
-3. 通常directory、source、宣言的metadataからなるworkspaceの作成
-4. 既存sourceを上書きしないfreshな解き直しと、別のSolveAttemptとしての保存
-5. resource上限付きのcompile、公開sample実行、比較、compile時間とsampleごとのrun時間の表示
-6. 明示的かつ任意のSolveAttempt開始、pause、resume、終了とactive durationの保存
-7. 最初の公開sample通過、初回提出、初ACの区別されたmilestone
-8. 利用者が明示的に作成するcheckpointと不変source snapshot
-9. 自分のAtCoder sessionを使う一件ずつの明示的な提出
-10. submission IDに基づく判定確認と、待機中断後の再確認
-11. 問題、提出、checkpoint、判定、時刻のローカル履歴
-12. 保存済みsnapshotのplain text表示と、選択したsnapshot間のunified diff
-13. 公式問題ページとAtCoder問題別解説ページのdefault browser表示
-14. credentialを含まず、AlgoLoomなしでもsourceを回収できるversion付きexport
+1. インストール後の初期診断と、設定ファイルの手編集なしで最初のローカルテストへ進める導線
+2. 一件の正規問題IDまたはAtCoder公式URLからの公開入出力例の取得
+3. 通常ディレクトリ、ソースコード、宣言的メタデータからなる作業領域の作成
+4. 既存ソースコードを上書きしない白紙からの解き直しと、別のSolveAttemptとしての保存
+5. リソース上限付きのコンパイル、公開入出力例の実行、比較、コンパイル所要時間と入出力例ごとのローカル実行時間の表示
+6. 明示的かつ任意のSolveAttemptの開始、一時停止、再開、終了と能動時間の保存
+7. 最初の公開入出力例の通過、初回提出、初ACの区別された学習マイルストーン
+8. 利用者が明示的に作成するチェックポイントと不変のソーススナップショット
+9. 自分のAtCoderセッションを使う一件ずつの明示的な提出
+10. 提出IDに基づく判定確認と、待機中断後の再確認
+11. 問題、提出、チェックポイント、判定、時刻のローカル履歴
+12. 保存済みスナップショットのプレーンテキスト表示と、選択したスナップショット間の`unified diff`
+13. 公式問題ページとAtCoder問題別解説ページの既定のブラウザでの表示
+14. 認証情報を含まず、AlgoLoomなしでもソースコードを回収できるバージョン付きエクスポート
 15. 部分失敗時に、成功済み段階、未完了段階、保持されたデータ、次の安全な操作を示す回復導線
 
 ## 5. MVPに含めない能力
 
-次はCoreへplaceholder、設定項目または日常的な案内を置かず、MVP後に別途採用判断します。
+次はCoreへ設定項目、空の画面、日常的な案内を置かず、MVP後に別途採用判断します。
 
-- AI review、LLM Provider、AIルール判定
-- Cloud同期、複数端末、共有、共同編集、自動Cloud backupとrestore
-- 問題catalog、terminal内検索、推薦、タグ、weakness分析
-- TUI、Web dashboard、Editor plugin、専用Editor、高度な外部Viewer連携
-- 利用者間ranking、公開skill score、他者平均との差、自動成長評価
-- 公開用solution bundleとGitHub repository操作
-- AtCoder上の既存提出履歴の自動backfill
-- file保存またはtestごとのsource全文の自動versioning
-- 全local test eventとlocal peak memoryの永続履歴
+- AIレビュー、LLMプロバイダ、AIによるルール判定
+- クラウド同期、複数端末、共有、共同編集、自動クラウドバックアップと復元
+- 問題カタログ、ターミナル内検索、推薦、タグ、苦手分野分析
+- TUI、Webダッシュボード、エディタのプラグイン、専用エディタ、高度な外部ビューア連携
+- 利用者間の順位付け、公開される能力スコア、他者平均との差、自動的な成長評価
+- 公開用の成果物生成とGitHubリポジトリ操作
+- AtCoder上の既存提出履歴の自動取り込み
+- ファイル保存またはテストごとのソースコード全文の自動バージョン管理
+- すべてのローカルテストのイベント履歴と、ローカルの最大メモリの永続履歴
 - 他ユーザーの提出一覧への導線、および外部コンテンツ本文の取得・保存
-- WSL、追加言語、一般的な複数file project build、AHC、interactive問題、特殊judge
-- 複数AtCoderアカウントの統合管理
-- 他者またはLLMが作成した未信頼codeの実行とRepair Lab
+- WSL、追加言語、一般的な複数ファイルのプロジェクトビルド、AHC、対話的な問題、特殊ジャッジ
+- 複数のAtCoderアカウントの統合管理
+- 他者またはLLMが作成した信頼できないコードの実行とRepair Lab
 
 ## 6. 実装前に満たす条件
 
-- `JudgeAdapter`について、現在のAtCoderでsample取得、account確認、提出、submission ID取得、判定確認を検証できること。
-- C++、Python、Go、Rustの組み込み`LanguageProfile`案と共通契約testがあること。
-- native macOS、native Linux、native Windowsの`HostPlatform`契約と検証matrixがあること。
-- SolveAttempt、FocusInterval、milestone、snapshot、submission operation、submission、verdict observation、account identityの論理モデルがあること。
-- workspace metadataとuser-level設定の責任が分離されていること。
+- `JudgeAdapter`について、現在のAtCoderで入出力例の取得、アカウント確認、提出、提出IDの取得、判定確認を検証できること。
+- C++、Python、Go、Rustの組み込み`LanguageProfile`案と共通の契約テストがあること。
+- ネイティブmacOS、ネイティブLinux、ネイティブWindowsの`HostPlatform`契約と検証マトリクスがあること。
+- SolveAttempt、FocusInterval、学習マイルストーン、スナップショット、提出操作記録、提出、判定観測、アカウント識別情報の論理モデルがあること。
+- 作業領域のメタデータと利用者単位の設定の責任が分離されていること。
 - `get`、時間計測、`test`、`submit`の中断点と回復経路が設計されていること。
-- freshな解き直しのfile作成とDB保存における部分失敗から、安全に回復できること。
-- 外部資料のURL構成とbrowser起動を分離し、本文非取得、spoiler、contest状態、起動失敗を扱えること。
+- 白紙からの解き直しのファイル作成とDB保存における部分失敗から、安全に回復できること。
+- 外部学習資料のURL構成とブラウザ起動を分離し、本文の非取得、ネタバレ、コンテスト状態、起動失敗を扱えること。
 
-外部前提が成立しない場合は、回避実装へ暗黙に進まず、MVPスコープを再検討します。
+外部の前提が成立しない場合は、回避実装へ暗黙に進まず、MVPの範囲を再検討します。
 
 ## 7. MVP完了の判定
 
-MVPはcommandが存在するだけでは完了しません。[MVPスコープの完了条件](../docs/product/mvp.md#5-mvp完了条件)を、自動test、fault injection、3 OSでの実機確認、利用者検証のいずれか適切な方法で満たす必要があります。
+MVPはコマンドが存在するだけでは完了しません。[MVPスコープの完了条件](../docs/product/mvp.md#5-mvp完了条件)を、自動テスト、障害注入、3つのOSでの実機確認、利用者検証のいずれか適切な方法で満たす必要があります。
 
-特に次をrelease gateとして扱います。
+特に次をリリース判定基準として扱います。
 
-- 同じ取得・解き直し・状態遷移を再実行しても、既存sourceと履歴を失わず、重複を作らない。
-- compile/run timeout後に子processを残さない。
-- 外部送信前の保存に失敗した場合は提出せず、送信状態が不明な場合は自動再送しない。
-- DB lock、disk full、migration失敗、process強制終了から、成功済みデータを失わずに回復できる。
-- Editor、AI、Cloud、Viewerなしで主要導線を完了できる。
-- 外部文字列とcodeを安全にterminalへ表示できる。
-- 時間、判定、local計測、judge計測およびbrowser起動結果を、異なる意味の状態として表示できる。
+- 同じ取得・解き直し・状態遷移を再実行しても、既存のソースコードと履歴を失わず、重複を作らない。
+- コンパイルまたは実行のタイムアウト後に子プロセスを残さない。
+- 外部送信前の保存に失敗した場合は提出せず、送信状態が不明な場合は自動で再送しない。
+- DBのロック、ディスク容量不足、マイグレーション失敗、プロセスの強制終了から、成功済みデータを失わずに回復できる。
+- エディタ、AI、クラウド、ビューアなしで主要導線を完了できる。
+- 外部文字列とコードを安全にターミナルへ表示できる。
+- 能動時間、判定、ローカル計測、ジャッジ計測およびブラウザ起動結果を、異なる意味の状態として表示できる。
 
 ## 8. この仕様で確定しないこと
 
-- 最終的なsubcommand、option、alias
-- CLI frameworkとdependency injection方式
-- class、module、table、columnの最終名称
-- metadata fileとexport fileの最終形式
-- terminalの色、spinner、table layout
-- timeout、出力量、保持期間等の具体値
-- compilerとruntimeの詳細なversion matrix
+- 最終的なサブコマンド、オプション、エイリアス
+- CLIフレームワークと依存性注入の方式
+- クラス、モジュール、テーブル、カラムの最終名称
+- メタデータファイルとエクスポートファイルの最終形式
+- ターミナルの色、スピナー、表のレイアウト
+- タイムアウト、出力量、保持期間等の具体値
+- コンパイラとランタイムの詳細なバージョン対応表
 
-これらは個別の機能設計または実装設計で決定します。ただし、MVP範囲、Core契約、安全性、データ完全性を弱める決定はできません。
+これらは個別の機能設計または実装設計で決定します。ただし、MVPの範囲、Core契約、安全性、データ完全性を弱める決定はできません。
