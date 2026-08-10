@@ -12,6 +12,7 @@
 > - [Core契約 §6](../architecture/core-contracts.md#6-提出契約)
 > - [配布方針ガイド §5](../operations/algoloom-distribution.md#5-スクレイピングとアクセス負荷)
 > - [未決事項一覧](unresolved-decisions.md)
+> - [技術検証の実施手順と成果物](../verification/judge-adapter/README.md)
 
 ## ドキュメント概要
 
@@ -123,6 +124,8 @@ P0の不合格を、実装の工夫で迂回できる問題として扱いませ
 - P0が不合格の場合は、MVPの範囲と価値仮説の再検討案
 
 観測記録は事実だけを残し、判断は各正本文書で行います。
+
+匿名化済みの成果物は[`docs/verification/judge-adapter/results/`](../verification/judge-adapter/results/)へ保存し、[記録テンプレート](../verification/judge-adapter/results/run-record-template.md)を使用します。検証コード、一時出力、認証情報は成果物へ含めません。実行環境、停止条件、記録の手順は[技術検証の実施手順](../verification/judge-adapter/README.md)を参照します。
 
 ## 8. 実施順序
 

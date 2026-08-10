@@ -93,6 +93,7 @@ AI review、Cloud同期、問題推薦・TUI、公開用solution bundle、Repair
 |---|---|---|
 | [配布方針ガイド](docs/operations/algoloom-distribution.md) | AtCoderコンテンツ、規約、ライセンス、PyPI公開 | 配布上の判断材料 |
 | [未決事項一覧](docs/project/unresolved-decisions.md) | 未決、条件付き決定、外部確認待ちの集約 | 判断状況の一覧。各設計の正本は置き換えない |
+| [JudgeAdapter技術検証の実施手順](docs/verification/judge-adapter/README.md) | 実行前確認、停止条件、成果物と一時データの分離 | 技術検証の運用手順。合格条件の正本は検証計画 |
 
 ## 正本の扱い
 
