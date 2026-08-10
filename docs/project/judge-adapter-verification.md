@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（P0初回実施は停止条件により判定不能。結果は[`p0-01`](../verification/judge-adapter/results/2026-08-11-p0-01.md)）
+> 状態: 検証計画（P0認証再実施後も停止条件により判定不能。結果は[`p0-01`](../verification/judge-adapter/results/2026-08-11-p0-01.md)と[`p0-02`](../verification/judge-adapter/results/2026-08-11-p0-02.md)）
 >
 > 作成日: 2026年8月10日
 >
