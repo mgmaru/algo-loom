@@ -1,2 +1,4 @@
 prompts
 /.verification-work/
+__pycache__/
+*.py[cod]

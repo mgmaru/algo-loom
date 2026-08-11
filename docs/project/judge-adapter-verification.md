@@ -27,7 +27,7 @@
 
 これは[MVPスコープ §4](../product/mvp.md#4-mvpの実装開始条件)の実装開始条件1〜3を満たすための作業です。方式Cで主要導線を先に検証し、方式Aを別のP0で検証します。**いずれかのP0が不合格の場合は回避実装へ進まず、MVPの範囲と価値仮説を再決定します。**
 
-検証コードは破棄前提とし、製品コードにしません。残す成果物は観測記録と合否判定です。
+実行固有の検証コード、一時出力、認証情報は破棄前提とします。一方、秘密情報や実行固有値を含まず、通信と外部作用の上限をレビューでき、再検証や将来の実装判断に使える汎用の検証支援コードは[`scripts/verification/`](../../scripts/verification/)へ保持できます。保持したコードを製品コードまたは実サービスの証拠とは扱いません。観測の正本は匿名化した実行記録と合否判定です。
 
 ## 1. 検証しないこと
 
@@ -137,7 +137,7 @@ P0の不合格を、実装の工夫で迂回できる問題として扱いませ
 
 観測記録は事実だけを残し、判断は各正本文書で行います。
 
-匿名化済みの成果物は[`docs/verification/judge-adapter/results/`](../verification/judge-adapter/results/)へ保存し、[記録テンプレート](../verification/judge-adapter/results/run-record-template.md)を使用します。検証コード、一時出力、認証情報は成果物へ含めません。実行環境、停止条件、記録の手順は[技術検証の実施手順](../verification/judge-adapter/README.md)を参照します。
+匿名化済みの成果物は[`docs/verification/judge-adapter/results/`](../verification/judge-adapter/results/)へ保存し、[記録テンプレート](../verification/judge-adapter/results/run-record-template.md)を使用します。検証コード、一時出力、認証情報は成果物へ含めません。再利用可能な検証支援コードは[`scripts/verification/`](../../scripts/verification/)へ分離し、実行記録の代わりにしません。実行環境、停止条件、記録の手順は[技術検証の実施手順](../verification/judge-adapter/README.md)を参照します。
 
 ## 8. 実施順序
 
