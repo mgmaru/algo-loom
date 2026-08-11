@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる`V-02`は、[`p0-03`](../verification/judge-adapter/results/2026-08-11-p0-03.md)の不合格後、[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)で合格。`V-03`、`V-04`、方式Aの`V-10`は未実施）
+> 状態: 検証計画（方式Cによる`V-02`は、[`p0-03`](../verification/judge-adapter/results/2026-08-11-p0-03.md)の不合格後、[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)で合格し、[`p0-05`](../verification/judge-adapter/results/2026-08-11-p0-05.md)の当日再確認も合格。`V-03`は`p0-05`で提出ページのTurnstile関連マーカーを停止条件として中止し、`V-04`と方式Aの`V-10`は未実施）
 >
 > 作成日: 2026年8月10日
 >
