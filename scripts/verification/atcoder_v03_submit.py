@@ -1136,7 +1136,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("提出フォームのTurnstile分類:", turnstile_binding_class)
     print("ソースコード:", SOURCE_ALIAS, str(len(source)) + "バイト")
     print("SHA-256（確認専用・成果物へ保存しません）:", source_hash)
-    print("検証全体の既存提出回数: p0-01〜p0-05は0件")
+    print("検証全体の既存提出回数: p0-01〜p0-06は0件")
     print("今回のPOST上限: 1回。応答不明でも自動再送しません")
     print("利用規約:", TERMS_URL)
     print("AI学習・販売の拒否設定案内:", AI_POLICY_URL)
