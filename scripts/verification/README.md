@@ -86,4 +86,34 @@ python3 scripts/verification/atcoder_v03_submit.py \
 |---|---|---|
 | `atcoder_v02_session_check.py` | 方式Cのアカウント確認 | `p0-04`相当の読み取り専用検証を再現する。製品へ組み込まない |
 | `atcoder_v03_submit.py` | 方式Cによる1件提出と提出ID取得 | 当日の`V-02`再確認、`V-05`、明示承認を通過した場合だけPOSTを1回送る。製品へ組み込まない |
+| `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | 対象提出フォームの送信をページ読み込み前から遮断し、応答欄の存在と値の有無だけを観測する。Cookie、トークン値、ソースコードを取得せず、`V-03`または`V-10`の合格証拠には単独で使用しない |
 | `atcoder-login.sh` | `online-judge-tools`のパスワード入力型ログイン | `p0-01`・`p0-02`の過去経路を確認するために残す。Turnstile下の再認証手段として推奨しない |
+
+## `atcoder_v03_turnstile_probe.mjs`
+
+`p0-07`の静的HTML観測では確認できなかった、JavaScript実行後のTurnstile応答欄を調べる補助スクリプトです。macOS上のGoogle Chromeを、リポジトリ外に作る空の専用プロファイルと`--remote-debugging-pipe`で可視起動します。利用者がChrome内でログインとTurnstileを手動で完了した後、対象フォーム内の`cf-turnstile-response`が存在するか、値が空かどうかだけをブラウザ内で判定します。
+
+所有者だけがアクセスできるリポジトリ外のディレクトリを先に作り、まだ存在しない結果パスを指定します。
+
+```console
+node scripts/verification/atcoder_v03_turnstile_probe.mjs \
+  --json-output /absolute/owner-only/path/turnstile-result.json
+```
+
+この観測では次の境界を固定します。
+
+- Chrome起動時の最初のページは`about:blank`とし、ログイン中はページへスクリプトを注入しない。利用者がログイン完了を確認した後、対象提出URLへの移動前に提出フォームの`submit`イベントと直接`submit()`を遮断する。
+- 利用者は可視ブラウザ内でユーザー名、パスワード、Turnstileを操作する。スクリプトは入力やクリックを自動化しない。
+- DevTools Protocolの`Network`領域を有効にせず、Cookie、HTTPヘッダー、POST本文を受け取らない。
+- 応答欄の値をブラウザ外へ返さず、欄の件数と空でない欄の件数だけを返す。
+- ソースコードを入力せず、提出POST上限を0回とする。`V-03`の合否は変更しない。
+- ブラウザ終了後に、今回作成した一時プロファイルだけを削除する。ローカル削除をAtCoder側のセッション失効とは扱わない。
+- ログイン開始から二段階の確認を通算15分以内に完了しない場合、ブラウザと一時プロファイルを後始末して停止する。
+
+ローカルテストはAtCoderへ接続せず、次で実行します。
+
+```console
+node --test scripts/verification/test_atcoder_v03_turnstile_probe.mjs
+```
+
+`p0-08`の実行時版は、対象提出URLへの最初の移動前に提出防止コードを設定したため、ログイン画面にも同じJavaScript実行環境の変更が存在しました。ログインフォーム自体は送信対象外としていましたが、Cloudflare判定へ影響しなかったとは証明できません。現在の再利用版は、ログイン中にはページへスクリプトを注入せず、本人のログイン完了を確認した後だけ提出防止を設定する二段階へ修正しています。この修正版は実サービスへ再接続しておらず、`p0-08`の観測結果を遡って変更しません。
