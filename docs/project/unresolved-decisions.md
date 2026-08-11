@@ -139,15 +139,15 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** AI Provider setupはProvider、Backend種別、endpoint・credential source、実行場所・課金、capability、model、送信範囲・送信先、同意、接続testの順とする。Cloud同期は通常commandで宣伝せず、複数端末利用を求めたとき、`sync`を実行したとき、または明示helpを開いたときだけ案内する。AtCoder認証は初回提出前に安全に状態確認でき、失敗時もlocal testと履歴閲覧を止めない。
+**決定済みの内容:** AI Provider setupはProvider、Backend種別、endpoint・credential source、実行場所・課金、capability、model、送信範囲・送信先、同意、接続testの順とする。Cloud同期は通常commandで宣伝せず、複数端末利用を求めたとき、`sync`を実行したとき、または明示helpを開いたときだけ案内する。AtCoder認証は、方式Cを技術検証だけに使い、MVPでは方式Aの可視専用browserを明示操作で起動する。利用者がloginとTurnstileを手動で完了し、必要なsessionだけをOSのsecret storeへ保存する。初回提出前と各提出前にaccount identityを確認し、失敗時もlocal testと履歴閲覧を止めない。
 
-**残る未決:** interactive UI、認証確認command、AI画面の最終的な階層表現、alias・completionの詳細。例示されたAI・sync command名もCLI最終設計までは暫定案である。
+**残る未決:** interactive UI、AtCoder認証setup・状態確認・削除の最終command名と表示、方式Aで正式対応するbrowser version matrix、AI画面の最終的な階層表現、alias・completionの詳細。例示されたAI・sync command名もCLI最終設計までは暫定案である。
 
-**決めること:** interactive UIの有無、AtCoder認証を確認する具体的操作、AI Provider選択画面の階層、Cloud同期を案内するタイミング、shell completionの詳細。
+**決めること:** interactive UIの有無、方式Aの検証後にAtCoder認証の最終command・表示・対応browser、AI Provider選択画面の階層、Cloud同期を案内するタイミング、shell completionの詳細。
 
 **原文:** 「interactive UIの有無」「AtCoder認証を確認する具体的な操作」「AI Provider選択画面の具体的な階層」「Cloud同期を案内するタイミング」「aliasとshell completionの詳細」
 
-出典: [ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)、[Review Backend設計 §6](../features/llm-provider-design.md#6-セットアップux)、[ローカル利用とCloud同期の段階的設計 §8](../features/local-and-cloud-sync-design.md#8-cli設計)
+出典: [AtCoder認証設計](../architecture/atcoder-authentication.md)、[ストレスフリーUX設計 §11](../quality/stress-free-ux-design.md#11-現時点で確定しないこと)、[Review Backend設計 §6](../features/llm-provider-design.md#6-セットアップux)、[ローカル利用とCloud同期の段階的設計 §8](../features/local-and-cloud-sync-design.md#8-cli設計)
 
 ### 1.7 ユーザーカスタマイズの具体仕様
 
@@ -581,16 +581,16 @@
 
 **状態:** 外部確認待ち
 
-**決定済みの内容:** 問い合わせる9項目と、リクエスト数・保存内容・認証方式・AI制限を具体的に説明して問い合わせる方針は決定している。限定公開Beta前に問い合わせる。
+**決定済みの内容:** 問い合わせる12項目と、リクエスト数・保存内容・認証方式・AI制限を具体的に説明して問い合わせる方針は決定している。限定公開Beta前に問い合わせる。方式Aについて、可視専用browserで利用者がloginとTurnstileを手動操作し、同一端末のlocal CLIが`REVEL_SESSION`だけをOSのsecret storeへ保存することを具体的に説明する。
 
-**残る確認:** 9項目に対するAtCoderの回答。リポジトリ内に問い合わせ済み・回答済みの記録はない。
+**残る確認:** 12項目に対するAtCoderの回答。リポジトリ内に問い合わせ済み・回答済みの記録はない。
 
-**決めること:** 次の9項目への回答を得て、配布・アクセス・AIレビュー・表示の方針へ反映する。問い合わせへ添える実際のリクエスト数、間隔、保存内容は[JudgeAdapter技術検証計画](judge-adapter-verification.md)の観測記録から得る。
+**決めること:** 次の12項目への回答を得て、配布・アクセス・認証・AIレビュー・表示の方針へ反映する。問い合わせへ添える実際のリクエスト数、間隔、保存内容は[JudgeAdapter技術検証計画](judge-adapter-verification.md)の観測記録から得る。
 
 **原文:**
 
 1. 「ユーザー操作により、公開サンプル入出力を1問ずつローカル保存するCLIの配布可否」
-2. 「ユーザー自身のセッションを使った提出補助の可否」
+2. 「ユーザー自身がbrowserでloginしたsessionを、同一端末のlocal CLIがOSのsecret storeへ保存し、明示操作による提出補助へ使う方式の可否」
 3. 「推奨されるアクセス間隔と再試行方法」
 4. 「User-Agentへ記載すべき情報」
 5. 「公開サンプルのローカルキャッシュ可否」
@@ -598,6 +598,9 @@
 7. 「ADTで再利用中の過去問をAIレビュー対象とする解釈で問題ないか」
 8. 「READMEやPyPIで『AtCoder対応』と文章表記する場合の注意点」
 9. 「無料OSS版と有料版で確認事項が異なるか」
+10. 「正規問題IDからAtCoderの問題別解説ページを構成し、本文を取得せずdefault browserで開く機能の可否」
+11. 「MVP後に、問題・AC・言語filter付きのAtCoder提出一覧を、code本文・Cookieを取得せずdefault browserで開く機能の可否」
+12. 「可視の専用browserで利用者がTurnstileを手動操作し、CLIが`REVEL_SESSION`だけを取り込む方式で遵守すべき追加条件の有無」
 
 出典: [配布方針ガイド §15](../operations/algoloom-distribution.md#15-atcoderへ確認したい事項)
 

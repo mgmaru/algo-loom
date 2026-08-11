@@ -6,6 +6,7 @@ derived_from:
   - ../docs/product/roadmap.md
   - ../docs/architecture/overview.md
   - ../docs/architecture/core-contracts.md
+  - ../docs/architecture/atcoder-authentication.md
   - ../docs/architecture/language-and-platform-portability.md
   - ../docs/features/problem-selection-and-catalog.md
   - ../docs/features/revisit-workflow.md
@@ -132,6 +133,7 @@ MVPに含めない主な能力を次に示します。Coreへ設定項目、空�
 | `ProcessRunner` | `HostPlatform`のうち、プロセスの起動、取消、終了、出力上限を担う |
 | `BuildPlan` / `RunPlan` | `argv`、作業ディレクトリ、入出力、生成物、タイムアウト区分からなるビルド計画と実行計画。シェル文字列を含まない |
 | `JudgeAdapter` | AtCoder固有の取得、認証確認、提出、判定確認、ジャッジ言語の解決を閉じ込める |
+| `AtCoderSessionProvider` | 可視の専用ブラウザによる認証、必要なセッションだけの取得、秘密情報保管庫への保存を閉じ込める |
 | `ReferenceLinkProvider` | ジャッジ固有の公式URLを構成する。外部本文を取得しない |
 | `BrowserLauncher` | OSへのURL起動要求だけを担う |
 | `HistoryStore` | トランザクション、履歴状態、クエリをSQLiteの詳細から分ける |
@@ -223,7 +225,7 @@ flowchart LR
 | `F-HISTORY-02` | 履歴一覧 | ローカルDBだけから試行、時間、マイルストーン、チェックポイント、提出、判定を取得し、状態を混同せず一覧する | `F-BASE-02`, `F-STORAGE-01` | [§7.1](#71-保存表示対象) |
 | `F-HISTORY-03` | スナップショット表示 | 利用者が選んだスナップショットを、読み取り専用のプレーンテキストとしてターミナルへ表示する | `F-HISTORY-02` | [§7.1](#71-保存表示対象) |
 | `F-HISTORY-04` | スナップショット差分 | 利用者が選んだ二つのスナップショットを`unified diff`で比較する。暗黙の最良版を作らない | `F-HISTORY-02` | [§7.1](#71-保存表示対象) |
-| `F-SUBMIT-01` | AtCoder認証状態の確認 | 提出より前に現在のセッションのアカウントを確認し、失敗原因と次の行動を示す。ローカルのCore操作は止めない | `F-BASE-01` | [§8.1](#81-atcoder認証状態確認f-submit-01) |
+| `F-SUBMIT-01` | AtCoder認証の確立と状態確認 | 可視の専用ブラウザで利用者が手動認証したセッションを安全に確立し、提出より前に現在のアカウントを確認する。失敗原因と次の行動を示し、ローカルのCore操作は止めない | `F-BASE-01` | [§8.1](#81-atcoder認証状態確認f-submit-01) |
 | `F-SUBMIT-02` | 提出準備 | 提出対象と外部作用を利用者へ確認し、送信するソーススナップショットと提出操作記録を送信前に耐久保存する | `F-BASE-02`, `F-STORAGE-01`, `F-SUBMIT-01` | [§8.2](#82-提出前確認f-submit-02) |
 | `F-SUBMIT-03` | AtCoderへの提出 | `PREPARED`な操作を一件だけ送信し、提出IDまたは送信状態不明を記録する。無条件の再送はしない | `F-SUBMIT-02` | [§8.3](#83-提出状態f-submit-03) |
 | `F-SUBMIT-04` | 判定の確認・再確認 | 提出IDを基準に判定をポーリングし、取得時刻付きの観測として追記する。中断後も同じ提出を再確認できる | `F-SUBMIT-03` | [§8.4](#84-判定観測f-submit-04) |
@@ -242,7 +244,7 @@ flowchart LR
 |---|---|
 | ローカルだけで完結する | `F-BASE-02`, `F-ATTEMPT-01`, `F-ATTEMPT-02`, `F-TEST-01`, `F-HISTORY-01`〜`F-HISTORY-04`, `F-STORAGE-01`, `F-STORAGE-02` |
 | AtCoderへ通信する | `F-PROBLEM-01`, `F-PROBLEM-02`, `F-SUBMIT-01`, `F-SUBMIT-03`, `F-SUBMIT-04` |
-| OSのブラウザへ起動要求する | `F-REFERENCE-01`〜`F-REFERENCE-03`, `F-PROBLEM-02`の補助動作 |
+| OSのブラウザへ起動要求する | `F-SUBMIT-01`の認証用専用ブラウザ、`F-REFERENCE-01`〜`F-REFERENCE-03`, `F-PROBLEM-02`の補助動作 |
 | 外部ツールを読み取り専用で検出する | `F-BASE-01`, `F-TEST-01`のツールチェーン診断 |
 
 ## 3. 基盤機能
@@ -533,8 +535,13 @@ stateDiagram-v2
 | R4 | Coreを止めない | 認証エラーを理由にローカルテスト、履歴閲覧、エクスポート、チェックポイントを停止しない |
 | R5 | 次の一手を示す | エラーごとに利用者が行える行動を一つ示す |
 | R6 | アカウントの変更を検出する | 保存済みアカウントと異なる場合は送信前に停止して説明する |
+| R7 | 手動認証でsessionを確立する | 可視の専用browserを明示操作で起動し、利用者がusername、password、Turnstileをbrowser上で操作する |
+| R8 | browserとsecretを分離する | 既存profileを参照せず、`REVEL_SESSION`だけをaccount確認後にOSのsecret storeへ保存する |
+| R9 | 認証中断を回復する | 取消、timeout、browser異常終了で提出せず、孤児process、利用可能な一時profile、未確認sessionを残さない |
 
 - Cookie、パスワード、セッショントークンを履歴DB、作業領域、エクスポート、通常ログへ保存しません。
+- 秘密情報保管庫を利用できない場合、平文設定ファイルへ自動的に切り替えません。
+- 手動Cookie取り込みは技術検証だけに限定し、MVP製品、CI、共有環境、非対話実行へ実装しません。
 - Bot対策の回避方法を案内しません。
 - 複数のAtCoderアカウントの統合管理はMVP対象外です。
 
@@ -718,6 +725,7 @@ PREPARED
 |---|---|---|
 | CLIと表示 | CLI / Application | 入力、確認、進捗、結果表示を業務の状態遷移から分離 |
 | 問題取得・認証・提出・判定 | `JudgeAdapter` | AtCoder固有の取得、認証確認、言語解決、提出、判定 |
+| AtCoder session | `AtCoderSessionProvider` | 可視専用browser、人によるlogin、必要Cookieだけの取得、secret store、cleanup |
 | 外部資料 | `ReferenceLinkProvider` | AtCoder固有のURLの構成。本文は取得しない |
 | ブラウザ | `BrowserLauncher` | OSへのURL起動要求 |
 | ビルド・実行 | `LanguageProfile` | テンプレート、診断、`BuildPlan`、`RunPlan` |
@@ -735,6 +743,8 @@ flowchart TB
     CORE --> S[HistoryStore]
     CORE --> R[ReferenceLinkProvider]
     CORE --> B[BrowserLauncher]
+    CLI --> A[AtCoderSessionProvider]
+    J --> A
 
     AI[AIレビュー] -. MVP後・一方向依存 .-> Q[スナップショット / 判定 / 差分クエリ]
     Q --> CORE
@@ -778,7 +788,7 @@ flowchart TB
 | 5 | ローカルテスト | ビルド、実行、比較方式、タイムアウト、プロセスツリーの終了を検証できる |
 | 6 | SolveAttempt、マイルストーン、チェックポイント | 状態、時間、不変のスナップショットをオフラインで確認できる |
 | 7 | 白紙からの解き直し | ファイルとDBの各中断点から重複なく回復できる |
-| 8 | 認証確認、提出、判定の再確認 | 認証状態を先に確認でき、送信状態不明とポーリング中断から再提出せず回復できる |
+| 8 | 認証確立、認証確認、提出、判定の再確認 | 方式Aでsessionを安全に確立し、認証状態を先に確認でき、送信状態不明とポーリング中断から再提出せず回復できる |
 | 9 | 履歴、表示、差分、外部参照、エクスポート | オフラインの振り返りと安全な持ち出しが成立する |
 | 10 | 共通出力・待機・診断の統一 | 出力順序、エラー分類、進捗、統一診断入口を全コマンドへ適用する |
 | 11 | リリース前の堅牢化 | セキュリティ、障害注入、3つのOSでの実機確認、利用者検証を満たす |
@@ -818,6 +828,7 @@ flowchart TB
 | `E2E-27` | 大量出力、巨大なソースコード、巨大な差分を扱う | `Q-06` | メモリと表示が上限内に収まり、省略した事実と確認方法を示す |
 | `E2E-28` | 長時間処理を明示的に中止する | `Q-12` | 残る状態と失われる進捗を示し、保存済みの結果を壊さない |
 | `E2E-29` | 履歴の対象範囲を確認する | `F-HISTORY-02` | AlgoLoomで記録した履歴であり、AtCoderアカウント全体の履歴ではないと判別できる |
+| `E2E-30` | 可視の専用browserでAtCoder認証を開始・中断・再開する | `F-SUBMIT-01` | 既存profileへ触れず、手動login後に期待accountを確認し、中断・異常終了でもsecret、孤児process、一時profileを残さない |
 
 ## 16. MVP後の機能候補
 
@@ -872,7 +883,7 @@ flowchart TB
 | ローカルテスト | 空白・改行の正規化規則、浮動小数の既定の許容誤差、近似判定の表示文言 | [未決事項一覧](../docs/project/unresolved-decisions.md) 2.5 |
 | 履歴 | ツールチェーン観測を履歴へ保存するか。Core契約と可搬性設計の記述が一致していない | [未決事項一覧](../docs/project/unresolved-decisions.md) 2.6 |
 | 外部通信 | User-Agentへ記載する情報 | [未決事項一覧](../docs/project/unresolved-decisions.md) 8.1 |
-| 認証 | 認証状態を確認する具体的な操作と表示 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.6 |
+| 認証 | 方式Aのsetup・状態確認・削除の最終command名と表示、対応browser matrix | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.6 |
 | 時間計測 | 最終的なCLI、表示精度、時計異常の訂正方法 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.8 |
 | 外部資料 | 最終的なCLI、ネタバレ確認の文言、非対話時の明示オプション | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.9 |
 | 外部資料の表示手段 | ターミナル内で表示崩れの少ない表示手段の選定と、対応OSごとの保証範囲 | [未決事項一覧](../docs/project/unresolved-decisions.md) 1.11 |
@@ -899,7 +910,7 @@ flowchart TB
 | §5 SolveAttemptと学習時間 | [Core契約](../docs/architecture/core-contracts.md) §5.6、[ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §4.8 |
 | §6 ローカルテスト | [Core契約](../docs/architecture/core-contracts.md) §4、[ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §3.4、[パフォーマンスと待機体験の設計](../docs/quality/performance-and-waiting-design.md) §3.4 |
 | §7 スナップショットと振り返り | [Core契約](../docs/architecture/core-contracts.md) §5.2、§5.3、§5.4 |
-| §8.1 AtCoder認証状態確認 | [ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §3.2、[Core契約](../docs/architecture/core-contracts.md) §6.5 |
+| §8.1 AtCoder認証状態確認 | [AtCoder認証設計](../docs/architecture/atcoder-authentication.md)、[ストレスフリーUX設計](../docs/quality/stress-free-ux-design.md) §3.2、[Core契約](../docs/architecture/core-contracts.md) §6.5 |
 | §8.2 提出前確認 | [Core契約](../docs/architecture/core-contracts.md) §6.1、[配布方針ガイド](../docs/operations/algoloom-distribution.md) §6.1、[セキュリティ設計ガイド](../docs/quality/security-design.md) §5.1 |
 | §9 外部学習資料 | [外部学習資料参照設計](../docs/features/external-learning-resources.md)、[Core契約](../docs/architecture/core-contracts.md) §3.4 |
 | §10.1 SQLiteとマイグレーション | [Core契約](../docs/architecture/core-contracts.md) §7.1、§7.2 |

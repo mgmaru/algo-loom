@@ -7,6 +7,7 @@
 > 関連文書:
 > - [MVPスコープ](../product/mvp.md)
 > - [Core契約](../architecture/core-contracts.md)
+> - [AtCoder認証設計](../architecture/atcoder-authentication.md)
 > - [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md)
 > - [AlgoLoom LLM Provider選択・実行基盤設計](../features/llm-provider-design.md)
 > - [外部学習資料参照設計](../features/external-learning-resources.md)
@@ -14,7 +15,7 @@
 >
 > 作成日: 2026年7月15日
 >
-> 更新日: 2026年7月20日
+> 更新日: 2026年8月11日
 >
 > 重要: 本文書は法的助言ではなく、公開情報に基づく設計・配布上の判断材料である。規約やコンテストルールは変更されるため、公開前に最新版を確認し、必要に応じてAtCoderまたは法律の専門家へ相談すること。
 
@@ -49,7 +50,7 @@ AlgoLoomは、次の条件を守ることで、**AtCoderの非公式な補助CLI
 
 - リクエスト間隔、再試行、提出確認などの安全策を既定で有効にする。
 - AtCoderの問題・解説・提出一覧は公式URLをdefault browserで開き、解説本文や他ユーザーのcodeをAlgoLoomへ取得・保存・再表示しない。
-- 他ユーザーの提出一覧はMVP後の候補とし、browserが所有するAtCoder sessionを利用する。Cookieやbrowser profileをAlgoLoomから読まない。
+- 他ユーザーの提出一覧はMVP後の候補とし、外部資料用`BrowserLauncher`がbrowser所有のAtCoder sessionを利用する。外部資料の導線ではCookieやbrowser profileをAlgoLoomから読まない。
 - AtCoder公式またはAtCoder公認のツールだと誤解されない表示にする。
 - 公開版ではTurso同期を任意機能とし、各ユーザーが自分のDBと認証情報を用意する。
 
@@ -411,27 +412,34 @@ AHCには別の生成AIルールがある。ADTは過去のABC問題を再利用
 
 ### 8.1. 基本方針
 
-- AlgoLoom独自のログイン処理を原則として持たない。
-- 認証はonline-judge-toolsの正規の仕組みに委譲する。
+- MVPは[AtCoder認証設計](../architecture/atcoder-authentication.md)の方式Aを製品候補とする。
+- AlgoLoomは可視の専用browserを明示操作で起動し、username、password、Turnstileの操作を利用者へ委ねる。
+- password入力型の自動loginを持たず、online-judge-toolsのlogin成否を認証契約にしない。
 - ユーザー自身が取得したセッションだけを利用する。
 - パスワードを保存しない。
-- セッションCookieやトークンをAlgoLoomのDBへコピーしない。
+- `REVEL_SESSION`だけをOSのsecret storeにあるAlgoLoom namespaceへ保存し、履歴DB、設定file、workspaceへコピーしない。
 - セッション情報をTurso、ログ、バックアップ、クラッシュレポートへ含めない。
 - 複数人で同じAtCoderセッションを共有しない。
+- 方式Cの手動Cookie importは技術検証だけに限定し、配布版、CI、共有環境、非対話実行へ提供しない。
+- sessionの取得後と提出前にaccount identityを確認し、一致しない場合は停止する。
 
 ### 8.2. Bot対策への対応
 
-AtCoderの認証方式やBot対策の変更により、online-judge-toolsのログインが動作しなくなる可能性がある。これはAtCoderがAlgoLoom向けに保証するAPIではないため、互換性リスクとして扱う。
+AtCoderの認証方式、browserまたはBot対策の変更により、方式Aが動作しなくなる可能性がある。これはAtCoderがAlgoLoom向けに保証する認証APIではないため、互換性リスクとして扱う。
 
 次の機能は実装しない。
 
 - CAPTCHAやTurnstileの自動突破
+- username・passwordの自動入力またはlogin formの自動POST
 - ブラウザ指紋の偽装
 - 他人のCookieの取得・共有
+- 利用者の既存browser profile、他siteのCookie、password storeの探索
 - ブロック回避のためのプロキシ切り替え
 - AtCoderが意図したアクセス制限の迂回
 
-認証できない場合はエラーとして停止し、公式サイトまたはonline-judge-tools側の対応を待つ。
+認証できない場合は提出だけを停止し、local testと履歴を継続できるようにする。方式Aのbrowserが拒否された場合はheadless化、stealth設定または指紋偽装を追加せず、公式情報、AtCoderの回答または互換性修正を待つ。
+
+方式Aは`V-10`に合格するまでMVP実装済みと扱わない。限定公開Beta前に、browserで本人が確立したsessionを同一端末のlocal CLIへ渡して提出補助へ使う方式について、リクエスト数、保存先、非送信情報とともにAtCoderへ確認する。
 
 - [online-judge-tools Cloudflare関連Issue](https://github.com/online-judge-tools/oj/issues/934)
 
@@ -686,7 +694,7 @@ algoloom_workspace/
 | `ai_review_enabled` | OFFなら開催確認もLLM Provider呼び出しも行わない |
 | `contest_mode` | ONなら対象問題にかかわらず、すべてのAIレビューを拒否 |
 | 判定確認 | 間隔付きポーリング、最大待機時間あり |
-| 認証 | ユーザー自身のonline-judge-toolsセッションを使用 |
+| 認証 | 方式Aの可視専用browserで本人がloginし、確認済みsessionをOSのsecret storeから使用 |
 | 同期 | 認証情報を除外し、ユーザー自身のTursoへ送る |
 | エラーログ | コード、Cookie、トークンをマスク |
 | 更新確認 | AtCoder規約・AIルールのリンクを表示可能にする |
@@ -699,7 +707,7 @@ algoloom_workspace/
 
 - [ ] 問題文、画像、公開サンプル、解説を配布物に含めていない。
 - [ ] 解説本文・画像・PDF・動画・sample codeと、他ユーザーの提出codeを実行時にも取得・保存・再表示していない。
-- [ ] 外部資料の参照が公式URLのbrowser表示だけで、Cookie、profile、login状態をAlgoLoomが扱っていない。
+- [ ] 外部資料の参照が公式URLの`BrowserLauncher`だけで、Cookie、profile、login状態を扱う認証browserと分離されている。
 - [ ] テストfixtureはすべて作者が作成した架空データである。
 - [ ] 隠しシステムテスト取得を実装していない。
 - [ ] 一括問題取得を実装していない。
@@ -732,6 +740,11 @@ algoloom_workspace/
 
 - [ ] AtCoderパスワードを保存しない。
 - [ ] セッションCookieをDBやTursoへ保存しない。
+- [ ] 可視の専用browserを使用し、既存browser profileと他siteのCookieを参照していない。
+- [ ] ID・パスワード入力とTurnstile操作を自動化していない。
+- [ ] `REVEL_SESSION`以外のCookieを自動取得せず、account identity確認後だけOSのsecret storeへ保存している。
+- [ ] keyringを利用できない場合に平文fileへ自動fallbackしていない。
+- [ ] 認証browserの取消、timeout、異常終了で孤児processと一時profileを残さない。
 - [ ] トークンをログへ出力しない。
 - [ ] Cloudflare等のBot対策回避を実装していない。
 - [ ] Turso同期がオプトインになっている。
@@ -767,7 +780,7 @@ algoloom_workspace/
 公開ベータ前に、次の設計を簡潔に説明して問い合わせる。
 
 1. ユーザー操作により、公開サンプル入出力を1問ずつローカル保存するCLIの配布可否
-2. ユーザー自身のセッションを使った提出補助の可否
+2. ユーザー自身がbrowserでloginしたsessionを、同一端末のlocal CLIがOSのsecret storeへ保存し、明示操作による提出補助へ使う方式の可否
 3. 推奨されるアクセス間隔と再試行方法
 4. User-Agentへ記載すべき情報
 5. 公開サンプルのローカルキャッシュ可否
@@ -777,6 +790,7 @@ algoloom_workspace/
 9. 無料OSS版と有料版で確認事項が異なるか
 10. 正規問題IDからAtCoderの問題別解説ページを構成し、本文を取得せずdefault browserで開く機能の可否
 11. MVP後に、問題・AC・言語filter付きのAtCoder提出一覧を、code本文・Cookieを取得せずdefault browserで開く機能の可否
+12. 可視の専用browserで利用者がTurnstileを手動操作し、CLIが`REVEL_SESSION`だけを取り込む方式で遵守すべき追加条件の有無
 
 問い合わせ時は、「スクレイピングしてよいか」という抽象的な質問ではなく、1操作あたりのリクエスト数、保存内容、認証方式、AI制限を具体的に示す。
 
@@ -800,11 +814,13 @@ flowchart LR
 - C++、Python、Go、Rustをnative macOS、native Linux、native Windowsで検証し、言語とOSの差異が他profile・他OSへ波及しないことを契約テストで確認する。
 - AI review、`contest_mode`、Cloud同期をMVPへ含めない。
 - 実データがリポジトリへ混入しないことを確認する。
+- 方式Cで`V-02`〜主要導線を検証し、方式Aを`V-10`で別途検証する。
 
 ### Phase 2: 限定公開ベータ
 
 - AtCoderへ設計内容を問い合わせる。
 - 少人数で認証、取得、提出、規約表示を検証する。
+- 方式Aのsession取得、保存、更新、削除を対象OSの実機で検証する。
 - アクセス数とエラーを、秘密情報を含めずに確認する。
 - online-judge-toolsの互換性問題を整理する。
 
@@ -879,7 +895,7 @@ AlgoLoomは、AtCoderの問題を配布するアプリではなく、**ユーザ
 - 提出はユーザー自身のセッションで、確認付きで行う。
 - AIレビュー要求時に開催状況・種別・正規問題IDを照合し、禁止対象の開催中問題ではAIレビューを停止する。
 - AIレビューOFFと`contest_mode`を用意し、不要な確認処理と参加中の誤操作を防ぐ。
-- 認証情報を保存・同期・ログ出力しない。
+- AtCoder sessionはOSのsecret storeだけへ保存し、履歴DB、同期、通常log、telemetry、backupへ含めない。
 - AlgoLoom自身のinstallと外部toolの管理を分け、通常操作でEditor、shell、plugin、toolchain、Provider runtime、OS設定を永続的に変更しない。
 - 非公式・非公認であることを明記する。
 - 第三者ライセンスを守る。

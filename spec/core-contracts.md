@@ -3,6 +3,7 @@ status: normative
 applies_to: MVP
 derived_from:
   - ../docs/architecture/core-contracts.md
+  - ../docs/architecture/atcoder-authentication.md
   - ../docs/architecture/language-and-platform-portability.md
   - ../docs/quality/security-design.md
   - ../docs/quality/stress-free-ux-design.md
@@ -34,7 +35,7 @@ derived_from:
 | 提出ID、ジャッジ判定、ジャッジ実行時間とメモリ | AtCoder |
 | AlgoLoom導入後のスナップショットと操作履歴 | ローカルのAlgoLoom DB |
 | SolveAttempt、FocusInterval、学習マイルストーン | 明示操作とCoreのイベントを保存するローカルのAlgoLoom DB |
-| 認証情報とセッション | 利用者または外部ツールが持つ適切な秘密情報保管庫 |
+| AtCoder認証情報とセッション | 利用者がbrowserで確立し、AlgoLoom namespaceのOS秘密情報保管庫へ保存する本人session。履歴DBとは分離する |
 | 問題・解説・他ユーザーのコードの本文 | AtCoder公式サイトと各権利者。AlgoLoomへ保存しない |
 
 作業領域の移動、名前変更または削除を、保存済み履歴の削除として扱いません。
@@ -57,7 +58,7 @@ derived_from:
 - MVPでは作業領域から任意のコンパイル・実行コマンドを定義できるようにしません。
 - `LanguageProfile`はシェル文字列ではなく、`argv`、作業ディレクトリ、ソースコード、生成物、タイムアウト区分等からなる`BuildPlan`または`RunPlan`を返します。
 - プロセスは`HostPlatform`を介して`argv`配列で起動し、パスや利用者入力をシェルコマンドへ連結しません。
-- 子プロセスにはAtCoderセッションや不要な環境変数を渡しません。
+- 通常の子プロセスにはAtCoderセッションや不要な環境変数を渡しません。認証専用helperでも`argv`と環境変数を使わず、限定されたchannelで受け渡します。
 - 成功、コンパイルエラー、実行時エラー、タイムアウト、出力量超過、取消をOS間で共通の分類へ正規化します。
 - 利用者設定はCoreの意味、状態遷移、データの権威、不変性、安全性、プライバシーまたは外部作用への同意を変更できません。
 
@@ -71,6 +72,7 @@ derived_from:
 - 問題・解説ページは既定のブラウザへ委譲し、本文をプロセス、DB、キャッシュ、一時領域、ログまたはエクスポートへ取り込みません。
 - ネタバレを含み得る資料は終了状態を確認し、未ACの場合は明示確認後にだけ開きます。終了状態を確認できない場合は開きません。
 - ブラウザの起動失敗によって、作業領域、テスト、提出または履歴の成功状態を変更しません。
+- 外部資料用の`BrowserLauncher`はCookieとprofileを読みません。AtCoder認証用の`AtCoderSessionProvider`とは分離します。
 
 ## 7. ローカルテスト
 
@@ -121,6 +123,17 @@ PREPARED
 - アカウント識別情報を確認できない場合、または以前と異なるアカウントを検出した場合は送信前に停止します。
 - 判定は取得時刻付きの観測として保存し、欠損値を`0`または推測値で補いません。
 
+AtCoder sessionは次の契約で確立します。
+
+- 可視の専用browserを明示操作で起動し、username、password、Turnstileを利用者がbrowser上で操作します。
+- 利用者の既存browser profileを参照せず、`https://atcoder.jp`の`REVEL_SESSION`だけを取得します。
+- 同じsessionで期待するaccount identityを確認した後だけ、OSの秘密情報保管庫へ保存します。
+- CoreとCLIへ生のCookie値を返さず、AtCoder Adapterへ不透明なsession参照または認証済みHTTP clientを必要な通信中だけ貸し出します。
+- 秘密情報保管庫が利用できない場合は平文設定fileへ自動fallbackせず、提出だけを停止します。
+- 手動Cookie importは技術検証だけに限定し、MVP製品、CI、共有環境または非対話実行へ提供しません。
+- `Set-Cookie`が返った場合だけ更新し、serverが返さない有効期限を生成しません。
+- 認証browserの取消、timeoutまたは異常終了で、孤児process、利用可能な一時profile、未確認sessionを残しません。
+
 ## 10. 保存、マイグレーション、エクスポート
 
 - MVPの履歴保存は、Python標準の`sqlite3`によるローカルSQLiteを既定かつ唯一の方式とします。
@@ -140,6 +153,7 @@ PREPARED
 |---|---|
 | CLI / Application | 入出力と業務の状態遷移を分離する |
 | `JudgeAdapter` | AtCoder固有の取得、認証、提出、判定確認を閉じ込める |
+| `AtCoderSessionProvider` | 可視専用browserによる認証、必要sessionだけの取得、秘密情報保管庫への保存を閉じ込める |
 | `ReferenceLinkProvider` | 外部本文を取得せず、公式URLを構成する |
 | `BrowserLauncher` | OSへのURL起動要求とページ表示結果を分ける |
 | `HistoryStore` | トランザクション、履歴状態、クエリをSQLiteの詳細から分ける |
@@ -159,6 +173,7 @@ MVPで実装しないAI、クラウド同期、Web API等の型、SDK、設定�
 - 自動テレメトリ、クラッシュレポートの送信、クラウド同期をMVPのCoreへ追加しません。
 - 問題取得と提出にはリクエストのタイムアウト、上限付きの再試行、適切な間隔を設けます。
 - 非公開テストの取得、一括クロール、CAPTCHAの回避、セッションの共有を実装しません。
+- AtCoder認証では既存browser profile、他siteのCookie、password storeを探索せず、CDP等の制御channelをremoteへ公開しません。
 
 ## 13. 契約テストの最低範囲
 
@@ -169,4 +184,5 @@ MVPで実装しないAI、クラウド同期、Web API等の型、SDK、設定�
 - 提出前の保存失敗、送信直後の通信断、判定のタイムアウト、状態不明からの回復
 - スナップショットのバイト列と送信バイト列のハッシュ一致、不変性、エクスポートからのソースコード回収
 - 認証情報、外部コンテンツ、不要なパスがログ、DB、エクスポート、配布物へ混入しないこと
+- AtCoder認証の中断・異常終了、秘密情報保管庫の障害、account不一致、Cookie更新競合で提出前に安全に停止すること
 - AI、クラウド、ビューアを設定しない状態でCoreの主要導線を完了できること

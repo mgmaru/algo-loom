@@ -60,6 +60,7 @@ AI review、Cloud同期、問題推薦・TUI、公開用solution bundle、Repair
 |---|---|---|
 | [アーキテクチャ概要](docs/architecture/overview.md) | 技術構成、設定、workspace、想定CLI | 製品全体の技術構想 |
 | [Core契約](docs/architecture/core-contracts.md) | 問題取得、test、履歴、提出、保存の不変契約 | **Core契約の正本** |
+| [AtCoder認証設計](docs/architecture/atcoder-authentication.md) | 方式C・方式A、可視専用browser、session保管、認証検証gate | **AtCoder認証方式の正本** |
 | [言語・実行環境の可搬性設計](docs/architecture/language-and-platform-portability.md) | LanguageProfile、HostPlatform、Editor / IDE非依存境界、実行配置、複数言語UX、異種OS間の可搬性 | MVP対応環境の実装設計 |
 | [ストレスフリーUX設計](docs/quality/stress-free-ux-design.md) | ストレス要因、UX契約、errorと回復 | 設計原則・改善対象 |
 | [パフォーマンスと待機体験の設計](docs/quality/performance-and-waiting-design.md) | 待機時間、resource上限、local実行計測、性能目標 | 設計方針・実装優先順位 |
@@ -99,6 +100,7 @@ AI review、Cloud同期、問題推薦・TUI、公開用solution bundle、Repair
 
 - MVPへ含める能力、対象利用者、初期対応環境、実装開始・完了条件は、[MVPスコープ](docs/product/mvp.md)を優先します。
 - 問題取得、local test、履歴、提出、保存のCore契約は、[Core契約](docs/architecture/core-contracts.md)を優先します。
+- AtCoder sessionの取得、保管、account確認、失効と、方式C・方式Aの採用境界は、[AtCoder認証設計](docs/architecture/atcoder-authentication.md)を優先します。
 - 言語・OS差異の境界、Editor / IDEに依存しないCore互換性、実行配置、複数言語workspace UX、異種OS間の可搬性は、[言語・実行環境の可搬性設計](docs/architecture/language-and-platform-portability.md)を参照します。
 - 同期機能の製品・UX上の位置付けは、[ローカル利用とCloud同期の段階的設計](docs/features/local-and-cloud-sync-design.md)を参照します。
 - 現在のTurso採用方針とデータの権威は、[Turso設計ガイド](docs/integrations/turso-design-guide.md)を参照します。

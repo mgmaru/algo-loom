@@ -23,6 +23,7 @@
 | データの権威 | あるデータの正しい状態を最終的に決定する取得元または記録。 |
 | LanguageProfile | 言語固有のtemplate、toolchain診断、build/run計画を提供し、他言語から独立した組み込み境界。 |
 | HostPlatform | OS固有のprocess、path、terminal、file操作を閉じ込める境界。 |
+| AtCoderSessionProvider | AtCoder認証用の可視専用browser、sessionの取得、secret storeへの保管をCoreと`JudgeAdapter`から分離する境界。 |
 | optional Capability | Coreの安定した契約を利用して後から追加でき、未導入・失敗時にもCoreを変化させないAI reviewやCloud同期等の機能。 |
 | 外部所有環境 | Editor、shell、plugin、toolchain、Provider runtime、OS設定等、AlgoLoomではなく利用者または外部toolが所有する永続状態。 |
 | 外部学習資料 | AtCoder上の問題、解説、他ユーザーの提出code等、AlgoLoomが内容の権威・所有者にならず公式ページをbrowserで参照する資料。 |
@@ -60,7 +61,7 @@
 | AtCoder上の解説と他ユーザーの提出code | AtCoder公式サイトと各コンテンツの権利者。AlgoLoom DBへ本文を保存しない |
 | AlgoLoom導入後のsnapshotと操作履歴 | ローカルのAlgoLoom DB |
 | SolveAttempt、FocusInterval、learning milestone | 利用者の明示操作とAlgoLoomが観測したCore eventを、安定IDと状態遷移を保って保存するローカルのAlgoLoom DB |
-| credentialとsession | AlgoLoom DBではなく、利用者または外部toolの適切なsecret store |
+| credentialとsession | AlgoLoom DBではなく、credentialごとに定義したownerとsecret store。AtCoder sessionは利用者がbrowserで確立し、AlgoLoom namespaceのOS secret storeへ保存する |
 
 履歴DBはworkspaceの代わりに現在のsourceを管理しない。workspaceの移動、rename、削除は、保存済み履歴の削除を意味しない。
 
@@ -122,6 +123,8 @@ metadata fileの名称と形式、探索上限、明示option名は機能設計�
 | Provider runtime、model、外部認証cache | 公式interfaceへの接続、read-only診断 | lifecycle操作、model download、認証cacheの読取・複製・変更 |
 | OS keyring等のsecret store | 明示操作によるAlgoLoom namespaceの項目参照・保存・削除 | 他applicationや外部runtimeが所有する項目の変更 |
 
+AtCoder認証だけは[AtCoder認証設計](atcoder-authentication.md)で定義した限定例外とする。`AtCoderSessionProvider`は利用者の明示操作中に空の専用browser profileを作成し、そのprofileから`REVEL_SESSION`だけをAlgoLoom namespaceのsecret storeへ移せる。既存browser profileまたは他applicationの認証cacheにはこの例外を適用しない。
+
 - child processへ渡すargv、読み取り専用option、working directory、必要最小限の環境変数は、そのprocessだけの一時的な実行条件として構成し、hostの設定へ永続化しない。
 - alias、completion、Editor最適化等の導入支援は、外部設定fileを直接編集するより、設定断片、差分、利用者が実行できる手順を生成する方法を優先する。
 - 外部設定を変更する将来のsetup helperを検討する場合は、通常commandから分離し、対象pathと差分の事前表示、backup、冪等性、rollbackを契約化する。これらを保証できなければ実行しない。
@@ -130,7 +133,7 @@ metadata fileの名称と形式、探索上限、明示option名は機能設計�
 
 - `LanguageProfile`はshell文字列ではなくargv、working directory、source、artifact、timeout区分等からなるBuildPlan / RunPlanを返す。
 - processは`HostPlatform`境界を介してargv配列で起動し、source path等をshell文字列へ連結しない。
-- 子processへAtCoder sessionや不要な環境変数を渡さない。
+- 通常の子processへAtCoder sessionや不要な環境変数を渡さない。専用の`AtCoderSessionProvider`でもsessionを`argv`または環境変数へ渡さず、process間の受け渡しを認証操作中の限定されたchannelへ閉じる。
 - process tree終了、path、terminal、file操作のOS差異を各commandまたは個別language profileへ重複させない。
 - native macOS、native Linux、native Windowsでsuccess、compile error、runtime error、timeout、出力量超過、取消等を共通分類へ正規化する。
 
@@ -206,7 +209,7 @@ exit codeとmachine-readable出力の詳細は機能設計で決める。
 - 問題別解説ページに公式解説とユーザー解説が併記される場合があるため、AlgoLoomは「公式解説を取得した」と表示せず、「AtCoderの解説ページを開く」と表示する。
 - spoiler-sensitiveな資料は、終了済み問題であることを確認し、current SolveAttemptが未ACなら利用者の明示確認後にだけ開く。non-interactive実行では明示optionなしに開かない。
 - 開催中または終了状態を確認できない場合はspoiler-sensitiveな資料を開かない。参加中のvirtual contestやADT等を完全に推測できない限界を初回案内とhelpへ示す。
-- browser Cookie、profile、login情報を読取・複製せず、AtCoder認証をbrowserへ委譲する。
+- 外部学習資料を開く`BrowserLauncher`はbrowser Cookie、profile、login情報を読取・複製せず、AtCoder認証をbrowserへ委譲する。認証専用browserを扱う`AtCoderSessionProvider`とは同じ境界にしない。
 - browser起動要求が成功しても、ページload、login、資料の存在、閲覧完了をAlgoLoomから断定しない。
 - URL構成またはbrowser起動に失敗しても、問題context、workspace、SolveAttempt、test、提出、履歴を変更しない。
 
@@ -453,11 +456,18 @@ PREPARED
 ### 6.5. AtCoderアカウント
 
 - MVPは一つのAtCoderアカウントを使用する。
+- 初回または失効時は`AtCoderSessionProvider`が可視の専用browserを明示操作で起動し、利用者がusername、password、Turnstileを手動で操作する。
+- `AtCoderSessionProvider`は利用者の既存browser profileを参照せず、`https://atcoder.jp`の`REVEL_SESSION`だけをOSのsecret storeへ保存する。
+- CoreとCLIへ生のCookie値を返さず、AtCoder Adapterには不透明なsession参照または認証済みHTTP clientを必要な通信中だけ貸し出す。
+- 手動Cookie importは技術検証の方式Cだけに限定し、MVPの通常導線、CI、共有環境または非対話実行へ提供しない。
 - 自動提出前に、現在のsessionがどのアカウントか確認できなければならない。
 - 初回提出時にaccount identityをローカルへ関連付ける。
 - 以前と異なるアカウントを検出した場合は、送信前に停止して説明する。
 - Cookie、password、session tokenを履歴DB、export、logへ保存しない。
+- secret storeを利用できない場合は平文設定fileへ自動fallbackせず、提出だけを停止する。
 - 複数アカウント対応は、履歴の分離と切替UXを設計した後の拡張とする。
+
+session取得、保管、更新、失効とbrowserの安全条件は[AtCoder認証設計](atcoder-authentication.md)を正とする。
 
 ### 6.6. AtCoderのAI学習拒否設定の案内
 
@@ -515,6 +525,7 @@ MVPでは、将来の全機能を先回りした抽象化を作らない。一�
 |---|---|
 | CLI / Application | 入力と表示を、業務状態遷移から分ける |
 | `JudgeAdapter` | 問題取得、認証確認、提出、判定確認をAtCoder固有処理へ閉じ込める |
+| `AtCoderSessionProvider` | 可視専用browserによる認証、必要なsessionだけの取得、secret storeへの保存を、Coreと`JudgeAdapter`から分ける |
 | `ReferenceLinkProvider` | judge固有の問題、解説、提出一覧URLの構成をCore commandから分け、外部本文を取得しない |
 | `BrowserLauncher` | OSへのURL起動要求をページ取得・login・表示完了から分ける |
 | `HistoryStore` | transaction、SolveAttempt、FocusInterval、milestone、snapshot、提出操作、queryをSQLite詳細から分ける |

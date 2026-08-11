@@ -12,6 +12,7 @@
 | Judge Adapter | sample取得、提出、判定確認等のjudge固有処理をCoreから分離する接続境界。 |
 | LanguageProfile | 言語ごとの拡張子、template、toolchain診断、安全なBuildPlan / RunPlanを提供する組み込み境界。 |
 | HostPlatform | OS固有のprocess起動・終了・計測、path、terminal、file操作をCoreとlanguage profileから分離する境界。 |
+| AtCoderSessionProvider | AtCoder認証用の可視専用browserとsecret storeを、Core、外部資料用browser、`JudgeAdapter`から分離する境界。 |
 | optional Capability | AI reviewやCloud同期等、Coreの安定した契約を利用して後から追加でき、未導入でもCoreを変化・停止させない機能。 |
 | workspace | 問題directoryを配置し、AlgoLoomが作業対象として認識する通常のdirectory。 |
 | problem metadata | 正規問題ID等、問題directoryの識別に使う宣言的な情報。 |
@@ -28,7 +29,8 @@
 | 構成要素 | 方針 |
 |---|---|
 | CLIツール開発言語 | Python (Typer または Click を想定) |
-| コア機能補助 | online-judge-tools (スクレイピング、入出力例の取得、提出処理の代行) |
+| コア機能補助 | 交換可能な`JudgeAdapter`。`online-judge-tools`と下位APIは候補部品とし、認証、account確認、提出ID、判定確認の契約を委譲しない |
+| AtCoder認証 | `AtCoderSessionProvider`が可視の専用browserを起動し、利用者の手動login後に必要なsessionだけをOSのsecret storeへ保存する |
 | AIレビュー連携 | ユーザーが明示的に選択するReview Backend。初期候補のlocal Model APIはOllamaとLM Studioとし、将来はBYOKのCloud APIや、公式interfaceを持つCoding Agent Bridgeへ段階的に拡張する。AlgoLoomはProvider本体やモデルをインストール・起動しない。 |
 | データベース | ローカルSQLiteを履歴の通常の読み書き先として使用する。基本構成ではPython標準`sqlite3`を使用する。 |
 | データ同期・インフラ | 複数端末利用を望むユーザーだけが、Turso Cloudを介した任意の同期機能を有効化できる。Cloudは履歴表示の必須経路ではなく、端末間共有のために使用する。Google Drive等のファイル同期領域へSQLite DBファイルを置かない。 |
@@ -50,6 +52,7 @@ flowchart TB
     CORE --> RP[ReferenceLinkProvider Port]
     CORE --> BL[BrowserLauncher Port]
     CORE --> HS[HistoryStore Port]
+    CLI --> ASP[AtCoderSessionProvider Port]
 
     CPP[C++ Profile] --> LP
     PY[Python Profile] --> LP
@@ -61,6 +64,7 @@ flowchart TB
     WIN[Windows Adapter] --> HP
 
     AT[AtCoder Adapter] --> JA
+    AUTH[AtCoder Auth Adapter] --> ASP
     AT --> RP
     NB[Native Browser Adapter] --> BL
 
@@ -87,6 +91,7 @@ flowchart TB
 - language profileは別の個別profileへ依存せず、HostPlatform Adapterも別OS Adapterへ依存しない。
 - Editor / Viewer AdapterはCoreの安定した表示要求へ一方向に依存できるが、CoreはEditor名、plugin API、project設定形式を知らない。
 - `ReferenceLinkProvider`は公式URLの構成だけを担い、`BrowserLauncher`はOSへの起動要求だけを担う。どちらも外部本文、browser Cookie、login状態をCoreへ返さない。
+- `AtCoderSessionProvider`だけが、利用者の明示した認証操作中に空の専用browser profileから`REVEL_SESSION`を取得できる。既存profileは参照せず、取得値をCore、履歴DB、workspaceへ返さない。詳細は[AtCoder認証設計](atcoder-authentication.md)を正とする。
 - 個別実装の選択は起動時のcomposition rootまたはregistryへ閉じ込める。
 - 任意機能の失敗は、Coreで確定した成功状態を変更しない。
 

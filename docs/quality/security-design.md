@@ -6,12 +6,13 @@
 >
 > 作成日: 2026年7月16日
 >
-> 更新日: 2026年7月20日
+> 更新日: 2026年8月11日
 >
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
 > - [MVPスコープ](../product/mvp.md)
 > - [Core契約](../architecture/core-contracts.md)
+> - [AtCoder認証設計](../architecture/atcoder-authentication.md)
 > - [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md)
 > - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
 > - [Turso設計ガイド](../integrations/turso-design-guide.md)
@@ -55,7 +56,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 - Rich markup、ANSI制御シーケンス等を解釈させない安全な表示
 - LLMレスポンスのSchema検証と、自動適用・自動提出・shell実行の禁止
 - コード、Cookie、トークンを通常ログへ出さない運用
-- 外部学習資料は検証済みscheme・hostの公式URLだけをbrowserへ渡し、HTML、解説本文、他ユーザーのcode、browser CookieをAlgoLoomへ取得しない境界
+- 外部学習資料は検証済みscheme・hostの公式URLだけをbrowserへ渡し、HTML、解説本文、他ユーザーのcode、browser CookieをAlgoLoomへ取得しない境界。AtCoder認証用browserは専用境界へ分離する
 - 公開候補bundleを将来採用する場合はworkspaceのcopyではなくallowlistで最小構成にし、Git・GitHubの認証と外部変更をAlgoLoomから行わない境界
 - タイムアウト、出力量上限等による偶発的な暴走への対策
 
@@ -84,6 +85,7 @@ AlgoLoomでは、ユーザーが書いたコードをデータベースへ保存
 | 外部プロセス | コンパイラ、runtime、online-judge-tools、設定されたEditor / Viewer |
 | ターミナル | コード、ログ、テスト結果、外部プロセス出力、AIレビュー |
 | Browser・外部学習資料 | AtCoder公式問題・解説・提出一覧URL、browser起動。外部本文とCookieは取得対象外 |
+| AtCoder認証 | 可視の専用browser、空の専用profile、`REVEL_SESSION`、OS keyring、account identity |
 | LLM | prompt、提出コード、テスト結果、Providerレスポンス |
 | Cloud同期 | Tursoへ同期する提出コード、判定、レビュー |
 | 将来のWeb UI | コード、レビュー、履歴のHTML表示とdownload |
@@ -293,6 +295,8 @@ DBは安全化装置ではない。DBへ正常に保存できた値でも、後�
 - code、review、Cookie、token、raw HTTP headerを通常ログへ出さない。
 - Cloud同期とLLM Provider送信は別の外部送信として、別々に同意を得る。
 
+AtCoder sessionは、外部runtimeの既存認証cacheを再利用する一般原則の例外として、[AtCoder認証設計](../architecture/atcoder-authentication.md)に限定して扱う。AlgoLoomが起動した空の専用browser profileから、利用者の明示操作後に`REVEL_SESSION`だけを取得し、AlgoLoom namespaceのOS keyringへ保管できる。利用者の既存browser profile、Provider runtimeまたは他applicationの認証cacheにはこの例外を広げない。
+
 ### 5.6. 書き込み先を所有権で制限する
 
 通常commandの書き込み先は、AlgoLoom所有領域と、command契約で利用者が明示したworkspace上の対象に限定する。書き込み可能な権限があることを、その状態を変更してよい根拠にはしない。
@@ -304,6 +308,7 @@ DBは安全化装置ではない。DBへ正常に保存できた値でも、後�
 | Editor・shell・plugin・toolchain・OS設定 | read-only検出、既存toolの一時起動 | install、update、削除、設定file・plugin・`PATH`の変更 |
 | Provider runtime・model・外部認証cache | 公式interfaceへの接続、read-only診断 | lifecycle操作、download、認証cacheの読取・複製・変更 |
 | OS keyring等のsecret store | 明示操作によるAlgoLoom namespaceの項目参照・保存・削除 | 他applicationや外部runtimeが所有する項目の変更 |
+| AtCoder認証用browser | 明示した認証操作中の専用profile作成、必要Cookieの取得、終了後の削除 | 既存profileの参照、他siteのCookie取得、password保存、profileの通常利用 |
 
 - child processだけへ渡すargv、読み取り専用option、working directory、必要最小限の環境変数は、process終了後にhost設定へ残らない一時条件として扱う。
 - alias、completion、Editor連携等の支援は、設定fileを直接編集するより、設定断片、差分、利用者が実行できる手順の生成を優先する。
@@ -327,6 +332,7 @@ DBは安全化装置ではない。DBへ正常に保存できた値でも、後�
 | 保存型XSS | code、review | 将来のWeb UIでscript実行 | context別escape、CSP、`innerHTML`禁止 |
 | Resource exhaustion | 無限loop、大量出力、巨大code | CLI停止、disk・memory圧迫 | timeout、size・出力量上限、process終了 |
 | Secret漏えい | log、Cloud、LLM prompt | account・DBの不正利用 | 保存対象分離、redaction、明示同意 |
+| AtCoder sessionの漏えい | clipboard、CDP、temp、log、crash report | 本人sessionで許された操作の不正実行 | 専用profile、Cookie allowlist、OS keyring、process間channel制限、secret scan |
 | 不正・破損DB | 手動編集、Cloud、migration不一致 | 誤表示、crash、危険な出力 | Schema version、型・長さ検証、固定migration |
 
 ### 6.2. SQLインジェクション
@@ -684,6 +690,24 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 
 公開候補生成の成功を外部公開の成功と表示しない。remote visibility、fork、clone、削除状態を追跡せず、外部providerのpush protection等をAlgoLoom側の検査の代替または完全性の根拠にしない。
 
+### 6.14. AtCoder認証session
+
+AtCoderのusername、password、Turnstileは利用者が可視の専用browser上で操作し、AlgoLoomへ入力しない。認証helperは`https://atcoder.jp`の`REVEL_SESSION`だけを許可し、Cookieの存在だけで認証成功とみなさず、同じsessionからaccount identityを確認する。
+
+- 認証helperは明示的なsetup操作でだけ起動し、`submit`中に暗黙にbrowserを開かない。
+- 利用者の既存browser profile、password store、history、extension、他siteのCookieを探索しない。
+- CDP等の制御channelをremoteへ公開せず、可能な場合は子process限定のpipeを使う。
+- sessionを`argv`、environment、shell history、config file、workspace、履歴DBへ渡さない。
+- secret storeへ確定する前に、期待するaccount identityとの一致を確認する。
+- `Set-Cookie`が返った場合だけ更新し、serverが返していないexpiryを生成しない。
+- 更新は排他し、新しいsessionを古いprocessの値で上書きしない。
+- keyringを利用できない場合はplain text fileへ自動fallbackせず、提出だけを停止する。
+- browser、helper、secret storeのerrorへCookieが含まれても、出力層でredactする。
+- local session削除をAtCoder server上のsession失効と表示しない。
+- 方式Cのmanual importは技術検証だけの一時例外とし、製品、CI、非対話実行へ実装しない。
+
+詳細なflowと検証gateは[AtCoder認証設計](../architecture/atcoder-authentication.md)を正とする。
+
 ---
 
 ## 7. コマンド別の安全要件
@@ -691,6 +715,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 | コマンド | 主な境界 | 必須要件 |
 |---|---|---|
 | `get` | problem ID、URL、filesystem | 正規ID検証、1問単位、workspace境界、safe filename |
+| AtCoder認証setup | 専用browser、CDP、Cookie、keyring | 手動login、専用profile、Cookie allowlist、account確認、redaction、cleanup |
 | `test` | source path、compiler、runtime | argv実行、timeout、出力上限、secretを除いた環境 |
 | `submit` | source、oj、AtCoder、DB | file検証、確認、SQL bind、snapshot hash、error redaction |
 | `submit --review` | code、contest policy、LLM | 安全判定、送信同意、data最小化、Schema検証、自動操作禁止 |
@@ -717,6 +742,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - Rich markupとterminal制御文字の安全な処理
 - source表示と差分の安全なterminal出力
 - secret、code、raw errorのlog redaction
+- AtCoder認証の専用profile、Cookie allowlist、keyring、account確認、cleanup
 - 攻撃的入力を使った自動test
 
 ### Phase 2: 各任意機能の公開前に必須
@@ -773,6 +799,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] `BrowserLauncher`が`https`と許可された公式hostだけを開き、`file:`、`javascript:`、`data:`、任意のcustom schemeを受け付けない。
 - [ ] browserへ渡すURLをshell command文字列として組み立てず、OSの安全な起動APIへ一つのURLとして渡している。
 - [ ] browser起動からCookie、profile、history、download、login状態を読取・複製していない。
+- [ ] この項目が外部資料用`BrowserLauncher`へ適用され、AtCoder認証用`AtCoderSessionProvider`と混同されていない。
 
 ### 9.3. Terminal、Editor / Viewer、LLM
 
@@ -791,6 +818,11 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 ### 9.4. Secretと配布物
 
 - [ ] AtCoder Cookie、Turso token、Provider credentialをユーザーDBへ保存しない。
+- [ ] AtCoder認証helperが既存browser profileと他siteのCookieを参照せず、専用profileから`REVEL_SESSION`だけを取得する。
+- [ ] AtCoder sessionを`argv`、環境変数、設定file、workspace、通常logへ渡さない。
+- [ ] session確定前と各提出前に期待するaccount identityを確認する。
+- [ ] CDP等の制御channelをremoteへ公開せず、browserと一時profileを異常終了時にも回収する。
+- [ ] Cookie更新にserverが返していないexpiryを追加せず、同時更新で新しい値を巻き戻さない。
 - [ ] Provider password、social login情報、OAuth token、認証cacheを要求・読取・複製しない。
 - [ ] keyringが利用できない場合に平文fileへ自動fallbackしない。
 - [ ] 子processへ不要なsecret環境変数を渡さない。
@@ -843,6 +875,7 @@ Review Backendの追加では、認証方式と実行権限を別々に評価す
 - [ ] 新しいCloud送信またはProvider送信に明示同意が必要か確認したか。
 - [ ] 失敗時に安全側へ停止し、ローカル保存済みdataを失わないか。
 - [ ] 外部資料の追加が、browser所有の認証情報や第三者コンテンツをAlgoLoomのdata flowへ取り込んでいないか。
+- [ ] AtCoder認証の限定例外を、外部資料、Provider credentialまたは利用者の既存browser profileへ広げていないか。
 
 ### 外部環境の所有権
 
@@ -893,3 +926,4 @@ DB破損と疑われる場合は、即座にDBを削除・上書きせず、WAL�
 10. Coding Agent連携は公式interfaceを使い、一時directory、tool禁止、session破棄によりreview-onlyへ制限する。
 11. 個人アプリであっても、parameter bind、`shell=False`、path検証、表示時escapeは過剰対策ではなく、初期品質の一部とする。
 12. 通常commandの永続的な書き込み先をAlgoLoom所有領域と明示workspaceへ限定し、外部toolの選択・一時起動を、そのtool本体や設定を変更する権限とみなさない。
+13. AtCoder認証は専用の可視browser、必要Cookieだけの取得、OS keyring、account確認へ限定し、既存profile、password、Bot対策へ触れない。

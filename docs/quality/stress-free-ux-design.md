@@ -6,12 +6,13 @@
 >
 > 作成日: 2026年7月17日
 >
-> 更新日: 2026年7月20日
+> 更新日: 2026年8月11日
 >
 > 関連文書:
 > - [プロダクトビジョン](../product/vision.md)
 > - [MVPスコープ](../product/mvp.md)
 > - [Core契約](../architecture/core-contracts.md)
+> - [AtCoder認証設計](../architecture/atcoder-authentication.md)
 > - [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md)
 > - [問題選択・カタログ設計](../features/problem-selection-and-catalog.md)
 > - [外部学習資料参照設計](../features/external-learning-resources.md)
@@ -167,16 +168,17 @@ AlgoLoomの最大のUX目標は、機能を増やすことではなく、利用�
 
 #### 該当箇所
 
+- [AtCoder認証設計](../architecture/atcoder-authentication.md)
 - [配布方針ガイド「認証とCloudflare等のBot対策」](../operations/algoloom-distribution.md#8-認証とcloudflare等のbot対策)
 - [配布方針ガイド「自動提出」](../operations/algoloom-distribution.md#6-自動提出)
 - [アーキテクチャ概要「CLIコマンド構成」](../architecture/overview.md#5-cliコマンド構成)
 
 #### 現在のストレス
 
-- 認証はonline-judge-toolsへ委譲するが、利用者向けの初回導線が定義されていない。
+- 初回認証でbrowserが開く理由、AlgoLoomが取得する情報、保存先、中断方法を利用者が判断する必要がある。
 - 提出時まで認証切れに気づかない可能性がある。
-- AlgoLoom、online-judge-tools、AtCoder、Bot対策のどこで失敗したか判別しにくい。
-- 認証不能時は待つしかない場合があるが、その状態と復旧条件が分かりにくい。
+- AlgoLoom、browser、secret store、AtCoder、Bot対策のどこで失敗したか判別しにくい。
+- 認証不能時に、再認証すべきか、時間を置くべきか、tool更新を待つべきかが分かりにくい。
 - 外部toolのerrorをそのまま表示できないため、情報を削りすぎると原因が分からなくなる。
 
 #### 直すべき理由
@@ -186,10 +188,15 @@ AlgoLoomの最大のUX目標は、機能を増やすことではなく、利用�
 #### 改善後に守る条件
 
 - 初回提出より前に、認証状態を安全に確認できるようにする。
-- 認証情報の所有者がAlgoLoomではないことを平易に伝える。
-- 期限切れ、未認証、AtCoder側拒否、構造変更、通信障害を可能な範囲で分ける。
+- 推奨経路は方式Aの可視専用browser一つとし、利用者がusername、password、Turnstileをbrowser上で操作することを先に示す。
+- AlgoLoomが取得するのはAtCoderのsessionであり、passwordを取得しないこと、sessionをOSのsecret storeへ保存することを平易に伝える。
+- 認証browserを`submit`の途中で暗黙に起動せず、初回または失効時の明示操作へ分離する。
+- 認証中は「browser起動待ち」「利用者のlogin待ち」「account確認」「保存」の段階を示し、Cookie値は表示しない。
+- 利用者の取消とbrowser終了をerror扱いで責めず、提出を行っていないことと再開方法を示す。
+- 期限切れ、未認証、account不一致、AtCoder側拒否、構造変更、通信障害、secret store障害を可能な範囲で分ける。
 - errorには、利用者が次に行える行動を1つ示す。
 - Bot対策の回避方法を案内しない。
+- keyringを利用できない場合に平文fileへ自動fallbackしない。
 - 認証errorを理由に、ローカルテストや履歴閲覧を止めない。
 
 ### 3.3. 問題取得の途中失敗と再実行

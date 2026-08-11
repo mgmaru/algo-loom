@@ -6,11 +6,12 @@
 >
 > 作成日: 2026年7月18日
 >
-> 更新日: 2026年7月20日
+> 更新日: 2026年8月11日
 >
 > 関連文書:
 > - [製品ビジョン](../product/vision.md)
 > - [ストレスフリーUX設計](./stress-free-ux-design.md)
+> - [AtCoder認証設計](../architecture/atcoder-authentication.md)
 > - [問題選択・カタログ設計](../features/problem-selection-and-catalog.md)
 > - [Review Backend・LLM Provider設計](../features/llm-provider-design.md)
 > - [セキュリティ設計ガイド](./security-design.md)
@@ -35,7 +36,7 @@ AlgoLoomで守るべき性能目標は、単に処理時間を短くすること
 | 種類 | 例 | UX上の扱い |
 |---|---|---|
 | 即時ローカル操作 | `log`、`show`、`diff`、既存workspaceのcontext判定 | networkを待たず、ローカルDBまたはfilesystemから結果を返す |
-| 利用者が待つ外部・実行処理 | `get`、compile、test、AtCoder提出・判定取得、AI review、明示`sync run`、明示checkpoint・backup・export | 段階、経過、timeout、停止可否、後続の確認経路を示す |
+| 利用者が待つ外部・実行処理 | `get`、AtCoder認証、compile、test、AtCoder提出・判定取得、AI review、明示`sync run`、明示checkpoint・backup・export | 段階、経過、timeout、停止可否、後続の確認経路を示す |
 | 後回しにできる補助・保守処理 | Cloud push、stale catalog更新、破棄可能なcache保守 | foregroundの目的を遅らせない。必要なら明示commandへ分離する |
 
 Cloud DBを通常の履歴参照経路から外したことは、この方針の最初の達成項目である。次に優先すべきなのは、DBの同時実行、カタログ更新、外部待機、test実行の上限である。
@@ -135,7 +136,7 @@ async APIを使うことと、利用者へ先に制御を返すことは同じ�
 |---|---|---|---|---|
 | P0 | DB同時実行・保守 | `submit`、`sync`、backup、migrationが重なるとSQLite lockや長い待機が起こり得る | 短いtransaction、有限のlock待機、command間排他、閲覧経路からcheckpointを除外 | lock待ちが無期限にならず、保存済みデータを失わず復旧方法を表示できる |
 | P0 | カタログの期限切れ更新 | `pick`時の24時間更新は、順次取得とrate limitにより数秒以上の待機になり得る | stale cacheで先に検索し、更新は明示`catalog update`または結果を妨げない経路へ分離 | 既存catalogがあれば更新失敗・遅延でも`pick`が使える |
-| P0 | `get`・提出・判定polling | 外部サービス、認証、network、judge待ちにより終了時刻を予測できない | 接続・全体・pollingの上限、進捗、取消、submission IDからの後続照会を定義 | timeout後も再提出を促さず、何が完了したかを説明できる |
+| P0 | AtCoder認証・`get`・提出・判定polling | 利用者のbrowser操作、外部service、network、judge待ちにより終了時刻を予測できない | 認証browserのtimeoutと取消、接続・全体・pollingの上限、進捗、submission IDからの後続照会を定義 | 認証中断後に孤児processを残さず、提出timeout後も再提出を促さず、何が完了したかを説明できる |
 | P0 | compile・testのresource上限 | 無限loop、大量出力、重いcompileが端末とCLIを占有する | compile/run別timeout、出力量・memory/process上限、HostPlatformによるprocess tree終了を実装 | 暴走時に端末を使い切らず、次のtestを実行できる |
 | P1 | AI reviewの待機・入出力量 | local modelのcold start、remote遅延、複数snapshotやdiffで待機・費用が増える | input byte/token budget、output上限、cancel、streaming表示、Provider別timeoutを定義 | reviewを中止しても提出・履歴を壊さず、送信範囲と省略を説明できる |
 | P1 | `diff`・terminal fallback | 大きなcode・diffを全量生成・描画するとCPU、memory、terminal操作性を消費する | size/line数の保護、出力省略・pager、Viewer失敗時の選択肢を持つ | 大きな履歴でもterminalが操作不能にならない |
@@ -184,12 +185,13 @@ catalogなし
 
 | 操作 | 待機中に示すこと | 上限後に保持するもの | 後続経路 |
 |---|---|---|---|
+| AtCoder認証 | browser起動、利用者のlogin待ち、account確認、secret store保存の現在段階 | 確認済みsessionだけ。未確認sessionと一時profileは破棄 | 利用者の明示操作で最初から再開 |
 | `get` | 公式確認、sample取得、workspace作成の現在段階 | 完了済みfileと未完了段階 | 安全な再実行または手動確認 |
 | `submit` | 提出済みか、判定待ちか | AtCoder submission ID、code hash、ローカル履歴 | 判定だけ再確認。再提出はしない |
 | 判定polling | 経過と最後の確認時刻 | submission IDと最後に得た状態 | `status`等で後から照会 |
 | 明示`sync run` | push/pullの段階とpending件数 | ローカルの未push変更 | retryまたは後で再実行 |
 
-connection timeout、個別request timeout、polling全体の最大待機時間を分ける。1つのHTTP requestが失敗したことと、操作全体が回復不能なことを同一視しない。
+認証browserの起動上限、利用者操作の待機上限、connection timeout、個別request timeout、polling全体の最大待機時間を分ける。利用者がbrowserを閉じた場合は提出失敗とせず、外部送信前に中断した事実を示す。1つのHTTP requestが失敗したことと、操作全体が回復不能なことを同一視しない。
 
 ### 3.4. compile・testのresource制限
 

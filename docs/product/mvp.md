@@ -6,7 +6,7 @@
 >
 > 決定日: 2026年7月18日
 >
-> 更新日: 2026年7月20日
+> 更新日: 2026年8月11日
 >
 > 関連文書:
 > - [プロダクトビジョン](vision.md)
@@ -15,6 +15,7 @@
 > - [パフォーマンスと待機体験の設計](../quality/performance-and-waiting-design.md)
 > - [ローカル利用とCloud同期の段階的設計](../features/local-and-cloud-sync-design.md)
 > - [配布方針ガイド](../operations/algoloom-distribution.md)
+> - [AtCoder認証設計](../architecture/atcoder-authentication.md)
 > - [言語・実行環境の可搬性設計](../architecture/language-and-platform-portability.md)
 > - [外部学習資料参照設計](../features/external-learning-resources.md)
 > - [解き直しworkflow設計](../features/revisit-workflow.md)
@@ -45,6 +46,7 @@ MVPの主要導線は次とする。名称は機能設計で変更できるが�
   → test
   → 中断時はpause、再開時はresume
   → 必要なら明示checkpoint
+  → 初回または失効時は可視の専用browserでAtCoder認証
   → submit
   → log / show / diffで振り返る
   → 必要ならAtCoderの解説ページをbrowserで開く
@@ -170,6 +172,7 @@ MVPのサポートと利用者検証は、終了済みのAtCoder Algorithm問題
 | 任意の学習時間計測 | 利用者の明示操作でSolveAttemptを開始・pause・resume・終了し、active durationをローカルに記録する。計測しなくても他のCore機能を利用できる |
 | 最小milestone | 未終了のSolveAttemptに関連する操作で観測した最初の公開sample通過、初回提出、初ACを区別し、各到達時のactive durationを記録する |
 | 明示checkpoint | 利用者の操作によって、提出前のsource snapshotをローカル履歴へ保存する |
+| AtCoder認証 | 可視の専用ブラウザを開き、利用者が手動でログインとTurnstileを完了した後、本人のセッションをOSの秘密情報保管庫へ安全に取り込む。提出前にアカウントを確認する |
 | 提出 | 自分のAtCoder sessionを使い、明示操作によって一件を提出する |
 | 判定確認 | submission IDを基準に判定を確認し、待機上限後も後から再確認できる。AtCoderが返す場合はjudge execution timeとjudge memoryをnullableな提出観測として保存する |
 | 履歴一覧 | 問題、提出、checkpoint、判定、時刻をローカルDBから確認する |
@@ -231,6 +234,8 @@ MVPのサポートと利用者検証は、終了済みのAtCoder Algorithm問題
 - Cargo、Go module、CMake等を含む一般的な複数file・project build
 - AHC、interactive問題、特殊judgeへの一般対応
 - 複数AtCoderアカウントの統合管理
+- ブラウザCookieの手動取り込みをMVPの通常認証導線にすること
+- CI、共有端末、リモート実行または非対話実行へAtCoderセッションを配置すること
 
 #### 未信頼codeの実行
 
@@ -247,18 +252,22 @@ MVPは次を必須条件とする。
 #### Adapter境界
 
 - AtCoderとの連携を交換可能な`JudgeAdapter`境界の後ろへ置く。
+- AtCoderセッションの確立と保管を、問題取得・提出・判定確認から分離した認証セッション境界へ置く。Coreと履歴DBはCookieを受け取らない。
 - `online-judge-tools`は候補実装であり、AlgoLoomのDomainや保存Schemaの契約にしない。
+- `online-judge-tools`のパスワード入力型ログインをMVPの認証経路にしない。
 - 外部toolのstdout、stderr、例外文、HTML構造をそのままCoreの状態として保存しない。
 
 #### 実装前の技術検証
 
-- 現在のAtCoderに対して、sample取得、認証確認、提出、submission ID取得、判定確認が成立することを実装前の技術検証で確認する。
+- 方式Cの検証用手動取り込みによって、現在のAtCoderに対する入出力例取得、認証確認、提出、提出ID取得、判定確認が成立することを確認する。
+- 方式Aの可視専用ブラウザによって、利用者が手動で認証したセッションを安全に確立し、同じアカウントを確認できることを別のP0で確認する。
 
 #### 外部サービスの保護
 
 - CAPTCHA、Turnstile、rate limit、Bot対策を回避しない。
+- ユーザー名・パスワード、Turnstileの入力・操作を自動化せず、既存ブラウザプロファイルを探索または複製しない。
 
-自動提出の必須検証に合格しない場合、提出を実装済みとみなさない。browser-assisted提出等へ変更する場合は、代替実装として暗黙に差し替えず、本書のMVP範囲と価値仮説を再決定する。
+方式Cは主要導線の技術検証専用であり、MVPの製品認証方式ではない。方式Aは[AtCoder認証設計](../architecture/atcoder-authentication.md)の境界と`V-10`の合格条件に従う。主要導線または方式AのP0に合格しない場合、提出を実装済みとみなさず、本書のMVP範囲と価値仮説を再決定する。
 
 ---
 
@@ -266,15 +275,16 @@ MVPは次を必須条件とする。
 
 機能ごとの詳細設計へ進む前に、本書を正本として受け入れる。実装開始時には、さらに次を満たす。
 
-1. `JudgeAdapter`の技術検証計画と合格条件がある。→ [JudgeAdapter技術検証計画](../project/judge-adapter-verification.md)
-2. 現在のAtCoderでsample取得、account確認、提出、submission ID取得、判定確認を小さく検証できる。
-3. C++、Python、Go、Rustの組み込みlanguage profile案と共通契約テストがある。
-4. native macOS、native Linux、native Windowsの`HostPlatform`契約と、4言語×3 OSの検証matrixがある。
-5. SolveAttempt、FocusInterval、learning milestone、snapshot、submission operation、submission、verdict observation、account identityの論理モデルがある。
-6. workspace metadataとuser-level設定の責任が分かれている。
-7. `get`、SolveAttemptの時間計測、`test`、`submit`の中断点と回復経路が機能設計に含まれている。
-8. freshな解き直しについて、problem checkoutとSolveAttemptを分離し、file作成とDB保存の部分失敗から回復できる設計がある。
-9. 外部資料参照について、本文を取得しない`ReferenceLinkProvider`とbrowser起動を分離し、spoiler・contest状態・起動失敗を扱う設計がある。
+1. `JudgeAdapter`とAtCoder認証の技術検証計画、方式C・方式Aの合格条件がある。→ [JudgeAdapter技術検証計画](../project/judge-adapter-verification.md)
+2. 方式Cにより、現在のAtCoderで入出力例取得、アカウント確認、提出、提出ID取得、判定確認を小さく検証できる。
+3. 方式Aにより、代表する1OS・1ブラウザで、可視の専用ブラウザ、人によるログイン、必要なCookieだけの取得、同じアカウント確認、秘密情報の安全な保管と後始末を検証できる。
+4. C++、Python、Go、Rustの組み込みlanguage profile案と共通契約テストがある。
+5. native macOS、native Linux、native Windowsの`HostPlatform`契約と、4言語×3 OSの検証matrixがある。
+6. SolveAttempt、FocusInterval、learning milestone、snapshot、submission operation、submission、verdict observation、account identityの論理モデルがある。
+7. workspace metadataとuser-level設定の責任が分かれている。
+8. `get`、SolveAttemptの時間計測、`test`、`submit`の中断点と回復経路が機能設計に含まれている。
+9. freshな解き直しについて、problem checkoutとSolveAttemptを分離し、file作成とDB保存の部分失敗から回復できる設計がある。
+10. 外部資料参照について、本文を取得しない`ReferenceLinkProvider`とbrowser起動を分離し、spoiler・contest状態・起動失敗を扱う設計がある。
 
 技術検証で外部前提が成立しない場合は、回避実装へ進まず、MVPスコープを再検討する。
 
@@ -296,6 +306,8 @@ MVPは、commandが存在するだけでは完了としない。少なくとも�
 - [ ] 解き直しのfile作成またはDB保存を各段階で中断しても、重複checkout・SolveAttemptを作らず安全に再実行できる。
 - [ ] 未終了のSolveAttemptに関連する最初の公開sample通過、初回提出、初ACを別のmilestoneとして確認できる。
 - [ ] 明示checkpointを作り、offlineで表示できる。
+- [ ] 初回または期限切れ時に可視の専用ブラウザを明示的に起動し、利用者がログインとTurnstileを手動で完了した後、期待するAtCoderアカウントを確認できる。
+- [ ] native macOS、native Linux、native Windowsの対応ブラウザと秘密情報保管庫で、方式Aの起動・保存・更新・削除・中断を検証できる。
 - [ ] sourceを明示確認して、自分のAtCoderアカウントへ一件提出できる。
 - [ ] submission ID取得後に判定待ちを中断し、後から同じ提出を確認できる。
 - [ ] AtCoderがjudge execution timeまたはjudge memoryを返した場合は出典付きのnullableな観測として保存し、欠損時も判定保存を継続できる。
@@ -314,11 +326,14 @@ MVPは、commandが存在するだけでは完了としない。少なくとも�
 - [ ] 強制終了後もactiveまたはpausedなSolveAttemptを確認し、FocusIntervalを重複させず再開・終了できる。
 - [ ] 端末時刻の後退や不正なintervalを、負のdurationまたは推測した正常値として保存・表示しない。
 - [ ] account変更を検出し、別アカウントへ無確認で提出しない。
+- [ ] 認証ブラウザの取消、タイムアウト、異常終了後に孤児プロセス、利用可能な一時プロファイルまたは未確認のCookieを残さない。
+- [ ] 秘密情報保管庫を利用できない場合、平文設定ファイルへ自動的に切り替えず、提出だけを安全に停止する。
 - [ ] 外部出力に制御文字や大量出力があってもterminalとprocessを制御できる。
 
 ### 5.3. 利用者体験
 
 - [ ] 初期利用者がhelpだけで`get → test`へ到達できる。
+- [ ] 初回認証で、専用ブラウザを開く理由、手動操作、取り込む情報、保存先、中断方法を一画面で理解できる。
 - [ ] Coreの通常操作が、AlgoLoom所有領域と利用者が明示したworkspace以外のEditor、shell、plugin、toolchain、OS設定を永続的に変更しない。
 - [ ] Editor / IDE、Editor / Viewer Adapter、専用project fileなしで、保存済みの通常source fileからCoreの主要導線を完了できる。
 - [ ] file managerやEditorによるworkspace・問題directory・sourceの移動またはrename後も、file watcherなしで現在のcontextを再認識できる。
@@ -340,7 +355,7 @@ MVPは、commandが存在するだけでは完了としない。少なくとも�
 
 ## 6. 推奨する機能設計の順序
 
-1. `JudgeAdapter`技術検証と対応環境matrix
+1. `JudgeAdapter`技術検証、方式Cによる主要導線、方式Aによる認証確立、対応環境matrix
 2. workspace metadata、context解決、`LanguageProfile`、`HostPlatform`、組み込みprofile
 3. `get`の冪等性、部分失敗、再実行
 4. `test`のprocess制御、比較、compile・sampleごとのduration計測、error表示
@@ -362,6 +377,7 @@ MVPは、commandが存在するだけでは完了としない。少なくとも�
 
 - MVP対象機能の追加または削除
 - 対象judge、contest、OS、言語、account modelの変更
+- AtCoderセッションの取得元、保管先、ブラウザプロファイルまたは認証方式の変更
 - 自動外部通信、自動source保存、telemetryの導入
 - 履歴の意味、権威、不変性、削除方針の変更
 - workspace設定へ実行権限を追加する変更
