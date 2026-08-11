@@ -29,4 +29,4 @@
 
 [`atcoder_v02_session_check.py`](../../../../scripts/verification/atcoder_v02_session_check.py)は、`p0-04`で記録した方式Cの通信条件と分類を再現するため、実行後に再構成した版です。`p0-04`で使用して削除したファイルとバイト単位で同一とは扱わず、このコードやローカルテストだけを実サービスの証拠にしません。
 
-[`atcoder_v03_submit.py`](../../../../scripts/verification/atcoder_v03_submit.py)は、当日の`V-02`再確認、Cloudflare公式の`cf-mitigated`分類、提出フォーム構造とTurnstile関連付け、`V-05`、提出ゲート、POST上限1回、提出IDの一意な取得を順番に適用する検証支援コードです。`p0-06`ではフォーム解析まで実行し、`V-05`の不合格でPOSTを呼ぶ経路へ到達していません。ローカルテストの成功を実サービスでの`V-03`合格とは扱いません。
+[`atcoder_v03_submit.py`](../../../../scripts/verification/atcoder_v03_submit.py)は、当日の`V-02`再確認、Cloudflare公式の`cf-mitigated`分類、提出フォーム構造とTurnstile関連付け、`V-05`、提出ゲート、POST上限1回、提出IDの一意な取得を順番に適用する検証支援コードです。`p0-06`ではフォーム解析まで実行し、`V-05`の不合格でPOSTを呼ぶ経路へ到達していません。その後、AtCoder公式JavaScript実行前の問題別・名前なし言語`select`を許可リスト構造で解析する変更を加えましたが、変更後の実サービス検証は未実施です。ローカルテストの成功を実サービスでの`V-05`または`V-03`合格とは扱いません。

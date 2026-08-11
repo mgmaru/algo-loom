@@ -48,6 +48,10 @@ SUBMISSIONS_PATH = "/contests/abc300/submissions/me"
 CANONICAL_LANGUAGE_ID = "python-cpython"
 SOURCE_ALIAS = "source-B"
 SUBMISSION_ALIAS = "submission-A"
+TASK_SELECT_ID = "select-task"
+LANGUAGE_WRAPPER_ID = "select-lang"
+LANGUAGE_FIELD_NAME = "data.LanguageId"
+TARGET_LANGUAGE_CONTAINER_ID = "select-lang-" + PROBLEM_ID
 MAX_BODY_BYTES = 2 * 1024 * 1024
 MAX_SOURCE_BYTES = 512 * 1024
 CONNECT_TIMEOUT_SECONDS = 5.0
@@ -332,11 +336,20 @@ class SubmissionFormParser(HTMLParser):
         self.csrf_field_count = 0
         self.csrf_values = []  # type: List[str]
         self.task_select_count = 0
+        self.task_select_id_count = 0
+        self.task_select_id_match_count = 0
         self.task_values = []  # type: List[str]
         self.source_code_field_count = 0
         self.turnstile_widget_count = 0
         self.turnstile_response_field_count = 0
+        self.language_wrapper_id_count = 0
+        self.language_wrapper_count = 0
+        self.language_wrapper_data_names = []  # type: List[str]
+        self.target_language_container_id_count = 0
+        self.target_language_container_count = 0
+        self.all_language_selects = []  # type: List[Dict[str, Any]]
         self.language_selects = []  # type: List[Dict[str, Any]]
+        self.target_language_selects = []  # type: List[Dict[str, Any]]
         self.current_select = None  # type: Optional[Dict[str, Any]]
         self.current_option = None  # type: Optional[Dict[str, Any]]
 
@@ -357,6 +370,22 @@ class SubmissionFormParser(HTMLParser):
                 self.target_form_depth = len(self.element_ids)
         if not self.in_target_form:
             return
+        parent_id = self.element_ids[-2] if len(self.element_ids) >= 2 else None
+        if attrs.get("id") == TASK_SELECT_ID:
+            self.task_select_id_count += 1
+        if attrs.get("id") == LANGUAGE_WRAPPER_ID:
+            self.language_wrapper_id_count += 1
+        if tag == "div" and attrs.get("id") == LANGUAGE_WRAPPER_ID:
+            self.language_wrapper_count += 1
+            self.language_wrapper_data_names.append(attrs.get("data-name", ""))
+        if attrs.get("id") == TARGET_LANGUAGE_CONTAINER_ID:
+            self.target_language_container_id_count += 1
+        if (
+            tag == "div"
+            and attrs.get("id") == TARGET_LANGUAGE_CONTAINER_ID
+            and parent_id == LANGUAGE_WRAPPER_ID
+        ):
+            self.target_language_container_count += 1
         classes = set(attrs.get("class", "").lower().split())
         if "cf-turnstile" in classes or "data-sitekey" in attrs:
             self.turnstile_widget_count += 1
@@ -368,16 +397,27 @@ class SubmissionFormParser(HTMLParser):
             self.turnstile_response_field_count += 1
         if tag in {"input", "textarea"} and attrs.get("name") == "sourceCode":
             self.source_code_field_count += 1
-        if tag == "select" and attrs.get("name") in {
-            "data.TaskScreenName",
-            "data.LanguageId",
-        }:
-            if attrs["name"] == "data.TaskScreenName":
+        inside_language_wrapper = (
+            tag == "select" and LANGUAGE_WRAPPER_ID in self.element_ids[:-1]
+        )
+        is_task_select = (
+            tag == "select" and attrs.get("name") == "data.TaskScreenName"
+        )
+        is_language_select = tag == "select" and (
+            attrs.get("name") == LANGUAGE_FIELD_NAME or inside_language_wrapper
+        )
+        if is_task_select or is_language_select:
+            if is_task_select:
                 self.task_select_count += 1
+                if attrs.get("id") == TASK_SELECT_ID:
+                    self.task_select_id_match_count += 1
             self.current_select = {
-                "name": attrs["name"],
+                "name": attrs.get("name", ""),
                 "id": attrs.get("id", ""),
                 "context_ids": [value for value in self.element_ids if value],
+                "direct_parent_id": parent_id or "",
+                "inside_language_wrapper": inside_language_wrapper,
+                "is_task_select": is_task_select,
                 "options": [],
             }
         if tag == "option" and self.current_select is not None:
@@ -409,14 +449,22 @@ class SubmissionFormParser(HTMLParser):
                 self.current_select["options"].append(option)
             self.current_option = None
         if tag == "select" and self.current_select is not None:
-            if self.current_select["name"] == "data.TaskScreenName":
+            if self.current_select["is_task_select"]:
                 self.task_values.extend(
                     option["value"]
                     for option in self.current_select["options"]
                     if option["value"]
                 )
             else:
-                self.language_selects.append(self.current_select)
+                select = self.current_select
+                self.all_language_selects.append(select)
+                if select["name"] == LANGUAGE_FIELD_NAME:
+                    self.language_selects.append(select)
+                if (
+                    select["inside_language_wrapper"]
+                    and select["direct_parent_id"] == TARGET_LANGUAGE_CONTAINER_ID
+                ):
+                    self.target_language_selects.append(select)
             self.current_select = None
 
         if (
@@ -429,9 +477,61 @@ class SubmissionFormParser(HTMLParser):
             self.element_ids.pop()
 
 
+def classify_language_wrapper_data_name(parser: SubmissionFormParser) -> str:
+    if parser.language_wrapper_count == 0:
+        return "absent"
+    if (
+        parser.language_wrapper_count != 1
+        or parser.language_wrapper_id_count != 1
+    ):
+        return "not_unique"
+    value = parser.language_wrapper_data_names[0]
+    if value == LANGUAGE_FIELD_NAME:
+        return "expected"
+    if not value:
+        return "missing"
+    return "unexpected"
+
+
+def classify_target_language_select_name(parser: SubmissionFormParser) -> str:
+    if parser.language_wrapper_count == 0:
+        return "not_applicable"
+    if len(parser.target_language_selects) != 1:
+        return "not_unique"
+    value = parser.target_language_selects[0]["name"]
+    if value == LANGUAGE_FIELD_NAME:
+        return "expected"
+    if not value:
+        return "missing_before_javascript"
+    return "unexpected"
+
+
 def select_problem_languages(
-    selects: Sequence[Dict[str, Any]], problem_id: str
+    parser: SubmissionFormParser, problem_id: str
 ) -> Tuple[Optional[List[Dict[str, Any]]], str]:
+    wrapper_class = classify_language_wrapper_data_name(parser)
+    if parser.language_wrapper_count > 0:
+        if wrapper_class != "expected":
+            return None, "language_wrapper_data_name_" + wrapper_class
+        if parser.task_select_id_match_count != 1:
+            return None, "task_select_id_not_unique"
+        if parser.task_select_id_count != 1:
+            return None, "task_select_id_not_unique"
+        if (
+            parser.target_language_container_id_count != 1
+            or parser.target_language_container_count != 1
+        ):
+            return None, "target_language_container_not_unique"
+        if len(parser.target_language_selects) != 1:
+            return None, "target_language_select_not_unique"
+        if parser.target_language_selects[0]["name"] not in {
+            "",
+            LANGUAGE_FIELD_NAME,
+        }:
+            return None, "target_language_select_name_unexpected"
+        return parser.target_language_selects[0]["options"], "problem_container"
+
+    selects = parser.language_selects
     targeted = []  # type: List[Dict[str, Any]]
     for select in selects:
         identifiers = [select.get("id", "")] + list(select.get("context_ids", []))
@@ -473,9 +573,7 @@ def parse_submit_form(body: bytes) -> Dict[str, Any]:
         return {"classification": "submit_page_parse_error"}
 
     unique_csrf_values = list(dict.fromkeys(parser.csrf_values))
-    options, selection_method = select_problem_languages(
-        parser.language_selects, PROBLEM_ID
-    )
+    options, selection_method = select_problem_languages(parser, PROBLEM_ID)
     candidates = []  # type: List[Dict[str, str]]
     resolved = None  # type: Optional[Dict[str, str]]
     if options is not None:
@@ -515,10 +613,31 @@ def parse_submit_form(body: bytes) -> Dict[str, Any]:
         "csrf_field_count": parser.csrf_field_count,
         "csrf_token_count": len(parser.csrf_values),
         "task_select_count": parser.task_select_count,
+        "task_select_id_count": parser.task_select_id_count,
+        "task_select_id_match_count": parser.task_select_id_match_count,
         "target_task_option_count": parser.task_values.count(PROBLEM_ID),
         "target_task_present": parser.task_values.count(PROBLEM_ID) == 1,
         "source_code_field_count": parser.source_code_field_count,
+        "language_wrapper_id_count": parser.language_wrapper_id_count,
+        "language_wrapper_count": parser.language_wrapper_count,
+        "language_wrapper_data_name_class": (
+            classify_language_wrapper_data_name(parser)
+        ),
         "language_select_count": len(parser.language_selects),
+        "all_language_select_count": len(parser.all_language_selects),
+        "unnamed_language_select_count": sum(
+            1 for select in parser.all_language_selects if not select["name"]
+        ),
+        "target_language_container_count": (
+            parser.target_language_container_count
+        ),
+        "target_language_container_id_count": (
+            parser.target_language_container_id_count
+        ),
+        "target_language_select_count": len(parser.target_language_selects),
+        "target_language_select_name_class": (
+            classify_target_language_select_name(parser)
+        ),
         "language_selection_method": selection_method,
         "canonical_language_id": CANONICAL_LANGUAGE_ID,
         "canonical_language_candidate_count": len(candidates),
@@ -703,7 +822,7 @@ def public_form_observation(parsed: Dict[str, Any]) -> Dict[str, Any]:
 
 def build_result(started_at: str, source_size: int) -> Dict[str, Any]:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "verification_scope": ["V-02-recheck", "V-05", "V-03"],
         "started_at_utc": started_at,
         "finished_at_utc": None,

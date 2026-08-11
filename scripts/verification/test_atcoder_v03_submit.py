@@ -14,6 +14,11 @@ def submit_form_html(
     include_task=True,
     csrf_values=("csrf-value",),
     language_selects=None,
+    language_structure="official",
+    language_wrapper_data_name="data.LanguageId",
+    language_wrapper_count=1,
+    language_select_name=None,
+    task_select_id="select-task",
     method="post",
     action="/contests/abc300/submit",
     include_source=True,
@@ -45,22 +50,53 @@ def submit_form_html(
             '<option value="{}">{}</option>'.format(value, text)
             for value, text in options
         )
-        selects.append(
-            '<div id="container-{}"><select id="{}" '
-            'name="data.LanguageId">{}</select></div>'.format(
-                select_id, select_id, option_html
+        if language_structure == "official":
+            name = (
+                ""
+                if language_select_name is None
+                else ' name="{}"'.format(language_select_name)
             )
+            selects.append(
+                '<div id="{}"><select{}>{}</select></div>'.format(
+                    select_id, name, option_html
+                )
+            )
+        elif language_structure == "named":
+            selects.append(
+                '<div id="container-{}"><select id="{}" '
+                'name="data.LanguageId">{}</select></div>'.format(
+                    select_id, select_id, option_html
+                )
+            )
+        else:
+            raise ValueError("unsupported language structure")
+    if language_structure == "official":
+        data_name = (
+            ""
+            if language_wrapper_data_name is None
+            else ' data-name="{}"'.format(language_wrapper_data_name)
         )
+        language_html = "".join(
+            '<div id="select-lang"{}>{}</div>'.format(
+                data_name, "".join(selects)
+            )
+            for _ in range(language_wrapper_count)
+        )
+    else:
+        language_html = "".join(selects)
+    task_id = (
+        "" if task_select_id is None else ' id="{}"'.format(task_select_id)
+    )
     source = '<textarea name="sourceCode"></textarea>' if include_source else ""
     return (
         "<html><head>"
         + page_head
         + '</head><body><form method="{}" action="{}">'.format(method, action)
         + csrf
-        + '<select name="data.TaskScreenName">'
+        + '<select{} name="data.TaskScreenName">'.format(task_id)
         + task_option
         + "</select>"
-        + "".join(selects)
+        + language_html
         + source
         + form_extra
         + "</form></body></html>"
@@ -77,9 +113,25 @@ class SubmitFormParserTest(unittest.TestCase):
         self.assertEqual(parsed["csrf_field_count"], 1)
         self.assertEqual(parsed["csrf_token_count"], 1)
         self.assertEqual(parsed["task_select_count"], 1)
+        self.assertEqual(parsed["task_select_id_count"], 1)
+        self.assertEqual(parsed["task_select_id_match_count"], 1)
         self.assertEqual(parsed["target_task_option_count"], 1)
         self.assertEqual(parsed["source_code_field_count"], 1)
         self.assertTrue(parsed["target_task_present"])
+        self.assertEqual(parsed["language_wrapper_id_count"], 1)
+        self.assertEqual(parsed["language_wrapper_count"], 1)
+        self.assertEqual(parsed["language_wrapper_data_name_class"], "expected")
+        self.assertEqual(parsed["language_select_count"], 0)
+        self.assertEqual(parsed["all_language_select_count"], 1)
+        self.assertEqual(parsed["unnamed_language_select_count"], 1)
+        self.assertEqual(parsed["target_language_container_count"], 1)
+        self.assertEqual(parsed["target_language_container_id_count"], 1)
+        self.assertEqual(parsed["target_language_select_count"], 1)
+        self.assertEqual(
+            parsed["target_language_select_name_class"],
+            "missing_before_javascript",
+        )
+        self.assertEqual(parsed["language_selection_method"], "problem_container")
         self.assertEqual(parsed["canonical_language_candidate_count"], 1)
         self.assertEqual(parsed["turnstile_binding_class"], "absent")
         self.assertTrue(parsed["submission_ready"])
@@ -96,6 +148,7 @@ class SubmitFormParserTest(unittest.TestCase):
 
     def test_accepts_one_generic_language_select(self):
         html = submit_form_html(
+            language_structure="named",
             language_selects=[
                 (
                     "select-lang",
@@ -111,6 +164,7 @@ class SubmitFormParserTest(unittest.TestCase):
 
     def test_rejects_multiple_non_target_language_selects(self):
         html = submit_form_html(
+            language_structure="named",
             language_selects=[
                 ("select-lang-abc300_b", [("1", "Python (CPython 3.12.9)")]),
                 ("select-lang-abc300_c", [("1", "Python (CPython 3.12.9)")]),
@@ -123,6 +177,137 @@ class SubmitFormParserTest(unittest.TestCase):
         self.assertEqual(
             parsed["language_selection_method"], "target_language_select_not_unique"
         )
+
+    def test_selects_only_target_problem_container(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(
+                language_selects=[
+                    (
+                        "select-lang-abc300_a",
+                        [("10", "Python (CPython 3.13.3)")],
+                    ),
+                    (
+                        "select-lang-abc300_b",
+                        [("20", "Python (CPython 9.9.9)")],
+                    ),
+                ]
+            )
+        )
+
+        self.assertEqual(parsed["classification"], "ready")
+        self.assertEqual(parsed["all_language_select_count"], 2)
+        self.assertEqual(parsed["target_language_select_count"], 1)
+        self.assertEqual(parsed["resolved_language"]["atcoder_language_id"], "10")
+
+    def test_accepts_target_select_named_after_javascript(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(language_select_name="data.LanguageId")
+        )
+
+        self.assertEqual(parsed["classification"], "ready")
+        self.assertEqual(parsed["language_select_count"], 1)
+        self.assertEqual(parsed["unnamed_language_select_count"], 0)
+        self.assertEqual(parsed["target_language_select_name_class"], "expected")
+
+    def test_rejects_language_wrapper_data_name_mismatch(self):
+        cases = (
+            (None, "language_wrapper_data_name_missing"),
+            ("unexpected", "language_wrapper_data_name_unexpected"),
+        )
+        for data_name, expected_method in cases:
+            with self.subTest(data_name=data_name):
+                parsed = target.parse_submit_form(
+                    submit_form_html(language_wrapper_data_name=data_name)
+                )
+
+                self.assertEqual(
+                    parsed["classification"], "submit_page_structure_changed"
+                )
+                self.assertEqual(
+                    parsed["language_selection_method"], expected_method
+                )
+                self.assertIsNone(parsed["resolved_language"])
+
+    def test_rejects_duplicate_language_wrapper(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(language_wrapper_count=2)
+        )
+
+        self.assertEqual(parsed["classification"], "submit_page_structure_changed")
+        self.assertEqual(
+            parsed["language_selection_method"],
+            "language_wrapper_data_name_not_unique",
+        )
+        self.assertEqual(parsed["language_wrapper_count"], 2)
+
+    def test_rejects_task_select_without_official_id(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(task_select_id="unexpected")
+        )
+
+        self.assertEqual(parsed["classification"], "submit_page_structure_changed")
+        self.assertEqual(
+            parsed["language_selection_method"], "task_select_id_not_unique"
+        )
+
+    def test_rejects_duplicate_task_select_id(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(form_extra='<div id="select-task"></div>')
+        )
+
+        self.assertEqual(parsed["classification"], "submit_page_structure_changed")
+        self.assertEqual(
+            parsed["language_selection_method"], "task_select_id_not_unique"
+        )
+        self.assertEqual(parsed["task_select_id_count"], 2)
+
+    def test_rejects_missing_or_duplicate_target_language_container(self):
+        cases = (
+            [("select-lang-abc300_b", [("1", "Python (CPython 3.13.3)")])],
+            [
+                ("select-lang-abc300_a", [("1", "Python (CPython 3.13.3)")]),
+                ("select-lang-abc300_a", [("2", "Python (CPython 3.13.3)")]),
+            ],
+        )
+        for language_selects in cases:
+            with self.subTest(count=len(language_selects)):
+                parsed = target.parse_submit_form(
+                    submit_form_html(language_selects=language_selects)
+                )
+
+                self.assertEqual(
+                    parsed["classification"], "submit_page_structure_changed"
+                )
+                self.assertEqual(
+                    parsed["language_selection_method"],
+                    "target_language_container_not_unique",
+                )
+
+    def test_rejects_duplicate_target_language_container_id_outside_wrapper(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(
+                form_extra='<div id="select-lang-abc300_a"></div>'
+            )
+        )
+
+        self.assertEqual(parsed["classification"], "submit_page_structure_changed")
+        self.assertEqual(
+            parsed["language_selection_method"],
+            "target_language_container_not_unique",
+        )
+        self.assertEqual(parsed["target_language_container_id_count"], 2)
+
+    def test_rejects_unexpected_target_language_select_name(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(language_select_name="unexpected")
+        )
+
+        self.assertEqual(parsed["classification"], "submit_page_structure_changed")
+        self.assertEqual(
+            parsed["language_selection_method"],
+            "target_language_select_name_unexpected",
+        )
+        self.assertEqual(parsed["target_language_select_name_class"], "unexpected")
 
     def test_rejects_multiple_cpython_candidates(self):
         html = submit_form_html(

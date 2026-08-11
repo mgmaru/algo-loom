@@ -69,6 +69,8 @@ python3 scripts/verification/atcoder_v03_submit.py \
 - Cloudflare Challenge Pageは、公式仕様の`cf-mitigated: challenge`を許可リスト射影して判定します。ヘッダーの生値や他の生ヘッダーは保存せず、`absent`、`challenge`、`unexpected`の分類だけを記録します。
 - HTML内の`cf-turnstile`や`challenges.cloudflare.com`等はTurnstile関連参照として別に観測し、文字列の存在だけをChallenge Pageの証拠にしません。
 - 認証済み提出フォームについて、同一オリジンの送信先、`method=POST`、フォーム数、CSRFフィールド数、対象問題、ソースコードフィールド、対象言語を許可リスト構造で確認します。
+- 言語選択は、AtCoder公式`contest.js`のJavaScript実行前構造に合わせ、`#select-task`、`#select-lang[data-name="data.LanguageId"]`、`#select-lang-abc300_a > select`をそれぞれ一意に確認します。対象問題用`select`は、JavaScriptが`name="data.LanguageId"`を付ける前の名前なし状態と、付与後の状態だけを受け付けます。
+- 言語ラッパー、問題選択欄、対象問題コンテナのID重複、`data-name`不一致、対象問題用`select`の欠損・重複・予期しない`name`、CPython候補0件・複数件では提出前に停止します。旧形式の名前付き言語`select`は、公式構造と混同しない互換経路で解析します。
 - 対象フォーム内のTurnstileウィジェットまたは応答フィールド、`turnstile.render()`または`turnstile.execute()`による明示的・遅延実行の参照を観測した場合は、フォーム構造を取得できても提出POST前に停止します。フォーム外のスクリプト参照だけなら、正常フォームの構造確認を継続します。
 - 認証済み提出フォームから対象問題の言語候補とCSRFトークンをメモリ上で取得し、Python（CPython）が1件に決まらなければ停止します。
 - 問題、アカウント一致、AtCoder固有の言語情報、Cloudflare Challenge Pageと提出フォームのTurnstile分類、ソースコードのバイト数とハッシュ、AI学習・販売の拒否設定案内、自動再送禁止を一画面に表示します。
