@@ -14,6 +14,11 @@ def submit_form_html(
     include_task=True,
     csrf_values=("csrf-value",),
     language_selects=None,
+    method="post",
+    action="/contests/abc300/submit",
+    include_source=True,
+    form_extra="",
+    page_head="",
 ):
     if language_selects is None:
         language_selects = [
@@ -46,13 +51,18 @@ def submit_form_html(
                 select_id, select_id, option_html
             )
         )
+    source = '<textarea name="sourceCode"></textarea>' if include_source else ""
     return (
-        '<html><body><form method="post" action="/contests/abc300/submit">'
+        "<html><head>"
+        + page_head
+        + '</head><body><form method="{}" action="{}">'.format(method, action)
         + csrf
         + '<select name="data.TaskScreenName">'
         + task_option
         + "</select>"
         + "".join(selects)
+        + source
+        + form_extra
         + "</form></body></html>"
     ).encode()
 
@@ -63,9 +73,16 @@ class SubmitFormParserTest(unittest.TestCase):
 
         self.assertEqual(parsed["classification"], "ready")
         self.assertEqual(parsed["target_form_count"], 1)
+        self.assertTrue(parsed["target_form_method_post"])
+        self.assertEqual(parsed["csrf_field_count"], 1)
         self.assertEqual(parsed["csrf_token_count"], 1)
+        self.assertEqual(parsed["task_select_count"], 1)
+        self.assertEqual(parsed["target_task_option_count"], 1)
+        self.assertEqual(parsed["source_code_field_count"], 1)
         self.assertTrue(parsed["target_task_present"])
         self.assertEqual(parsed["canonical_language_candidate_count"], 1)
+        self.assertEqual(parsed["turnstile_binding_class"], "absent")
+        self.assertTrue(parsed["submission_ready"])
         self.assertEqual(
             parsed["resolved_language"],
             {
@@ -140,6 +157,72 @@ class SubmitFormParserTest(unittest.TestCase):
         self.assertEqual(
             missing_csrf["classification"], "submit_page_structure_changed"
         )
+
+    def test_rejects_duplicate_csrf_even_when_values_match(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(csrf_values=("same-value", "same-value"))
+        )
+
+        self.assertEqual(parsed["classification"], "submit_page_structure_changed")
+        self.assertEqual(parsed["csrf_field_count"], 2)
+        self.assertIsNone(parsed["_csrf_token"])
+
+    def test_rejects_wrong_method_cross_origin_action_or_missing_source(self):
+        wrong_method = target.parse_submit_form(submit_form_html(method="get"))
+        cross_origin = target.parse_submit_form(
+            submit_form_html(
+                action="https://example.com/contests/abc300/submit"
+            )
+        )
+        missing_source = target.parse_submit_form(
+            submit_form_html(include_source=False)
+        )
+
+        self.assertEqual(
+            wrong_method["classification"], "submit_page_structure_changed"
+        )
+        self.assertEqual(
+            cross_origin["classification"], "submit_page_structure_changed"
+        )
+        self.assertEqual(
+            missing_source["classification"], "submit_page_structure_changed"
+        )
+
+    def test_allows_reference_only_outside_target_form(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(
+                page_head=(
+                    '<script src="https://challenges.cloudflare.com/'
+                    'turnstile/v0/api.js"></script>'
+                )
+            )
+        )
+
+        self.assertEqual(parsed["classification"], "ready")
+        self.assertEqual(parsed["turnstile_binding_class"], "reference_only")
+        self.assertTrue(parsed["submission_ready"])
+
+    def test_blocks_turnstile_widget_inside_target_form(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(
+                form_extra='<div class="cf-turnstile" data-sitekey="redacted"></div>'
+            )
+        )
+
+        self.assertEqual(parsed["classification"], "ready")
+        self.assertEqual(parsed["turnstile_binding_class"], "target_form_widget")
+        self.assertFalse(parsed["submission_ready"])
+
+    def test_blocks_explicit_or_deferred_turnstile_binding(self):
+        parsed = target.parse_submit_form(
+            submit_form_html(page_head="<script>turnstile.render('#widget')</script>")
+        )
+
+        self.assertEqual(parsed["classification"], "ready")
+        self.assertEqual(
+            parsed["turnstile_binding_class"], "explicit_or_deferred"
+        )
+        self.assertFalse(parsed["submission_ready"])
 
     def test_public_projection_removes_csrf(self):
         parsed = target.parse_submit_form(submit_form_html())
@@ -280,10 +363,63 @@ class FileBoundaryTest(unittest.TestCase):
             self.assertEqual(error, "output parent directory must be owner-only")
 
 
-class MarkerTest(unittest.TestCase):
-    def test_detects_cloudflare_markers(self):
-        self.assertTrue(target.contains_challenge_marker(b"<div class='cf-turnstile'>"))
-        self.assertFalse(target.contains_challenge_marker(b"<html>normal page</html>"))
+class CloudflareClassificationTest(unittest.TestCase):
+    def test_detects_turnstile_references_without_calling_them_challenges(self):
+        self.assertTrue(
+            target.contains_turnstile_reference(b"<div class='cf-turnstile'>")
+        )
+        self.assertFalse(
+            target.contains_turnstile_reference(b"<html>normal page</html>")
+        )
+
+    def test_classifies_only_allowlisted_cf_mitigated_value(self):
+        self.assertEqual(target.classify_cf_mitigated(None), "absent")
+        self.assertEqual(target.classify_cf_mitigated("challenge"), "challenge")
+        self.assertEqual(target.classify_cf_mitigated("unexpected-value"), "unexpected")
+
+    def test_authenticated_html_uses_cf_mitigated_header(self):
+        normal = fake_http_result(body=b"<html>normal</html>")
+        challenged = fake_http_result(
+            body=b"<html>challenge</html>", cf_mitigated_class="challenge"
+        )
+
+        self.assertEqual(
+            target.classify_authenticated_html(
+                normal, "expected", require_identity=False
+            ),
+            "ready",
+        )
+        self.assertEqual(
+            target.classify_authenticated_html(
+                challenged, "expected", require_identity=False
+            ),
+            "cloudflare_challenge",
+        )
+
+    def test_bounded_request_projects_cf_mitigated_without_raw_headers(self):
+        response = mock.Mock()
+        response.status = 200
+        response.getheader.side_effect = lambda name: {
+            "Location": None,
+            "Cf-Mitigated": "challenge",
+            "Content-Type": "text/html; charset=utf-8",
+        }.get(name)
+        response.headers.get_all.return_value = []
+        response.read.return_value = b"<html>challenge</html>"
+        connection = mock.Mock()
+        connection.sock = mock.Mock()
+        connection.getresponse.return_value = response
+
+        with mock.patch.object(
+            target.http.client, "HTTPSConnection", return_value=connection
+        ):
+            result = target.bounded_request("GET", target.SUBMIT_FORM_PATH, None)
+
+        self.assertEqual(
+            result.observation["cf_mitigated_class"], "challenge"
+        )
+        self.assertNotIn("raw_headers", result.observation)
+        connection.close.assert_called_once()
 
 
 def fake_http_result(
@@ -294,6 +430,8 @@ def fake_http_result(
     body=b"",
     cookie="cookie-value",
     direct_id=None,
+    cf_mitigated_class="absent",
+    turnstile_reference_present=False,
 ):
     return target.HttpResult(
         observation={
@@ -311,7 +449,8 @@ def fake_http_result(
             "session_cookie_updated": False,
             "session_cookie_update_error": None,
             "response_body_oversized": False,
-            "challenge_marker_present": False,
+            "cf_mitigated_class": cf_mitigated_class,
+            "turnstile_reference_present": turnstile_reference_present,
             "direct_submission_id_present": direct_id is not None,
         },
         body=body,
@@ -350,6 +489,89 @@ class EntryPointSafetyTest(unittest.TestCase):
             ),
             mock.patch.object(target, "read_cookie_value", return_value=("cookie-value", 0)),
             mock.patch.object(target, "wait_after", return_value=0),
+        )
+
+    def test_cf_mitigated_challenge_stops_before_form_parsing(self):
+        self.form.observation["cf_mitigated_class"] = "challenge"
+        calls = []
+
+        def request(method, path, cookie, **kwargs):
+            calls.append((method, path))
+            return [self.empty, self.account, self.form][len(calls) - 1]
+
+        patches = self.common_patches()
+        with patches[0], patches[1], patches[2], patches[3], patches[4], mock.patch.object(
+            target, "bounded_request", side_effect=request
+        ), mock.patch.object(
+            target.getpass, "getpass", return_value="expected"
+        ), mock.patch(
+            "builtins.input", side_effect=["CONFIRMED", "RUN_READ_GATE"]
+        ), mock.patch.object(
+            target, "stop_with_result", return_value=1
+        ) as stop:
+            code = target.main(
+                [
+                    "--source",
+                    "/tmp/source.py",
+                    "--json-output",
+                    "/tmp/result.json",
+                    "--state-output",
+                    "/tmp/state.json",
+                ]
+            )
+
+        self.assertEqual(code, 1)
+        self.assertEqual([method for method, _ in calls], ["GET"] * 3)
+        result = stop.call_args.args[1]
+        self.assertEqual(
+            result["observations"]["submit_form"][
+                "authenticated_html_classification"
+            ],
+            "cloudflare_challenge",
+        )
+        self.assertNotIn("submit_form_structure", result["observations"])
+
+    def test_target_form_turnstile_stops_after_v05_without_post(self):
+        self.form.body = self.account_body + submit_form_html(
+            form_extra='<div class="cf-turnstile" data-sitekey="redacted"></div>'
+        )
+        calls = []
+
+        def request(method, path, cookie, **kwargs):
+            calls.append((method, path))
+            return [self.empty, self.account, self.form][len(calls) - 1]
+
+        patches = self.common_patches()
+        with patches[0], patches[1], patches[2], patches[3], patches[4], mock.patch.object(
+            target, "bounded_request", side_effect=request
+        ), mock.patch.object(
+            target.getpass, "getpass", return_value="expected"
+        ), mock.patch(
+            "builtins.input", side_effect=["CONFIRMED", "RUN_READ_GATE"]
+        ), mock.patch.object(
+            target, "stop_with_result", return_value=1
+        ) as stop:
+            code = target.main(
+                [
+                    "--source",
+                    "/tmp/source.py",
+                    "--json-output",
+                    "/tmp/result.json",
+                    "--state-output",
+                    "/tmp/state.json",
+                ]
+            )
+
+        self.assertEqual(code, 1)
+        self.assertEqual([method for method, _ in calls], ["GET"] * 3)
+        result = stop.call_args.args[1]
+        self.assertEqual(result["v05"], "pass")
+        self.assertEqual(result["v03"], "aborted")
+        self.assertEqual(
+            result["observations"]["submit_form_structure"][
+                "turnstile_binding_class"
+            ],
+            "target_form_widget",
         )
 
     def test_no_post_occurs_without_exact_submission_approval(self):
@@ -434,6 +656,10 @@ class EntryPointSafetyTest(unittest.TestCase):
         saved_state = write_state.call_args.args[1]
         self.assertEqual(saved_state["submission_id"], "100")
         save_result.assert_called_once()
+        saved_result = save_result.call_args.args[1]
+        self.assertTrue(
+            saved_result["approval"]["turnstile_classification_presented"]
+        )
 
 
 if __name__ == "__main__":

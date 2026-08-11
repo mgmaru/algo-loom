@@ -62,10 +62,13 @@ CPYTHON_PATTERN = re.compile(
 SUBMISSION_PATH_PATTERN = re.compile(
     r"^/contests/abc300/submissions/([0-9]+)$"
 )
-CHALLENGE_MARKERS = (
+TURNSTILE_REFERENCE_MARKERS = (
     b"cf-turnstile",
     b"challenges.cloudflare.com",
     b"cdn-cgi/challenge-platform",
+)
+TURNSTILE_EXPLICIT_BINDING_PATTERN = re.compile(
+    rb"\bturnstile\s*\.\s*(?:render|execute)\s*\(", re.IGNORECASE
 )
 VOID_TAGS = {
     "area",
@@ -99,9 +102,22 @@ def attributes_dict(attributes: Sequence[Tuple[str, Optional[str]]]) -> Dict[str
     return {name: value or "" for name, value in attributes}
 
 
-def contains_challenge_marker(body: bytes) -> bool:
+def contains_turnstile_reference(body: bytes) -> bool:
     lowered = body.lower()
-    return any(marker in lowered for marker in CHALLENGE_MARKERS)
+    return any(marker in lowered for marker in TURNSTILE_REFERENCE_MARKERS)
+
+
+def contains_turnstile_explicit_binding(body: bytes) -> bool:
+    return TURNSTILE_EXPLICIT_BINDING_PATTERN.search(body) is not None
+
+
+def classify_cf_mitigated(value: Optional[str]) -> str:
+    """Project the Cloudflare header without retaining unexpected raw values."""
+    if value is None:
+        return "absent"
+    if value.strip().lower() == "challenge":
+        return "challenge"
+    return "unexpected"
 
 
 def classify_location(value: Optional[str]) -> str:
@@ -204,6 +220,9 @@ def bounded_request(
         response = connection.getresponse()
         status = response.status
         location = response.getheader("Location")
+        cf_mitigated_class = classify_cf_mitigated(
+            response.getheader("Cf-Mitigated")
+        )
         set_cookie_headers = response.headers.get_all("Set-Cookie", [])
         content_type = (response.getheader("Content-Type") or "").split(";", 1)[0]
         response_body = response.read(MAX_BODY_BYTES + 1)
@@ -238,8 +257,9 @@ def bounded_request(
             "session_cookie_updated": cookie_updated,
             "session_cookie_update_error": update_error,
             "response_body_oversized": oversized,
-            "challenge_marker_present": (
-                False if oversized else contains_challenge_marker(response_body)
+            "cf_mitigated_class": cf_mitigated_class,
+            "turnstile_reference_present": (
+                False if oversized else contains_turnstile_reference(response_body)
             ),
         }
         direct_id = extract_direct_submission_id(location)
@@ -289,14 +309,33 @@ def wait_after(finished_monotonic: float) -> int:
     return round(max(0.0, remaining) * 1000)
 
 
+def is_target_submit_action(value: str) -> bool:
+    parsed = urlparse(value)
+    if parsed.scheme or parsed.netloc:
+        if parsed.scheme != "https" or parsed.netloc != HOST:
+            return False
+    return (
+        parsed.path == SUBMIT_PATH
+        and not parsed.params
+        and not parsed.query
+        and not parsed.fragment
+    )
+
+
 class SubmissionFormParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.element_ids = []  # type: List[Optional[str]]
         self.target_form_depth = None  # type: Optional[int]
         self.target_form_count = 0
+        self.target_form_methods = []  # type: List[str]
+        self.csrf_field_count = 0
         self.csrf_values = []  # type: List[str]
+        self.task_select_count = 0
         self.task_values = []  # type: List[str]
+        self.source_code_field_count = 0
+        self.turnstile_widget_count = 0
+        self.turnstile_response_field_count = 0
         self.language_selects = []  # type: List[Dict[str, Any]]
         self.current_select = None  # type: Optional[Dict[str, Any]]
         self.current_option = None  # type: Optional[Dict[str, Any]]
@@ -311,21 +350,30 @@ class SubmissionFormParser(HTMLParser):
         attrs = attributes_dict(attributes)
         if tag not in VOID_TAGS:
             self.element_ids.append(attrs.get("id"))
-        if tag == "form":
-            action = urlparse(attrs.get("action", "")).path
-            if action == SUBMIT_PATH:
-                self.target_form_count += 1
-                if self.target_form_depth is None:
-                    self.target_form_depth = len(self.element_ids)
+        if tag == "form" and is_target_submit_action(attrs.get("action", "")):
+            self.target_form_count += 1
+            self.target_form_methods.append(attrs.get("method", "").lower())
+            if self.target_form_depth is None:
+                self.target_form_depth = len(self.element_ids)
         if not self.in_target_form:
             return
+        classes = set(attrs.get("class", "").lower().split())
+        if "cf-turnstile" in classes or "data-sitekey" in attrs:
+            self.turnstile_widget_count += 1
         if tag == "input" and attrs.get("name") == "csrf_token":
+            self.csrf_field_count += 1
             if attrs.get("value"):
                 self.csrf_values.append(attrs["value"])
+        if tag == "input" and attrs.get("name") == "cf-turnstile-response":
+            self.turnstile_response_field_count += 1
+        if tag in {"input", "textarea"} and attrs.get("name") == "sourceCode":
+            self.source_code_field_count += 1
         if tag == "select" and attrs.get("name") in {
             "data.TaskScreenName",
             "data.LanguageId",
         }:
+            if attrs["name"] == "data.TaskScreenName":
+                self.task_select_count += 1
             self.current_select = {
                 "name": attrs["name"],
                 "id": attrs.get("id", ""),
@@ -432,23 +480,59 @@ def parse_submit_form(body: bytes) -> Dict[str, Any]:
     resolved = None  # type: Optional[Dict[str, str]]
     if options is not None:
         candidates, resolved = resolve_cpython_language(options)
+    turnstile_reference_present = contains_turnstile_reference(body)
+    turnstile_explicit_binding_present = contains_turnstile_explicit_binding(body)
+    if (
+        parser.turnstile_widget_count > 0
+        or parser.turnstile_response_field_count > 0
+    ):
+        turnstile_binding_class = "target_form_widget"
+    elif turnstile_explicit_binding_present:
+        turnstile_binding_class = "explicit_or_deferred"
+    elif turnstile_reference_present:
+        turnstile_binding_class = "reference_only"
+    else:
+        turnstile_binding_class = "absent"
     passed = (
         parser.target_form_count == 1
+        and parser.target_form_methods == ["post"]
+        and parser.csrf_field_count == 1
+        and len(parser.csrf_values) == 1
         and len(unique_csrf_values) == 1
-        and PROBLEM_ID in parser.task_values
+        and parser.task_select_count == 1
+        and parser.task_values.count(PROBLEM_ID) == 1
+        and parser.source_code_field_count == 1
         and resolved is not None
     )
+    submission_ready = passed and turnstile_binding_class in {
+        "absent",
+        "reference_only",
+    }
     return {
         "classification": "ready" if passed else "submit_page_structure_changed",
         "target_form_count": parser.target_form_count,
-        "csrf_token_count": len(unique_csrf_values),
-        "target_task_present": PROBLEM_ID in parser.task_values,
+        "target_form_method_post": parser.target_form_methods == ["post"],
+        "csrf_field_count": parser.csrf_field_count,
+        "csrf_token_count": len(parser.csrf_values),
+        "task_select_count": parser.task_select_count,
+        "target_task_option_count": parser.task_values.count(PROBLEM_ID),
+        "target_task_present": parser.task_values.count(PROBLEM_ID) == 1,
+        "source_code_field_count": parser.source_code_field_count,
         "language_select_count": len(parser.language_selects),
         "language_selection_method": selection_method,
         "canonical_language_id": CANONICAL_LANGUAGE_ID,
         "canonical_language_candidate_count": len(candidates),
         "resolved_language": resolved,
-        "_csrf_token": unique_csrf_values[0] if len(unique_csrf_values) == 1 else None,
+        "turnstile_binding_class": turnstile_binding_class,
+        "turnstile_widget_count": parser.turnstile_widget_count,
+        "turnstile_response_field_count": parser.turnstile_response_field_count,
+        "turnstile_explicit_binding_present": turnstile_explicit_binding_present,
+        "submission_ready": submission_ready,
+        "_csrf_token": (
+            unique_csrf_values[0]
+            if parser.csrf_field_count == 1 and len(unique_csrf_values) == 1
+            else None
+        ),
     }
 
 
@@ -524,22 +608,30 @@ def settings_observation(result: HttpResult, expected_identity: str) -> Dict[str
     return observation
 
 
-def authenticated_html_ready(
+def classify_authenticated_html(
     result: HttpResult, expected_identity: str, *, require_identity: bool
-) -> bool:
+) -> str:
     observation = result.observation
     if observation.get("http_status") != 200:
-        return False
+        return "unexpected_http_status"
+    if observation.get("content_type_class") != "text/html":
+        return "unexpected_content_type"
     if observation.get("response_body_oversized"):
-        return False
-    if observation.get("challenge_marker_present"):
-        return False
+        return "response_body_oversized"
+    if observation.get("cf_mitigated_class") == "challenge":
+        return "cloudflare_challenge"
+    if observation.get("cf_mitigated_class") != "absent":
+        return "unexpected_cf_mitigated_header"
     if observation.get("session_cookie_update_error") is not None:
-        return False
+        return "session_cookie_update_error"
     if not require_identity:
-        return True
+        return "ready"
     identities = v02.extract_identities(result.body)
-    return len(identities) == 1 and identities[0] == expected_identity
+    if len(identities) != 1:
+        return "identity_not_unique"
+    if identities[0] != expected_identity:
+        return "identity_mismatch"
+    return "ready"
 
 
 def read_source(path: Path) -> Tuple[Optional[bytes], Optional[str]]:
@@ -611,7 +703,7 @@ def public_form_observation(parsed: Dict[str, Any]) -> Dict[str, Any]:
 
 def build_result(started_at: str, source_size: int) -> Dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "verification_scope": ["V-02-recheck", "V-05", "V-03"],
         "started_at_utc": started_at,
         "finished_at_utc": None,
@@ -658,6 +750,7 @@ def build_result(started_at: str, source_size: int) -> Dict[str, Any]:
             "unique_submission_confirmed": False,
             "ai_policy_presented": False,
             "no_automatic_resend_confirmed": False,
+            "turnstile_classification_presented": False,
         },
         "v02_recheck": "not_run",
         "v05": "not_run",
@@ -816,7 +909,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         account_public.get("classification") == "authenticated_candidate"
         and account_public.get("identity_count") == 1
         and account_public.get("identity_matches_expected") is True
-        and account_public.get("challenge_marker_present") is False
+        and account_public.get("cf_mitigated_class") == "absent"
         and account_public.get("session_cookie_update_error") is None
     )
     if not account_ok or session_cookie is None:
@@ -830,19 +923,23 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     wait_after(account.finished_monotonic)
     submit_page = bounded_request("GET", SUBMIT_FORM_PATH, session_cookie)
+    submit_html_classification = classify_authenticated_html(
+        submit_page, expected_identity, require_identity=False
+    )
+    submit_page.observation["authenticated_html_classification"] = (
+        submit_html_classification
+    )
     record_request(result, "submit_form", submit_page)
     session_cookie = submit_page.session_cookie
-    if (
-        session_cookie is None
-        or not authenticated_html_ready(
-            submit_page, expected_identity, require_identity=False
-        )
-    ):
+    if session_cookie is None or submit_html_classification != "ready":
         session_cookie = None
         expected_identity = ""
-        result["v05"] = "fail"
+        result["v05"] = "aborted"
         return stop_with_result(
-            json_path, result, "提出フォームを安全に解釈できず停止しました。", 1
+            json_path,
+            result,
+            "提出ページのHTTP応答を安全に解釈できず停止しました。",
+            1,
         )
 
     parsed_form = parse_submit_form(submit_page.body)
@@ -857,19 +954,39 @@ def main(argv: Optional[List[str]] = None) -> int:
             json_path, result, "V-05で言語を一意に解決できず停止しました。", 1
         )
     language = parsed_form["resolved_language"]
+    turnstile_binding_class = parsed_form["turnstile_binding_class"]
     csrf_token = parsed_form["_csrf_token"]
     parsed_form["_csrf_token"] = None
     result["v05"] = "pass"
 
+    if parsed_form.get("submission_ready") is not True:
+        session_cookie = None
+        expected_identity = ""
+        csrf_token = None
+        result["v03"] = "aborted"
+        return stop_with_result(
+            json_path,
+            result,
+            "提出フォームにTurnstileの能動的な関連付けを観測したため、"
+            "提出POST前に停止しました。",
+            1,
+        )
+
     wait_after(submit_page.finished_monotonic)
     list_path = filtered_submissions_path(language["atcoder_language_id"])
     baseline = bounded_request("GET", list_path, session_cookie)
+    baseline_html_classification = classify_authenticated_html(
+        baseline, expected_identity, require_identity=True
+    )
+    baseline.observation["authenticated_html_classification"] = (
+        baseline_html_classification
+    )
     record_request(result, "submission_list_before_send", baseline)
     session_cookie = baseline.session_cookie
     baseline_ids = parse_submission_ids(baseline.body)
     baseline_ok = (
         session_cookie is not None
-        and authenticated_html_ready(baseline, expected_identity, require_identity=True)
+        and baseline_html_classification == "ready"
         and baseline_ids is not None
     )
     result["observations"]["submission_list_before_send_structure"] = {
@@ -896,6 +1013,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("表示名:", language["display_name"])
     print("処理系:", language["interpreter"])
     print("バージョン:", language["version"])
+    print("Cloudflare Challenge Page: cf-mitigatedヘッダー上は未観測")
+    print("提出フォームのTurnstile分類:", turnstile_binding_class)
     print("ソースコード:", SOURCE_ALIAS, str(len(source)) + "バイト")
     print("SHA-256（確認専用・成果物へ保存しません）:", source_hash)
     print("検証全体の既存提出回数: p0-01〜p0-04は0件")
@@ -927,6 +1046,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "unique_submission_confirmed": True,
         "ai_policy_presented": True,
         "no_automatic_resend_confirmed": True,
+        "turnstile_classification_presented": True,
     }
     result["remote_state"] = "SEND_STARTED"
     result["submission_post_attempts"] = 1
@@ -967,9 +1087,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     if should_recover and session_cookie is not None:
         wait_after(submitted.finished_monotonic)
         recovery = bounded_request("GET", list_path, session_cookie)
+        recovery_html_classification = classify_authenticated_html(
+            recovery, expected_identity, require_identity=True
+        )
+        recovery.observation["authenticated_html_classification"] = (
+            recovery_html_classification
+        )
         record_request(result, "submission_list_after_send", recovery)
         session_cookie = recovery.session_cookie
-        if authenticated_html_ready(recovery, expected_identity, require_identity=True):
+        if recovery_html_classification == "ready":
             recovered_ids = parse_submission_ids(recovery.body)
 
     baseline_set = set(baseline_ids or [])
