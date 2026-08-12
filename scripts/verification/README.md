@@ -87,6 +87,7 @@ python3 scripts/verification/atcoder_v03_submit.py \
 | `atcoder_v02_session_check.py` | 方式Cのアカウント確認 | `p0-04`相当の読み取り専用検証を再現する。製品へ組み込まない |
 | `atcoder_v03_submit.py` | 方式Cによる1件提出と提出ID取得 | 当日の`V-02`再確認、`V-05`、明示承認を通過した場合だけPOSTを1回送る。製品へ組み込まない |
 | `atcoder_v03_browser_submit.mjs` | 通常の可視Chrome、人によるログイン・Turnstile・提出操作を使う1件提出と提出ID取得 | `--remote-debugging-pipe`を使わないV-03の再設計版。検証専用拡張を人が専用プロファイルへ読み込み、許可リスト化した結果だけをloopbackへ返す。製品へ組み込まない |
+| `atcoder_v04_verdict.py` | V-03の提出ID1件による判定待ち・最終判定の確認 | 方式Cで本人を再確認し、対象IDだけを有限ポーリングする。実IDと生応答を保存しない。製品へ組み込まない |
 | `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | `p0-10`で`--remote-debugging-pipe`による自動化状態がCloudflareと非互換だと確認したため、AtCoderへ再接続しない。原因再現の参照コードとしてのみ保持する |
 | `cloudflare_browser_local_diagnostic.mjs` | 現行CDP条件のローカル信号確認と、通常ChromeによるCloudflare公式互換性対照 | 既定モードは外部通信なし。対照モードは公式互換性チェッカーだけを開く。AtCoder、Cookie、Storage、CDP Network領域を扱わない |
 | `atcoder-login.sh` | `online-judge-tools`のパスワード入力型ログイン | `p0-01`・`p0-02`の過去経路を確認するために残す。Turnstile下の再認証手段として推奨しない |
@@ -129,6 +130,47 @@ node scripts/verification/atcoder_v03_browser_submit.mjs \
 ```console
 node --test scripts/verification/test_atcoder_v03_browser_submit.mjs
 ```
+
+## `atcoder_v04_verdict.py`
+
+V-03が作成した所有者専用一時状態から実際の提出IDを読み、方式Cで本人アカウントを再確認した後、そのID1件だけの判定を時刻付きで観測します。結果JSONには`submission-A`だけを記録し、実際の提出ID、Cookie、アカウント名、生ヘッダー、生HTML、生JSONは保存しません。
+
+所有者だけがアクセスできるリポジトリ外のディレクトリで、V-03の一時状態と未作成の結果パスを指定します。
+
+```console
+python3 scripts/verification/atcoder_v04_verdict.py \
+  --state /absolute/owner-only/path/v03-state.json \
+  --json-output /absolute/owner-only/path/v04-result.json
+```
+
+macOSでは、確認文以外の秘密入力をターミナル出力へ出さないダイアログで受け取れます。値は引数、環境変数、ファイルへ渡しません。
+
+```console
+python3 scripts/verification/atcoder_v04_verdict.py \
+  --state /absolute/owner-only/path/v03-state.json \
+  --json-output /absolute/owner-only/path/v04-result.json \
+  --macos-gui-input
+```
+
+実行時の境界は次のとおりです。
+
+- V-03の一時状態を、リポジトリ外、所有者専用、固定スキーマ、最大4 KiBとして検査する。
+- `REVEL_SESSION`と期待アカウント名を非表示の対話入力だけで受け取り、`/settings`で本人との一致を確認する。
+- AtCoder公式`contest.js`が使用する判定状態経路へ`sids[]`を1件だけ渡し、提出一覧と他の提出IDを走査しない。
+- 対象ID付きの`waiting-judge`だけを`VERDICT_PENDING`、許可リスト内で一意な判定コードだけを`FINAL`として扱う。
+- 接続5秒、1リクエスト20秒、応答256 KiB、最小間隔2秒、判定GET 10回、全体120秒を上限にする。判定待ちではAtCoderの`Interval`と2秒の長い方を待つ。
+- リダイレクト、429、Cloudflare Challenge Page、通信障害、対象外ID、曖昧な応答では安全側で停止する。自動再試行とPOSTは行わない。
+- 同じ実行で、判定待ちと最終判定を実サービスから5分以内の順序付き観測として両方取得した場合だけ`V-04`を合格とする。片方だけ、時刻欠損、逆順、5分超なら匿名化済み結果を`incomplete`とする。
+
+ローカルテストはAtCoderへ接続しません。
+
+```console
+python3 -m unittest discover \
+  -s scripts/verification \
+  -p 'test_atcoder_v04_verdict.py'
+```
+
+`p0-17`では、同じ提出IDの最終判定を取得時刻付きで観測しましたが、V-04開始時には判定待ちが終了していました。ローカルテストや現在のコードを、未観測の判定待ちの実サービス証拠にはしません。
 
 ## `atcoder_v03_turnstile_probe.mjs`
 
