@@ -384,6 +384,13 @@ class StatusHttpResult:
     finished_monotonic: float
 
 
+@dataclass
+class StatusPollingResult:
+    observations: List[Dict[str, Any]]
+    waits_ms: List[int]
+    session_cookie: Optional[str]
+
+
 def status_path(contest_id: str, submission_id: str) -> str:
     query = urlencode({"reload": "true", "sids[]": submission_id})
     return STATUS_PATH_TEMPLATE.format(contest_id=contest_id) + "?" + query
@@ -517,6 +524,42 @@ def wait_for_interval(
     if remaining > 0:
         time.sleep(remaining)
     return round(max(0.0, remaining) * 1000)
+
+
+def poll_submission_status(
+    contest_id: str,
+    submission_id: str,
+    session_cookie: str,
+    previous_finished_monotonic: float,
+) -> StatusPollingResult:
+    """Poll one submission using the bounded V-04 request policy."""
+    waits_ms = [wait_for_interval(previous_finished_monotonic, None)]
+    observations = []  # type: List[Dict[str, Any]]
+    cookie_value = session_cookie  # type: Optional[str]
+    polling_started = time.monotonic()
+    for _ in range(MAX_STATUS_REQUESTS):
+        if cookie_value is None:
+            break
+        response = bounded_status_request(
+            contest_id, submission_id, cookie_value
+        )
+        observation = classify_status_response(response, submission_id)
+        observations.append(observation)
+        cookie_value = response.session_cookie
+        if observation.get("classification") == "final":
+            break
+        if observation.get("classification") != "pending" or cookie_value is None:
+            break
+        interval_ms = observation.get("server_interval_ms")
+        next_wait_seconds = max(
+            MIN_INTERVAL_SECONDS, (interval_ms or 0) / 1000.0
+        )
+        if time.monotonic() - polling_started + next_wait_seconds > MAX_POLLING_SECONDS:
+            break
+        waits_ms.append(
+            wait_for_interval(response.finished_monotonic, interval_ms)
+        )
+    return StatusPollingResult(observations, waits_ms, cookie_value)
 
 
 def build_result(
@@ -1026,27 +1069,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("匿名化済みJSONを保存しました:", output_path)
         return 1
 
-    waits_ms = [wait_for_interval(settings_result.finished_monotonic, None)]
-    observations = []  # type: List[Dict[str, Any]]
-    polling_started = time.monotonic()
-    for _ in range(MAX_STATUS_REQUESTS):
-        response = bounded_status_request(
-            state["contest_id"], state["submission_id"], cookie_value
-        )
-        observation = classify_status_response(response, state["submission_id"])
-        observations.append(observation)
-        cookie_value = response.session_cookie
-        if observation.get("classification") == "final":
-            break
-        if observation.get("classification") != "pending" or cookie_value is None:
-            break
-        interval_ms = observation.get("server_interval_ms")
-        next_wait_seconds = max(MIN_INTERVAL_SECONDS, (interval_ms or 0) / 1000.0)
-        if time.monotonic() - polling_started + next_wait_seconds > MAX_POLLING_SECONDS:
-            break
-        waits_ms.append(
-            wait_for_interval(response.finished_monotonic, interval_ms)
-        )
+    polling = poll_submission_status(
+        state["contest_id"],
+        state["submission_id"],
+        cookie_value,
+        settings_result.finished_monotonic,
+    )
+    observations = polling.observations
+    waits_ms = polling.waits_ms
+    cookie_value = polling.session_cookie
 
     cookie_value = None
     result = build_result(

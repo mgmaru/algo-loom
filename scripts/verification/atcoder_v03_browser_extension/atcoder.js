@@ -506,6 +506,10 @@
       }
 
       panel.replaceChildren(panel.querySelector("h2"));
+      const integratedV04 = config.verification_mode === "v04_integrated";
+      if (!integratedV04 && config.verification_mode !== "v03_original") {
+        throw new Error("verification_mode_invalid");
+      }
       const list = document.createElement("ul");
       for (const text of [
         `問題: ${PROBLEM_ID}`,
@@ -516,7 +520,9 @@
         `処理系・バージョン: ${prepared.language.interpreter} ${prepared.language.version}`,
         `ソースコード: source-B、${config.source_byte_count}バイト`,
         `SHA-256（画面確認専用）: ${config.source_sha256}`,
-        "提出上限: 検証全体で1件。応答不明でも再提出しない",
+        integratedV04
+          ? "提出上限: 更新済み検証計画で許可された、このV-03→V-04統合実行の1件。応答不明でも再提出しない"
+          : "提出上限: 検証全体で1件。応答不明でも再提出しない",
       ]) {
         const item = document.createElement("li");
         item.textContent = text;
@@ -545,7 +551,12 @@
       const unique = document.createElement("label");
       const uniqueCheck = document.createElement("input");
       uniqueCheck.type = "checkbox";
-      unique.append(uniqueCheck, " これを検証全体で唯一の提出とし、再提出しない");
+      unique.append(
+        uniqueCheck,
+        integratedV04
+          ? " これを更新済み検証計画で許可された統合実行の1件とし、再提出しない"
+          : " これを検証全体で唯一の提出とし、再提出しない",
+      );
       const turnstile = document.createElement("label");
       const turnstileCheck = document.createElement("input");
       turnstileCheck.type = "checkbox";

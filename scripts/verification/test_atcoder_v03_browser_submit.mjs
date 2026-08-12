@@ -10,6 +10,7 @@ import {
   VerificationState,
   buildChromeArguments,
   buildResult,
+  parseArgs,
   sanitizeEvent,
   validateOutputPath,
   validateSourcePath,
@@ -97,6 +98,48 @@ test("launches visible Chrome for manual extension loading without a remote-cont
     ),
     false,
   );
+});
+
+test("keeps the original submission scope and exposes an explicit V-04 integrated mode", () => {
+  const original = parseArgs([
+    "--source", "/tmp/source.py",
+    "--json-output", "/tmp/result.json",
+    "--state-output", "/tmp/state.json",
+  ]);
+  assert.equal(original.integrated_v04, false);
+  const integrated = parseArgs([
+    "--source", "/tmp/source.py",
+    "--json-output", "/tmp/result.json",
+    "--state-output", "/tmp/state.json",
+    "--integrated-v04",
+  ]);
+  assert.equal(integrated.integrated_v04, true);
+  assert.throws(
+    () => parseArgs([
+      "--source", "/tmp/source.py",
+      "--json-output", "/tmp/result.json",
+      "--state-output", "/tmp/state.json",
+      "--integrated-v04",
+      "--integrated-v04",
+    ]),
+    /duplicate_argument/,
+  );
+
+  const originalResult = buildResult("2026-08-12T00:00:00.000Z", 9, "151.0");
+  const integratedResult = buildResult(
+    "2026-08-12T00:00:00.000Z",
+    9,
+    "151.0",
+    true,
+  );
+  assert.equal(originalResult.method.followed_immediately_by_v04, false);
+  assert.equal(integratedResult.method.followed_immediately_by_v04, true);
+  assert.equal(
+    integratedResult.method.submission_limit_scope,
+    "updated-plan-authorized-v03-v04-integrated-run",
+  );
+  assert.match(CONTENT_SOURCE, /config\.verification_mode === "v04_integrated"/);
+  assert.match(CONTENT_SOURCE, /更新済み検証計画で許可された、このV-03→V-04統合実行の1件/);
 });
 
 test("keeps extension permissions limited to storage and loopback", () => {

@@ -87,6 +87,7 @@ python3 scripts/verification/atcoder_v03_submit.py \
 | `atcoder_v02_session_check.py` | 方式Cのアカウント確認 | `p0-04`相当の読み取り専用検証を再現する。製品へ組み込まない |
 | `atcoder_v03_submit.py` | 方式Cによる1件提出と提出ID取得 | 当日の`V-02`再確認、`V-05`、明示承認を通過した場合だけPOSTを1回送る。製品へ組み込まない |
 | `atcoder_v03_browser_submit.mjs` | 通常の可視Chrome、人によるログイン・Turnstile・提出操作を使う1件提出と提出ID取得 | `--remote-debugging-pipe`を使わないV-03の再設計版。検証専用拡張を人が専用プロファイルへ読み込み、許可リスト化した結果だけをloopbackへ返す。製品へ組み込まない |
+| `atcoder_v04_integrated.py` | V-04合格観測用のV-04準備→V-03→即時V-04統合実行 | 新規提出前に方式Cの本人照合を済ませ、V-03状態の作成直後から同じIDだけを有限ポーリングする。更新済み検証計画で追加提出1件を許可するまで実サービス実行しない |
 | `atcoder_v04_verdict.py` | V-03の提出ID1件による判定待ち・最終判定の確認 | 方式Cで本人を再確認し、対象IDだけを有限ポーリングする。実IDと生応答を保存しない。製品へ組み込まない |
 | `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | `p0-10`で`--remote-debugging-pipe`による自動化状態がCloudflareと非互換だと確認したため、AtCoderへ再接続しない。原因再現の参照コードとしてのみ保持する |
 | `cloudflare_browser_local_diagnostic.mjs` | 現行CDP条件のローカル信号確認と、通常ChromeによるCloudflare公式互換性対照 | 既定モードは外部通信なし。対照モードは公式互換性チェッカーだけを開く。AtCoder、Cookie、Storage、CDP Network領域を扱わない |
@@ -129,6 +130,46 @@ node scripts/verification/atcoder_v03_browser_submit.mjs \
 
 ```console
 node --test scripts/verification/test_atcoder_v03_browser_submit.mjs
+```
+
+## `atcoder_v04_integrated.py`
+
+V-04の合格条件である、同じ提出IDの`VERDICT_PENDING`相当から`FINAL`相当までを取得するための統合実行スクリプトです。既存の最終判定済み提出から過去の判定待ちは復元できないため、V-04用の方式Cセッションを先に準備し、人がV-03を1件提出した直後にV-04を自動開始します。実装とローカル確認は[`p0-20`](../../docs/verification/judge-adapter/results/2026-08-12-p0-20.md)へ記録しています。
+
+**このスクリプトは新しい提出を1件行います。現在の検証計画では`p0-16`で提出上限を消費済みです。追加提出1件を許可する検証計画の変更を確定するまで、次のコマンドを実サービスで実行しません。**
+
+計画変更後は、本人が作成した提出用ソースを、所有者専用のリポジトリ外ディレクトリへ用意します。実行用の状態・結果ディレクトリはスクリプトが所有者専用権限で作成します。
+
+```console
+python3 scripts/verification/atcoder_v04_integrated.py \
+  --source /absolute/owner-only/path/source.py
+```
+
+操作は画面とターミナルで、次の3フェーズに分けて案内されます。
+
+1. **V-04観測準備:** 普段使う通常のGoogle Chromeで`/settings`の本人アカウントと`REVEL_SESSION`の対象行を確認し、Cookie値と期待アカウント名を非表示ダイアログへ入力する。提出前に読み取り専用GET 1回で本人一致を確認する。
+2. **V-03の1件提出:** 別の空の専用Chromeで検証専用拡張を手動読込し、Cloudflare公式互換性、AtCoderログイン、本人照合、プレーン欄→Ace→プレーン欄の同期、Turnstile、承認句を確認する。最後にAtCoder本体の提出ボタンを人が1回だけ押す。
+3. **V-04自動観測:** V-03状態ファイルを10 ms間隔のローカル確認だけで待ち、AtCoder発行の提出IDが所有者専用状態へ書かれた時点で、V-03プロセスの後始末完了を待たずに同じID1件の有限ポーリングを開始する。ここでは手動操作を要求しない。
+
+フェーズ2では、通常Chromeとは別の専用Chromeを使うこと、拡張読込対象、画面遷移、エディタ往復、Turnstile、正確な承認句、最後の提出操作を番号付きで表示します。専用Chrome内にも段階別パネルを表示します。期待アカウント名は方式CのPythonプロセスから専用Chromeへ渡さないため、本人が同じ値を専用Chromeへもう一度入力します。
+
+安全境界は次のとおりです。
+
+- 実行開始時に、更新済み検証計画がこの統合実行の新規提出1件を許可していることを人が確認する。既存計画のままでは進めない。
+- V-04のCookieと期待アカウント名を`argv`、環境変数、子プロセスへ渡さず、Pythonプロセスの一時メモリだけで保持する。
+- V-03は`--integrated-v04`内部モードで起動し、元のV-03単独実行の「検証全体で唯一の提出」という表示を変更しない。統合モードだけを「更新済み計画で許可された、この統合実行の1件」と表示する。
+- 実際の提出IDはV-03の所有者専用一時状態にだけ保存し、V-04はメモリへ読み込む。匿名化済みV-03・V-04結果には`submission-A`だけを残す。
+- V-03が提出IDを取得できない場合はV-04の判定GETを送らない。送信状態が不明でも再提出しない。
+- V-04は接続5秒、1リクエスト20秒、最小間隔2秒、判定GET 10回、全体120秒の既存上限を共有する。対象外ID、曖昧な応答、リダイレクト、429、challenge、通信障害では停止する。
+- 通常ChromeのCookie DBとクリップボードを自動読取せず、専用ChromeでCDP、WebDriver、リモートデバッグ、ヘッドレス化、Turnstile自動操作、提出クリック自動化を行わない。
+- V-03の専用Chromeと一時プロファイルはV-03ヘルパーが後始末する。V-03状態はV-06まで保持し、匿名化済み一時結果は実行記録確定後に削除する。
+
+ローカルテストはAtCoder、Cloudflareへ接続せず、手順表示、所有者専用パス、統合モード、V-03状態の即時引き渡し、共有ポーリング、秘密値を子プロセス引数へ渡さないことを確認します。
+
+```console
+python3 -m unittest discover \
+  -s scripts/verification \
+  -p 'test_atcoder_v04_integrated.py'
 ```
 
 ## `atcoder_v04_verdict.py`

@@ -222,6 +222,38 @@ class ResultTest(unittest.TestCase):
             final_only["completion"], "final_observed_pending_not_observed"
         )
 
+    def test_shared_poller_observes_pending_then_final(self) -> None:
+        pending_response = mock.Mock(
+            session_cookie="updated-one", finished_monotonic=10.0
+        )
+        final_response = mock.Mock(
+            session_cookie="updated-two", finished_monotonic=12.0
+        )
+        with mock.patch.object(
+            target,
+            "bounded_status_request",
+            side_effect=[pending_response, final_response],
+        ) as request:
+            with mock.patch.object(
+                target,
+                "classify_status_response",
+                side_effect=[
+                    {"classification": "pending", "server_interval_ms": 2500},
+                    {"classification": "final", "status_label": "AC"},
+                ],
+            ):
+                with mock.patch.object(
+                    target, "wait_for_interval", side_effect=[2000, 2500]
+                ) as wait:
+                    polling = target.poll_submission_status(
+                        "abc300", "12345678", "initial", 1.0
+                    )
+        self.assertEqual(len(polling.observations), 2)
+        self.assertEqual(polling.waits_ms, [2000, 2500])
+        self.assertEqual(polling.session_cookie, "updated-two")
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(wait.call_count, 2)
+
     def test_rejects_fixture_like_pending_and_final_without_valid_sequence(self) -> None:
         state = {
             "contest_id": "abc300",

@@ -344,10 +344,15 @@ export function buildChromeArguments(profileDirectory, bootstrapUrl) {
   ];
 }
 
-function parseArgs(argv) {
-  const result = {};
+export function parseArgs(argv) {
+  const result = { integrated_v04: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
+    if (argument === "--integrated-v04") {
+      if (result.integrated_v04) throw new Error("duplicate_argument:--integrated-v04");
+      result.integrated_v04 = true;
+      continue;
+    }
     if (!new Set(["--source", "--json-output", "--state-output"]).has(argument)) {
       throw new Error(`unknown_argument:${argument}`);
     }
@@ -372,7 +377,7 @@ function chromeVersion() {
   return match ? match[1] : null;
 }
 
-export function buildResult(startedAt, sourceByteCount, version) {
+export function buildResult(startedAt, sourceByteCount, version, integratedV04 = false) {
   return {
     schema_version: 1,
     verification_scope: ["V-03"],
@@ -419,6 +424,10 @@ export function buildResult(startedAt, sourceByteCount, version) {
       interaction_timeout_ms: INTERACTION_TIMEOUT_MS,
       automatic_retries: 0,
       submission_limit: 1,
+      submission_limit_scope: integratedV04
+        ? "updated-plan-authorized-v03-v04-integrated-run"
+        : "original-v03-verification-run",
+      followed_immediately_by_v04: integratedV04,
     },
     observations: {},
     browser_events: [],
@@ -667,7 +676,12 @@ async function main(argv = process.argv.slice(2)) {
   }
   const sourceSha256 = crypto.createHash("sha256").update(sourceBuffer).digest("hex");
   const startedAt = utcNow();
-  const result = buildResult(startedAt, sourceBuffer.length, chromeVersion());
+  const result = buildResult(
+    startedAt,
+    sourceBuffer.length,
+    chromeVersion(),
+    args.integrated_v04,
+  );
   const stateMachine = new VerificationState(sourceBuffer.length);
   const token = crypto.randomBytes(32).toString("hex");
   const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "algoloom-v03-browser-"));
@@ -707,6 +721,7 @@ async function main(argv = process.argv.slice(2)) {
           canonical_language_id: CANONICAL_LANGUAGE_ID,
           problem_id: PROBLEM_ID,
           helper_stage: stateMachine.stage,
+          verification_mode: args.integrated_v04 ? "v04_integrated" : "v03_original",
         });
         return;
       }
@@ -750,11 +765,19 @@ async function main(argv = process.argv.slice(2)) {
       throw new Error("forbidden_browser_argument");
     }
 
-    console.log("\nAlgoLoom V-03・通常ブラウザによる1回限りの提出検証");
+    console.log(
+      args.integrated_v04
+        ? "\nAlgoLoom V-03→V-04統合検証・通常ブラウザによる1回限りの提出"
+        : "\nAlgoLoom V-03・通常ブラウザによる1回限りの提出検証",
+    );
     console.log("別タブの拡張機能管理画面で、検証専用拡張を手動読込してください。");
     console.log("読込対象:", EXTENSION_DIRECTORY);
     console.log("その後、専用ChromeでCloudflare互換性確認、AtCoderログイン、アカウント照合、提出承認を行ってください。");
     console.log("ログインとTurnstile、AtCoder本体の提出ボタンは人が操作します。");
+    if (args.integrated_v04) {
+      console.log("この提出は、更新済み検証計画で許可された統合実行の1件として扱います。");
+      console.log("提出ID取得後は親スクリプトがV-04を自動開始します。ターミナルを閉じないでください。");
+    }
     console.log("応答が不明でも再提出しません。操作上限は20分です。\n");
 
     browser = spawn(CHROME_PATH, chromeArguments, {
