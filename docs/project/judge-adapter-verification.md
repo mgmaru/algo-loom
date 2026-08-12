@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる`V-02`は、[`p0-03`](../verification/judge-adapter/results/2026-08-11-p0-03.md)の不合格後、[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)で合格し、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)の当日再確認も合格。`p0-07`では問題別・名前なし言語`select`からCPythonを一意に解決でき、`V-05`は合格。対象フォーム内のTurnstileウィジェットを観測したため、`V-03`はPOST前に中止。[`p0-08`](../verification/judge-adapter/results/2026-08-12-p0-08.md)の可視専用ブラウザによる実行時観測は、ログイン時のCloudflare検証失敗で中止。`V-04`は未実施、`V-10`は未合格）
+> 状態: 検証計画（方式Cによる`V-02`は、[`p0-03`](../verification/judge-adapter/results/2026-08-11-p0-03.md)の不合格後、[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)で合格し、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)の当日再確認も合格。`p0-07`では問題別・名前なし言語`select`からCPythonを一意に解決でき、`V-05`は合格。対象フォーム内のTurnstileウィジェットを観測したため、`V-03`はPOST前に中止。[`p0-08`](../verification/judge-adapter/results/2026-08-12-p0-08.md)の可視専用ブラウザによる実行時観測は、ログイン時のCloudflare検証失敗で中止。[`p0-09`](../verification/judge-adapter/results/2026-08-12-p0-09.md)ではログイン中のページ注入と既存Chromeの同時稼働を除いて再実施したが、同じCloudflare検証失敗で中止。`V-03`と`V-04`は未実施、`V-10`は未合格）
 >
 > 作成日: 2026年8月10日
 >
