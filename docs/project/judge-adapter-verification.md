@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる`V-02`は、[`p0-03`](../verification/judge-adapter/results/2026-08-11-p0-03.md)の不合格後、[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)で合格し、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)の当日再確認も合格。`p0-07`では問題別・名前なし言語`select`からCPythonを一意に解決でき、`V-05`は合格。対象フォーム内のTurnstileウィジェットを観測したため、`V-03`はPOST前に中止。`p0-08`と[`p0-09`](../verification/judge-adapter/results/2026-08-12-p0-09.md)の可視専用ブラウザはログイン時のCloudflare検証失敗で中止。[`p0-10`](../verification/judge-adapter/results/2026-08-12-p0-10.md)で、現行`--remote-debugging-pipe`方式が`navigator.webdriver: true`となる一方、CDPなしの通常ChromeはCloudflare公式互換性チェッカーに合格することを確認し、現行方式AのCDP候補を不適合と判定。`V-03`と`V-04`は未実施、再設計後の`V-10`は未合格）
+> 状態: 検証計画（方式Cによる`V-02`は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、`V-05`は[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)で合格。[`p0-10`](../verification/judge-adapter/results/2026-08-12-p0-10.md)で`--remote-debugging-pipe`方式をCloudflare非互換とし、[`p0-11`](../verification/judge-adapter/results/2026-08-12-p0-11.md)で通常ChromeのV-03経路を作成。[`p0-14`](../verification/judge-adapter/results/2026-08-12-p0-14.md)ではCDPなしでCloudflare互換性、本人アカウント、フォーム、CPython、明示承認まで成立したが、フォーム`submit`イベント後にソース空欄が報告され、結果ページ・提出IDを取得できなかった。再提出せず、`V-03`は送信状態不明の未合格、`V-04`は未実施、再設計後の`V-10`は未合格）
 >
 > 作成日: 2026年8月10日
 >
@@ -76,6 +76,7 @@
 ### 3.4. 認証方式と検証の関係
 
 - 方式Cは`V-02`〜`V-09`の技術検証専用です。方式CをMVPの通常導線、CIまたは非対話実行の認証方式として採用しません。
+- 対象提出フォーム内Turnstileのため、`V-03`だけは、通常の可視ブラウザ、検証専用拡張、利用者によるログイン・Turnstile・提出操作を使う経路で再検証できます。この経路はCookieを取得・保管せず、方式Aの成立や`V-10`合格の証拠にしません。
 - 方式AはMVP製品の第一候補です。`V-10`で代表する1OS・1ブラウザの成立を確認するまで、製品実装を開始しません。
 - 方式Cで`V-02`〜`V-04`に合格しても、`V-10`が未実施または不合格ならP0全体とMVP実装開始条件は未充足です。
 - 方式Cと方式Aの詳細な信頼境界は[AtCoder認証設計](../architecture/atcoder-authentication.md)を正とします。
@@ -124,6 +125,7 @@ P0の不合格を、実装の工夫で迂回できる問題として扱いませ
 | レート制限 | 意図的に発生させない。発生した場合は指示された待機時間を尊重する |
 | Bot対策 | 回避・迂回を実装しない |
 | 方式C | 検証者本人が通常のブラウザで取得した`REVEL_SESSION`一つだけを、入力を表示しない対話経路から検証用一時領域へ取り込む。`argv`、環境変数、リポジトリ、成果物へ値を置かない |
+| V-03ブラウザ経路 | 空の専用プロファイルへ検証専用拡張を人が手動で読み込み、ログイン、AtCoder本体のエディタ切替、Turnstile、最後の提出ボタンを人が操作する。拡張は可視プレーンテキスト欄と直列化対象のソース一致を承認時・送信時に検査する。CDP、WebDriver、リモートデバッグ、Cookie API、network監視、トークン値の読取、提出クリックの自動化を行わない。提出IDと匿名化済み観測だけを認証付きloopbackへ返す |
 | 方式A | 空の専用プロファイルと可視ブラウザを使用し、ID・パスワード入力とTurnstileは人が行う。Cloudflare保護ページをCDP等でリモート制御せず、既存プロファイルの参照、`navigator.webdriver`の隠蔽、指紋偽装、ヘッドレス化、Turnstile自動操作を行わない。Cookie限定取得の新しい境界は再設計後に検証する |
 | 記録 | ソースコード、Cookie、トークン、生のヘッダーを残さない |
 

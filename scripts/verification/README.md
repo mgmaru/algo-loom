@@ -86,9 +86,49 @@ python3 scripts/verification/atcoder_v03_submit.py \
 |---|---|---|
 | `atcoder_v02_session_check.py` | 方式Cのアカウント確認 | `p0-04`相当の読み取り専用検証を再現する。製品へ組み込まない |
 | `atcoder_v03_submit.py` | 方式Cによる1件提出と提出ID取得 | 当日の`V-02`再確認、`V-05`、明示承認を通過した場合だけPOSTを1回送る。製品へ組み込まない |
+| `atcoder_v03_browser_submit.mjs` | 通常の可視Chrome、人によるログイン・Turnstile・提出操作を使う1件提出と提出ID取得 | `--remote-debugging-pipe`を使わないV-03の再設計版。検証専用拡張を人が専用プロファイルへ読み込み、許可リスト化した結果だけをloopbackへ返す。製品へ組み込まない |
 | `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | `p0-10`で`--remote-debugging-pipe`による自動化状態がCloudflareと非互換だと確認したため、AtCoderへ再接続しない。原因再現の参照コードとしてのみ保持する |
 | `cloudflare_browser_local_diagnostic.mjs` | 現行CDP条件のローカル信号確認と、通常ChromeによるCloudflare公式互換性対照 | 既定モードは外部通信なし。対照モードは公式互換性チェッカーだけを開く。AtCoder、Cookie、Storage、CDP Network領域を扱わない |
 | `atcoder-login.sh` | `online-judge-tools`のパスワード入力型ログイン | `p0-01`・`p0-02`の過去経路を確認するために残す。Turnstile下の再認証手段として推奨しない |
+
+## `atcoder_v03_browser_submit.mjs`
+
+V-03の再設計版です。macOSのGoogle Chromeを、空の専用プロファイルと通常の可視ブラウザ状態で起動します。CDP、WebDriver、リモートデバッグのpipe・port、ヘッドレス化、自動化信号の隠蔽を使用しません。
+
+Chrome 137以降の公式版は`--load-extension`を受け付けないため、スクリプトは`chrome://extensions`を別タブで開きます。利用者がデベロッパーモードを有効にし、[`atcoder_v03_browser_extension/`](atcoder_v03_browser_extension/)を「パッケージ化されていない拡張機能」として読み込みます。拡張機能は実行終了時に専用プロファイルとともに削除され、通常のChromeプロファイルへインストールされません。
+
+リポジトリ外の所有者専用ディレクトリへ、提出用ソースコードと二つの未作成出力パスを用意して実行します。
+
+```console
+node scripts/verification/atcoder_v03_browser_submit.mjs \
+  --source /absolute/owner-only/path/source.py \
+  --json-output /absolute/owner-only/path/v03-browser-result.json \
+  --state-output /absolute/owner-only/path/v03-browser-state.json
+```
+
+実行時の境界は次のとおりです。
+
+- 最初にローカルページで`navigator.webdriver`が偽であることを確認し、真ならAtCoderへ移動する前に停止する。
+- Cloudflare公式互換性チェッカーは利用者が別タブで開き、`Diagnostics passed`を画面で確認する。失敗時は設定変更や再試行をせずブラウザを閉じる。
+- AtCoderのユーザー名、パスワード、ログイン時Turnstileは利用者が操作する。拡張機能はログインページで動作しない。
+- `/settings`で利用者が入力した期待アカウント名をブラウザ内だけで照合し、loopbackへは識別情報の件数と一致結果だけを返す。
+- 対象、CPython候補、CSRF欄、ソースコード欄、Turnstile欄を件数で確認する。Cookie、CSRFトークン、Turnstileトークンの値は読まない。
+- ソースコード、ハッシュ、期待アカウント名、提出前の実際の提出ID一覧は、拡張機能とNode.jsプロセスの一時メモリだけで扱う。匿名化済みJSONへ保存しない。
+- 拡張機能は対象問題・言語を設定する。AtCoderの画面エディタと送信用`textarea`の不一致を避けるため、利用者がAtCoder本体のエディタ切替を人の操作でプレーンテキスト欄へ変更してからソースコードを設定する。拡張はエディタ切替、Turnstile、AtCoder本体の提出ボタンを自動操作せず、`submit()`や`requestSubmit()`も呼ばない。
+- 利用者が一画面の提出ゲートを確認し、正確な承認句を入力した後だけAtCoder本体の提出ボタンを有効にする。承認時とフォームの`submit`イベント時に、実際に直列化される`sourceCode`が確認済み本文・バイト数と一致することを再検査し、不一致なら既定送信を同期的に遮断する。最後の提出操作は利用者が1回だけ行う。
+- 提出前に本人提出一覧を1ページだけ取得し、提出後の表示との差から新しい提出IDを一意に解決する。候補が0件または複数件なら再提出せず状態不明で停止する。
+- Cookie・network監視権限を持たないため、フォームの`submit`イベントをHTTP POSTの観測と同一視しない。`SEND_STARTED`後に提出IDを得られない場合は`REMOTE_STATUS_UNKNOWN`として停止し、再提出しない。
+- 実際の提出IDは`V-04`・`V-06`用の一時状態へだけ`0600`で保存し、匿名化済み結果では`submission-A`へ置き換える。
+- loopbackサーバーは`127.0.0.1`の動的portだけへbindし、64桁の一時token、`Host`、接続元、イベントのスキーマと順序を検査する。tokenはURL fragmentから拡張機能へ渡し、AtCoderへのreferrerや成果物へ含めない。
+- 終了、利用者によるブラウザ終了、20分の上限、SIGINT・SIGTERMで専用Chrome、loopbackサーバー、一時プロファイルを後始末する。
+
+このスクリプトは`REVEL_SESSION`を取得または保管しないため、方式Aの`V-10`合格証拠にはなりません。通常ブラウザ状態と人の操作を維持したV-03提出経路だけを検証します。拡張機能の権限、配布、方式AのCookie限定取得境界は別の設計判断です。
+
+ローカルテストはAtCoder、Cloudflareへ接続しません。
+
+```console
+node --test scripts/verification/test_atcoder_v03_browser_submit.mjs
+```
 
 ## `atcoder_v03_turnstile_probe.mjs`
 

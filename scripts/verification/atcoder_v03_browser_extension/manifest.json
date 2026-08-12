@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "AlgoLoom V-03 Verification Helper",
+  "version": "0.1.0",
+  "description": "One-run helper for a human-approved AtCoder V-03 verification.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://127.0.0.1/*"
+      ],
+      "js": [
+        "bootstrap.js"
+      ],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://atcoder.jp/settings*",
+        "https://atcoder.jp/contests/abc300/submit*",
+        "https://atcoder.jp/contests/abc300/submissions/*"
+      ],
+      "js": [
+        "atcoder.js"
+      ],
+      "run_at": "document_end"
+    }
+  ]
+}
