@@ -87,11 +87,53 @@ python3 scripts/verification/atcoder_v03_submit.py \
 | `atcoder_v02_session_check.py` | 方式Cのアカウント確認 | `p0-04`相当の読み取り専用検証を再現する。製品へ組み込まない |
 | `atcoder_v03_submit.py` | 方式Cによる1件提出と提出ID取得 | 当日の`V-02`再確認、`V-05`、明示承認を通過した場合だけPOSTを1回送る。製品へ組み込まない |
 | `atcoder_v03_browser_submit.mjs` | 通常の可視Chrome、人によるログイン・Turnstile・提出操作を使う1件提出と提出ID取得 | `--remote-debugging-pipe`を使わないV-03の再設計版。検証専用拡張を人が専用プロファイルへ読み込み、許可リスト化した結果だけをloopbackへ返す。製品へ組み込まない |
+| `atcoder_v10_session.mjs` | 方式Aの可視専用ブラウザ、Cookie限定取得、秘密情報保管、別プロセスでの本人再確認 | `REVEL_SESSION`だけを明示操作後に取得し、macOS Keychainへ一時保存するV-10検証専用経路。実行後にKeychain項目と専用プロファイルを削除する |
 | `atcoder_v04_integrated.py` | V-04合格観測用のV-04準備→V-03→即時V-04統合実行 | 新規提出前に方式Cの本人照合を済ませ、V-03状態の作成直後から同じIDだけを有限ポーリングする。`p0-22`で実サービス検証済み。`p0-21`の提出許可は消費済み |
 | `atcoder_v04_verdict.py` | V-03の提出ID1件による判定待ち・最終判定の確認 | 方式Cで本人を再確認し、対象IDだけを有限ポーリングする。実IDと生応答を保存しない。製品へ組み込まない |
 | `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | `p0-10`で`--remote-debugging-pipe`による自動化状態がCloudflareと非互換だと確認したため、AtCoderへ再接続しない。原因再現の参照コードとしてのみ保持する |
 | `cloudflare_browser_local_diagnostic.mjs` | 現行CDP条件のローカル信号確認と、通常ChromeによるCloudflare公式互換性対照 | 既定モードは外部通信なし。対照モードは公式互換性チェッカーだけを開く。AtCoder、Cookie、Storage、CDP Network領域を扱わない |
 | `atcoder-login.sh` | `online-judge-tools`のパスワード入力型ログイン | `p0-01`・`p0-02`の過去経路を確認するために残す。Turnstile下の再認証手段として推奨しない |
+
+## `atcoder_v10_session.mjs`
+
+再設計後の方式Aを1台のmacOSとGoogle Chromeで検証するV-10専用スクリプトです。空の一時プロファイルで通常の可視Chromeを起動し、利用者が検証専用拡張を手動で読み込みます。ログイン、必要なTurnstile、本人アカウントの入力、最後のセッション取り込みは利用者が操作します。AtCoderへの提出とPOSTは行いません。
+
+所有者専用権限のリポジトリ外ディレクトリを作り、まだ存在しない結果パスを指定します。
+
+```console
+node scripts/verification/atcoder_v10_session.mjs \
+  --json-output /absolute/owner-only/path/v10-result.json
+```
+
+専用Chromeでは次を順に操作します。
+
+1. `chrome://extensions`でデベロッパーモードを有効にし、[`atcoder_v10_browser_extension/`](atcoder_v10_browser_extension/)を「パッケージ化されていない拡張機能」として手動で読み込む。
+2. ローカルの準備画面を1回だけ再読み込みする。
+3. Cloudflare公式互換性チェッカーを開き、`Diagnostics passed`を目視確認する。失敗時は設定変更や回避を行わずブラウザを閉じる。
+4. 準備画面からAtCoderの`/settings`を開く。ログイン画面へ誘導された場合は、利用者が通常どおりユーザー名、パスワード、必要なTurnstileを操作する。
+5. `/settings`へ戻り、期待する本人アカウント名を非表示欄へ入力して照合する。
+6. 明示的に「REVEL_SESSIONだけを取り込む」を押す。ヘルパーが本人照合、macOS Keychainへの一時保存、別プロセスからの再取得と本人再照合を行う。
+7. 完了表示後に専用Chromeを閉じる。ヘルパーもChromeを終了し、孤児プロセス、一時プロファイル、Keychain項目、loopbackを後始末する。
+
+安全境界は次のとおりです。
+
+- Chromeの起動引数にCDP、WebDriver、リモートデバッグのpipe・port、ヘッドレス化、`navigator.webdriver`や指紋を隠す設定、User-Agent上書きを含めない。最初のローカル画面で`navigator.webdriver`が偽の場合だけ続行する。
+- 拡張機能は`cookies`とセッション内`storage`、`https://atcoder.jp/*`と`http://127.0.0.1/*`だけを許可する。`debugger`、`webRequest`、`tabs`、`scripting`、`nativeMessaging`を許可しない。
+- AtCoderのログインページへコンテンツスクリプトを挿入しない。ログインとTurnstileの値、クリック、画面遷移を自動化しない。
+- 本人照合と利用者の明示操作後だけ、`chrome.cookies.getAll()`をURL、名前、パス、`Secure`属性で絞って1回呼ぶ。取得候補が1件で、名前が`REVEL_SESSION`、ドメインがAtCoder、パスが`/`、`Secure`付き、非パーティションCookieである場合だけloopbackへ渡す。
+- loopbackは`127.0.0.1`の動的ポートだけへbindし、一時トークン、`Host`、接続元、要求スキーマ、順序、本文上限を検査する。Cookieと期待アカウント名をログ、匿名化済みJSON、URL、引数、環境変数へ含めない。
+- ヘルパーはブラウザから取得した`REVEL_SESSION`だけで`GET /settings`を行い、アカウント識別情報1件と期待値の一致を確認した場合だけ、その同じ値をmacOS Keychainへ保存する。保存直後に読み戻して一致を確認する。応答の`Set-Cookie`は存在、件数、同じCookieの指示件数だけを観測し、V-10では永続化しない。Cookie更新と失効の判断はV-11へ分離する。他のCookieを送信または保存しない。
+- Keychain操作は[`atcoder_v10_keychain.swift`](atcoder_v10_keychain.swift)をリポジトリ外の所有者専用一時領域へコンパイルし、macOS Security FrameworkのデータAPIを使用する。Cookieのバイト列を引数、環境変数、対話プロンプトへ置かず標準入力から登録し、同じ一時実行ファイルからバイト列のまま読み戻す。別のNode.jsプロセスはKeychainからセッションを読み、期待アカウント名を匿名の標準入力パイプで受け取って再照合する。子プロセスの環境変数は空にする。
+- 認証確認は接続5秒、1リクエスト20秒、応答2 MiB、2回のGETの間隔2秒以上、自動再試行0回、リダイレクト追従なしとする。403、429、Cloudflare Challenge Page、未認証、アカウント不一致、ページ構造変更では停止する。
+- 正常終了、利用者による終了、20分上限、SIGINT・SIGTERMで、今回のChromeと一時プロファイル、今回の正確なKeychain項目、コンパイルした一時Keychainヘルパー、loopbackだけを後始末する。ローカルのCookie削除をAtCoder側のセッション失効とは扱わない。
+
+ローカルテストはAtCoder、Cloudflareへ接続せず、拡張機能の権限、Cookie範囲、状態順序、秘密値の非混入、結果ファイルの権限を確認します。
+
+```console
+node --test scripts/verification/test_atcoder_v10_session.mjs
+```
+
+このコードとローカルテストだけをV-10の実サービス証拠にはしません。匿名化済み実行記録を正とします。また、検証専用の手動読込拡張と一時コンパイルしたSecurity Frameworkヘルパーを、そのまま製品の配布・署名・Keychainアクセス境界として採用したとは扱いません。
 
 ## `atcoder_v03_browser_submit.mjs`
 

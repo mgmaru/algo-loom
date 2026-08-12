@@ -139,11 +139,11 @@
 
 **状態:** 一部決定済み
 
-**決定済みの内容:** AI Provider setupはProvider、Backend種別、endpoint・credential source、実行場所・課金、capability、model、送信範囲・送信先、同意、接続testの順とする。Cloud同期は通常commandで宣伝せず、複数端末利用を求めたとき、`sync`を実行したとき、または明示helpを開いたときだけ案内する。AtCoder認証は、方式Cを技術検証だけに使い、MVPでは方式Aの可視専用browserを明示操作で起動する。利用者がloginとTurnstileを手動で完了し、必要なsessionだけをOSのsecret storeへ保存する。初回提出前と各提出前にaccount identityを確認し、失敗時もlocal testと履歴閲覧を止めない。
+**決定済みの内容:** AI Provider setupはProvider、Backend種別、endpoint・credential source、実行場所・課金、capability、model、送信範囲・送信先、同意、接続testの順とする。Cloud同期は通常commandで宣伝せず、複数端末利用を求めたとき、`sync`を実行したとき、または明示helpを開いたときだけ案内する。AtCoder認証は、方式Cを技術検証だけに使い、MVPでは方式Aの可視専用browserを明示操作で起動する。利用者がloginとTurnstileを手動で完了し、必要なsessionだけをOSのsecret storeへ保存する。初回提出前と各提出前にaccount identityを確認し、失敗時もlocal testと履歴閲覧を止めない。方式AのmacOS・ChromeにおけるCookie限定取得、本人照合、Keychain保存、新規process再照合、後始末は[`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)で成立を確認した。
 
 **残る未決:** interactive UI、AtCoder認証setup・状態確認・削除の最終command名と表示、方式Aで正式対応するbrowser version matrix、AI画面の最終的な階層表現、alias・completionの詳細。例示されたAI・sync command名もCLI最終設計までは暫定案である。
 
-**決めること:** interactive UIの有無、方式Aの検証後にAtCoder認証の最終command・表示・対応browser、AI Provider選択画面の階層、Cloud同期を案内するタイミング、shell completionの詳細。
+**決めること:** interactive UIの有無、`p0-23`の方式A検証を踏まえたAtCoder認証の最終command・表示・対応browserと配布境界、AI Provider選択画面の階層、Cloud同期を案内するタイミング、shell completionの詳細。
 
 **原文:** 「interactive UIの有無」「AtCoder認証を確認する具体的な操作」「AI Provider選択画面の具体的な階層」「Cloud同期を案内するタイミング」「aliasとshell completionの詳細」
 
