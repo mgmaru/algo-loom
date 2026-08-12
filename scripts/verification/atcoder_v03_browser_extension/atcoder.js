@@ -521,8 +521,8 @@
         `ソースコード: source-B、${config.source_byte_count}バイト`,
         `SHA-256（画面確認専用）: ${config.source_sha256}`,
         integratedV04
-          ? "提出上限: 更新済み検証計画で許可された、このV-03→V-04統合実行の1件。応答不明でも再提出しない"
-          : "提出上限: 検証全体で1件。応答不明でも再提出しない",
+          ? "提出上限: p0-21で明示承認された、このV-03→V-04統合実行の最大1件。応答不明でも再提出しない"
+          : "提出上限: 明示承認済み実サービス検証実行の最大1件。応答不明でも再提出しない",
       ]) {
         const item = document.createElement("li");
         item.textContent = text;
@@ -554,8 +554,8 @@
       unique.append(
         uniqueCheck,
         integratedV04
-          ? " これを更新済み検証計画で許可された統合実行の1件とし、再提出しない"
-          : " これを検証全体で唯一の提出とし、再提出しない",
+          ? " これをp0-21で許可された統合実行の最大1件とし、再提出しない"
+          : " これを明示承認済み実サービス検証実行の最大1件とし、再提出しない",
       );
       const turnstile = document.createElement("label");
       const turnstileCheck = document.createElement("input");

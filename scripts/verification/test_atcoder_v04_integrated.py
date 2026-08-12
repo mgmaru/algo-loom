@@ -36,7 +36,9 @@ class GuidanceTest(unittest.TestCase):
         guidance = target.session_preparation_text() + target.v03_manual_guidance_text()
         for expected in (
             "新しい提出を1件",
-            "検証計画を更新",
+            "p0-21",
+            "1日1件の上限ではなく",
+            "成功・失敗・応答不明",
             "通常のGoogle Chrome",
             "空の専用Chrome",
             "デベロッパー モード",

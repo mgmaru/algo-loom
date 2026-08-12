@@ -100,7 +100,7 @@ test("launches visible Chrome for manual extension loading without a remote-cont
   );
 });
 
-test("keeps the original submission scope and exposes an explicit V-04 integrated mode", () => {
+test("uses one approved submission per run and exposes an explicit V-04 integrated mode", () => {
   const original = parseArgs([
     "--source", "/tmp/source.py",
     "--json-output", "/tmp/result.json",
@@ -136,10 +136,15 @@ test("keeps the original submission scope and exposes an explicit V-04 integrate
   assert.equal(integratedResult.method.followed_immediately_by_v04, true);
   assert.equal(
     integratedResult.method.submission_limit_scope,
-    "updated-plan-authorized-v03-v04-integrated-run",
+    "p0-21-authorized-v03-v04-integrated-run",
+  );
+  assert.equal(
+    originalResult.method.submission_limit_scope,
+    "approved-real-service-verification-run",
   );
   assert.match(CONTENT_SOURCE, /config\.verification_mode === "v04_integrated"/);
-  assert.match(CONTENT_SOURCE, /更新済み検証計画で許可された、このV-03→V-04統合実行の1件/);
+  assert.match(CONTENT_SOURCE, /p0-21で明示承認された、このV-03→V-04統合実行の最大1件/);
+  assert.match(CONTENT_SOURCE, /明示承認済み実サービス検証実行の最大1件/);
 });
 
 test("keeps extension permissions limited to storage and loopback", () => {

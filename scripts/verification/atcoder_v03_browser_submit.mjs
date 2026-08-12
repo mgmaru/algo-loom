@@ -425,8 +425,8 @@ export function buildResult(startedAt, sourceByteCount, version, integratedV04 =
       automatic_retries: 0,
       submission_limit: 1,
       submission_limit_scope: integratedV04
-        ? "updated-plan-authorized-v03-v04-integrated-run"
-        : "original-v03-verification-run",
+        ? "p0-21-authorized-v03-v04-integrated-run"
+        : "approved-real-service-verification-run",
       followed_immediately_by_v04: integratedV04,
     },
     observations: {},

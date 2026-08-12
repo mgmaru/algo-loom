@@ -853,6 +853,7 @@ def build_result(started_at: str, source_size: int) -> Dict[str, Any]:
             "redirect_following": False,
             "automatic_retries": 0,
             "submission_post_limit": 1,
+            "submission_limit_scope": "approved-real-service-verification-run",
             "connect_timeout_ms": int(CONNECT_TIMEOUT_SECONDS * 1000),
             "request_timeout_ms": int(REQUEST_TIMEOUT_SECONDS * 1000),
             "minimum_interval_ms": int(MIN_INTERVAL_SECONDS * 1000),
@@ -1136,16 +1137,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("提出フォームのTurnstile分類:", turnstile_binding_class)
     print("ソースコード:", SOURCE_ALIAS, str(len(source)) + "バイト")
     print("SHA-256（確認専用・成果物へ保存しません）:", source_hash)
-    print("検証全体の既存提出回数: p0-01〜p0-06は0件")
-    print("今回のPOST上限: 1回。応答不明でも自動再送しません")
+    print("提出許可: 明示承認済み実サービス検証実行の最大1件")
+    print("今回のPOST上限: 1回。応答不明でも自動再送・再提出しません")
     print("利用規約:", TERMS_URL)
     print("AI学習・販売の拒否設定案内:", AI_POLICY_URL)
     print("2026年8月以降は、拒否設定が未反映の提出が初期状態で対象になり得ます。")
     print("======================================")
     print(
-        "上記、source-Bを本人のアカウントから提出してよいこと、これを検証全体で"
+        "上記、source-Bを本人のアカウントから提出してよいこと、これを明示承認済み"
     )
-    print("唯一の提出とすること、AI設定、自動再送禁止を確認してください。")
+    print(
+        "実サービス検証の最大1件とすること、AI設定、自動再送・再提出禁止を"
+        "確認してください。"
+    )
     approval = input("承認する場合だけ SUBMIT abc300_a と入力: ").strip()
     if approval != "SUBMIT abc300_a":
         session_cookie = None
