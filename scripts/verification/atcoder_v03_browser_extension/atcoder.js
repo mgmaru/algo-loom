@@ -14,6 +14,15 @@
   );
   const ACCOUNT_PATTERN = /^[A-Za-z0-9_]{1,64}$/;
   const IDENTITY_PATTERN = /var\s+userScreenName\s*=\s*"([A-Za-z0-9_]{1,64})"\s*;/g;
+  const SOURCE_GUARD = globalThis.AlgoLoomV03SourceGuard;
+  if (
+    !SOURCE_GUARD ||
+    typeof SOURCE_GUARD.isAceEditorMode !== "function" ||
+    typeof SOURCE_GUARD.isPlainEditorMode !== "function" ||
+    typeof SOURCE_GUARD.serializedSourceMatches !== "function"
+  ) {
+    throw new Error("source_guard_unavailable");
+  }
 
   async function request(message) {
     const response = await chrome.runtime.sendMessage(message);
@@ -56,17 +65,17 @@
     return paragraph;
   }
 
-  function isVisible(element) {
-    const style = getComputedStyle(element);
-    return (
-      style.display !== "none" &&
-      style.visibility !== "hidden" &&
-      element.getClientRects().length > 0
-    );
-  }
-
-  async function waitForPlainEditor(panel, sourceField) {
-    if (isVisible(sourceField)) return;
+  async function waitForPlainEditor(
+    panel,
+    sourceField,
+    editorElement,
+    editorToggle,
+  ) {
+    if (SOURCE_GUARD.isPlainEditorMode(
+      sourceField,
+      editorElement,
+      editorToggle,
+    )) return;
     addText(
       panel,
       "AtCoder本体の「エディタ切替」ボタンを人が押し、プレーンテキスト欄を表示してください。表示後、この確認ボタンを押してください。拡張はエディタ切替を自動操作しません。",
@@ -77,11 +86,73 @@
     panel.append(button);
     await new Promise((resolve) => {
       button.addEventListener("click", () => {
-        if (!isVisible(sourceField)) {
+        if (!SOURCE_GUARD.isPlainEditorMode(
+          sourceField,
+          editorElement,
+          editorToggle,
+        )) {
           addText(panel, "プレーンテキスト欄をまだ確認できません。AtCoder本体のエディタを切り替えてください。", "error");
           return;
         }
         button.disabled = true;
+        resolve();
+      });
+    });
+  }
+
+  async function verifyEditorRoundTrip(
+    panel,
+    sourceField,
+    editorElement,
+    editorToggle,
+    sourceMatches,
+  ) {
+    addText(
+      panel,
+      "ソースをプレーンテキスト欄へ設定しました。AtCoder本体の「エディタ切替」を人が押してAce表示へ戻し、次の確認ボタンを押してください。",
+    );
+    const aceButton = document.createElement("button");
+    aceButton.type = "button";
+    aceButton.textContent = "Ace表示を確認する";
+    panel.append(aceButton);
+    await new Promise((resolve) => {
+      aceButton.addEventListener("click", () => {
+        if (!SOURCE_GUARD.isAceEditorMode(
+          sourceField,
+          editorElement,
+          editorToggle,
+        )) {
+          addText(panel, "Ace表示をまだ確認できません。AtCoder本体のエディタを切り替えてください。", "error");
+          return;
+        }
+        aceButton.disabled = true;
+        resolve();
+      });
+    });
+
+    addText(
+      panel,
+      "Aceにソースが表示されたことを目視し、AtCoder本体の「エディタ切替」をもう一度押してプレーンテキスト欄へ戻してから、同期確認ボタンを押してください。",
+    );
+    const plainButton = document.createElement("button");
+    plainButton.type = "button";
+    plainButton.textContent = "エディタ往復後のソース同期を確認する";
+    panel.append(plainButton);
+    await new Promise((resolve, reject) => {
+      plainButton.addEventListener("click", () => {
+        if (!SOURCE_GUARD.isPlainEditorMode(
+          sourceField,
+          editorElement,
+          editorToggle,
+        )) {
+          addText(panel, "プレーンテキスト欄へまだ戻っていません。AtCoder本体のエディタを切り替えてください。", "error");
+          return;
+        }
+        plainButton.disabled = true;
+        if (!sourceMatches()) {
+          reject(new Error("source_editor_round_trip_mismatch"));
+          return;
+        }
         resolve();
       });
     });
@@ -173,14 +244,30 @@
     const taskSelects = form.querySelectorAll(
       'select#select-task[name="data.TaskScreenName"]',
     );
-    const sourceFields = form.querySelectorAll('[name="sourceCode"]');
+    const sourceWrappers = document.querySelectorAll("#sourceCode");
     const wrappers = form.querySelectorAll(
       '#select-lang[data-name="data.LanguageId"]',
     );
     if (csrfFields.length !== 1) throw new Error("csrf_field_not_unique");
     if (taskSelects.length !== 1) throw new Error("task_select_not_unique");
-    if (sourceFields.length !== 1) throw new Error("source_field_not_unique");
+    if (sourceWrappers.length !== 1) throw new Error("source_wrapper_not_unique");
     if (wrappers.length !== 1) throw new Error("language_wrapper_not_unique");
+    const sourceFields = document.querySelectorAll(
+      'textarea#plain-textarea.plain-textarea[name="sourceCode"]',
+    );
+    const editorElements = document.querySelectorAll("#editor");
+    const editorToggles = document.querySelectorAll(".btn-toggle-editor");
+    if (sourceFields.length !== 1) throw new Error("source_field_not_unique");
+    if (editorElements.length !== 1) throw new Error("source_editor_not_unique");
+    if (editorToggles.length !== 1) throw new Error("source_editor_toggle_not_unique");
+    if (
+      !form.contains(sourceWrappers[0]) ||
+      !sourceWrappers[0].contains(sourceFields[0]) ||
+      !sourceWrappers[0].contains(editorElements[0]) ||
+      !sourceWrappers[0].contains(editorToggles[0])
+    ) {
+      throw new Error("source_editor_structure_changed");
+    }
 
     const targetOptions = [...taskSelects[0].options].filter(
       (option) => option.value === PROBLEM_ID,
@@ -227,6 +314,8 @@
     }
 
     const sourceField = sourceFields[0];
+    const editorElement = editorElements[0];
+    const editorToggle = editorToggles[0];
 
     const submitControls = [...form.querySelectorAll(
       'button[type="submit"], input[type="submit"]',
@@ -244,7 +333,11 @@
     return {
       form,
       language: candidates[0],
+      taskSelect: taskSelects[0],
+      languageSelect,
       sourceField,
+      editorElement,
+      editorToggle,
       submitControls,
       approve() {
         approved = true;
@@ -338,22 +431,43 @@
       }
       const config = await request({ type: "get_config" });
       const prepared = inspectAndPrepareForm();
-      await waitForPlainEditor(panel, prepared.sourceField);
+      await waitForPlainEditor(
+        panel,
+        prepared.sourceField,
+        prepared.editorElement,
+        prepared.editorToggle,
+      );
       const expectedSource = config.source;
       prepared.sourceField.value = expectedSource;
       prepared.sourceField.dispatchEvent(new Event("input", { bubbles: true }));
       prepared.sourceField.dispatchEvent(new Event("change", { bubbles: true }));
-      const sourceMatches = () => {
-        const values = new FormData(prepared.form).getAll("sourceCode");
-        return (
-          isVisible(prepared.sourceField) &&
-          values.length === 1 &&
-          typeof values[0] === "string" &&
-          values[0] === expectedSource &&
-          new TextEncoder().encode(values[0]).length === config.source_byte_count
-        );
+      const sourceMatches = () => SOURCE_GUARD.serializedSourceMatches({
+        form: prepared.form,
+        sourceField: prepared.sourceField,
+        editorElement: prepared.editorElement,
+        editorToggle: prepared.editorToggle,
+        expectedSource,
+        expectedByteCount: config.source_byte_count,
+      });
+      await verifyEditorRoundTrip(
+        panel,
+        prepared.sourceField,
+        prepared.editorElement,
+        prepared.editorToggle,
+        sourceMatches,
+      );
+      const preparationFailure = () => {
+        if (
+          prepared.taskSelect.value !== PROBLEM_ID ||
+          prepared.languageSelect.value !== prepared.language.atcoder_language_id
+        ) {
+          return "target_not_synchronized";
+        }
+        if (!sourceMatches()) return "source_not_synchronized";
+        return null;
       };
-      if (!sourceMatches()) throw new Error("source_not_synchronized");
+      const initialFailure = preparationFailure();
+      if (initialFailure !== null) throw new Error(initialFailure);
       config.source = "";
       let baselineIds;
       if (config.helper_stage === "await_form") {
@@ -372,6 +486,10 @@
             csrf_field_count: 1,
             target_task_count: 1,
             source_field_count: 1,
+            source_editor_count: 1,
+            source_editor_toggle_count: 1,
+            plain_editor_mode: true,
+            editor_round_trip_verified: true,
             canonical_language_candidate_count: 1,
             resolved_language: prepared.language,
             source_byte_count: config.source_byte_count,
@@ -444,14 +562,15 @@
       let sendStarted = false;
       prepared.form.addEventListener("submit", (event) => {
         if (!prepared.isApproved() || sendStarted) return;
-        if (!sourceMatches()) {
+        const failure = preparationFailure();
+        if (failure !== null) {
           event.preventDefault();
           event.stopImmediatePropagation();
           void request({
             type: "event",
-            event: { type: "aborted", reason: "source_not_synchronized" },
+            event: { type: "aborted", reason: failure },
           });
-          addText(panel, "送信直前のフォーム値が確認済みソースと一致しないため遮断しました。再提出せず停止してください。", "error");
+          addText(panel, "送信直前の問題・言語・プレーンテキスト欄・送信対象ソースを再確認できないため遮断しました。再提出せず停止してください。", "error");
           return;
         }
         sendStarted = true;
@@ -466,12 +585,13 @@
           addText(panel, "確認項目または承認句が不足しています。提出は有効化しません。", "error");
           return;
         }
-        if (!sourceMatches()) {
+        const failure = preparationFailure();
+        if (failure !== null) {
           await request({
             type: "event",
-            event: { type: "aborted", reason: "source_not_synchronized" },
+            event: { type: "aborted", reason: failure },
           });
-          addText(panel, "プレーンテキスト欄のソースが確認値と一致しないため停止しました。再提出しないでください。", "error");
+          addText(panel, "問題・言語・プレーンテキスト欄・送信対象ソースを再確認できないため停止しました。再提出しないでください。", "error");
           return;
         }
         await request({

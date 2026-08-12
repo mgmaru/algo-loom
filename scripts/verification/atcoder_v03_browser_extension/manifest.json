@@ -29,6 +29,7 @@
         "https://atcoder.jp/contests/abc300/submissions/*"
       ],
       "js": [
+        "source_guard.js",
         "atcoder.js"
       ],
       "run_at": "document_end"

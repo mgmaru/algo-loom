@@ -127,6 +127,10 @@ export function sanitizeEvent(value) {
         "csrf_field_count",
         "target_task_count",
         "source_field_count",
+        "source_editor_count",
+        "source_editor_toggle_count",
+        "plain_editor_mode",
+        "editor_round_trip_verified",
         "canonical_language_candidate_count",
         "resolved_language",
         "source_byte_count",
@@ -145,6 +149,10 @@ export function sanitizeEvent(value) {
         !boundedCount(value.csrf_field_count) ||
         !boundedCount(value.target_task_count) ||
         !boundedCount(value.source_field_count) ||
+        !boundedCount(value.source_editor_count) ||
+        !boundedCount(value.source_editor_toggle_count) ||
+        !booleanValue(value.plain_editor_mode) ||
+        !booleanValue(value.editor_round_trip_verified) ||
         !boundedCount(value.canonical_language_candidate_count) ||
         !Number.isInteger(value.source_byte_count) ||
         value.source_byte_count <= 0 ||
@@ -243,6 +251,10 @@ export class VerificationState {
         event.csrf_field_count !== 1 ||
         event.target_task_count !== 1 ||
         event.source_field_count !== 1 ||
+        event.source_editor_count !== 1 ||
+        event.source_editor_toggle_count !== 1 ||
+        !event.plain_editor_mode ||
+        !event.editor_round_trip_verified ||
         event.canonical_language_candidate_count !== 1 ||
         (this.expectedSourceByteCount !== null &&
           event.source_byte_count !== this.expectedSourceByteCount) ||
@@ -414,9 +426,9 @@ export function buildResult(startedAt, sourceByteCount, version) {
       cloudflare_compatibility_page_navigation: 0,
       atcoder_settings_page_navigation: 0,
       atcoder_submit_page_navigation: 0,
-    submission_list_baseline_get: 0,
-    submission_form_submit_event: 0,
-    submission_result_page_navigation: 0,
+      submission_list_baseline_get: 0,
+      submission_form_submit_event: 0,
+      submission_result_page_navigation: 0,
     },
     browser_internal_request_count_known: false,
     approval: {

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -16,6 +17,7 @@ import {
 } from "./atcoder_v03_browser_submit.mjs";
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, "../..");
 const EXTENSION_DIRECTORY = path.join(
   SCRIPT_DIRECTORY,
@@ -32,6 +34,13 @@ const WORKER_SOURCE = fs.readFileSync(
   path.join(EXTENSION_DIRECTORY, "service_worker.js"),
   "utf8",
 );
+const SOURCE_GUARD_SOURCE = fs.readFileSync(
+  path.join(EXTENSION_DIRECTORY, "source_guard.js"),
+  "utf8",
+);
+const SOURCE_GUARD = require(
+  path.join(EXTENSION_DIRECTORY, "source_guard.js"),
+);
 
 function formPrepared(sourceByteCount = 9) {
   return {
@@ -44,6 +53,10 @@ function formPrepared(sourceByteCount = 9) {
     csrf_field_count: 1,
     target_task_count: 1,
     source_field_count: 1,
+    source_editor_count: 1,
+    source_editor_toggle_count: 1,
+    plain_editor_mode: true,
+    editor_round_trip_verified: true,
     canonical_language_candidate_count: 1,
     resolved_language: {
       atcoder_language_id: "5078",
@@ -89,6 +102,10 @@ test("launches visible Chrome for manual extension loading without a remote-cont
 test("keeps extension permissions limited to storage and loopback", () => {
   assert.deepEqual(MANIFEST.permissions, ["storage"]);
   assert.deepEqual(MANIFEST.host_permissions, ["http://127.0.0.1/*"]);
+  assert.deepEqual(
+    MANIFEST.content_scripts[1].js,
+    ["source_guard.js", "atcoder.js"],
+  );
   const serialized = JSON.stringify(MANIFEST);
   for (const permission of ["cookies", "debugger", "webRequest", "nativeMessaging", "tabs", "scripting"]) {
     assert.equal(serialized.includes(`\"${permission}\"`), false);
@@ -112,13 +129,171 @@ test("does not read challenge tokens or programmatically submit the form", () =>
 });
 
 test("requires the visible plain editor and rechecks serialized source before send", () => {
-  assert.match(CONTENT_SOURCE, /await waitForPlainEditor\(panel, prepared\.sourceField\)/);
-  assert.match(CONTENT_SOURCE, /new FormData\(prepared\.form\)\.getAll\("sourceCode"\)/);
-  assert.match(CONTENT_SOURCE, /event: \{ type: "aborted", reason: "source_not_synchronized" \}/);
+  assert.match(
+    CONTENT_SOURCE,
+    /await waitForPlainEditor\(\s*panel,\s*prepared\.sourceField,\s*prepared\.editorElement,\s*prepared\.editorToggle/,
+  );
+  assert.match(CONTENT_SOURCE, /SOURCE_GUARD\.serializedSourceMatches/);
+  assert.match(CONTENT_SOURCE, /await verifyEditorRoundTrip/);
+  assert.match(SOURCE_GUARD_SOURCE, /new FormData\(value\)/);
+  assert.match(SOURCE_GUARD_SOURCE, /classList\.contains\("active"\)/);
+  assert.match(CONTENT_SOURCE, /document\.querySelectorAll\("\.btn-toggle-editor"\)/);
+  assert.match(CONTENT_SOURCE, /return "source_not_synchronized"/);
   assert.ok(
-    CONTENT_SOURCE.indexOf("if (!sourceMatches())") <
+    CONTENT_SOURCE.indexOf("const failure = preparationFailure()") <
       CONTENT_SOURCE.indexOf('event: { type: "send_started" }'),
   );
+});
+
+test("reproduces the p0-14 hidden-Ace mismatch and accepts only plain mode", () => {
+  const expectedSource = "print(0)\n";
+  const form = {};
+  const sourceField = {
+    disabled: false,
+    form,
+    name: "sourceCode",
+    value: expectedSource,
+  };
+  const editorElement = {};
+  let toggleActive = false;
+  const editorToggle = {
+    classList: { contains: (name) => name === "active" && toggleActive },
+  };
+  const visibility = new Map([
+    [sourceField, false],
+    [editorElement, true],
+  ]);
+  const dependencies = {
+    isVisible: (element) => visibility.get(element) === true,
+    createFormData: () => ({ getAll: () => [sourceField.value] }),
+    byteLength: (value) => Buffer.byteLength(value, "utf8"),
+  };
+  const input = {
+    form,
+    sourceField,
+    editorElement,
+    editorToggle,
+    expectedSource,
+    expectedByteCount: 9,
+  };
+
+  // This was the p0-14 check: the hidden textarea alone looked correct.
+  assert.equal(sourceField.value === expectedSource, true);
+  assert.equal(SOURCE_GUARD.serializedSourceMatches(input, dependencies), false);
+
+  visibility.set(sourceField, true);
+  visibility.set(editorElement, false);
+  toggleActive = true;
+  assert.equal(SOURCE_GUARD.serializedSourceMatches(input, dependencies), true);
+  assert.equal(
+    SOURCE_GUARD.isAceEditorMode(
+      sourceField,
+      editorElement,
+      editorToggle,
+      dependencies.isVisible,
+    ),
+    false,
+  );
+
+  // Model the manual plain -> Ace transition copying the textarea into Ace.
+  const aceValue = sourceField.value;
+  visibility.set(sourceField, false);
+  visibility.set(editorElement, true);
+  toggleActive = false;
+  assert.equal(
+    SOURCE_GUARD.isAceEditorMode(
+      sourceField,
+      editorElement,
+      editorToggle,
+      dependencies.isVisible,
+    ),
+    true,
+  );
+
+  // Model the manual Ace -> plain transition copying Ace back to the form field.
+  sourceField.value = aceValue;
+  visibility.set(sourceField, true);
+  visibility.set(editorElement, false);
+  toggleActive = true;
+  assert.equal(SOURCE_GUARD.serializedSourceMatches(input, dependencies), true);
+
+  // The official submit handler keys off this class, not visibility alone.
+  toggleActive = false;
+  assert.equal(SOURCE_GUARD.serializedSourceMatches(input, dependencies), false);
+});
+
+test("rejects a source value overwritten by the page submit synchronizer", () => {
+  const expectedSource = "print(0)\n";
+  const form = {};
+  const sourceField = {
+    disabled: false,
+    form,
+    name: "sourceCode",
+    value: "",
+  };
+  const editorElement = {};
+  const editorToggle = {
+    classList: { contains: (name) => name === "active" },
+  };
+  const input = {
+    form,
+    sourceField,
+    editorElement,
+    editorToggle,
+    expectedSource,
+    expectedByteCount: 9,
+  };
+  assert.equal(
+    SOURCE_GUARD.serializedSourceMatches(input, {
+      isVisible: (element) => element === sourceField,
+      createFormData: () => ({ getAll: () => [""] }),
+      byteLength: (value) => Buffer.byteLength(value, "utf8"),
+    }),
+    false,
+  );
+});
+
+test("cancels the modeled p0-14 submit after Ace overwrites the textarea", () => {
+  const expectedSource = "print(0)\n";
+  const form = new EventTarget();
+  const sourceField = {
+    disabled: false,
+    form,
+    name: "sourceCode",
+    value: expectedSource,
+  };
+  const editorElement = {};
+  const editorToggle = {
+    classList: { contains: () => false },
+  };
+  let serializedValues = [expectedSource];
+  const input = {
+    form,
+    sourceField,
+    editorElement,
+    editorToggle,
+    expectedSource,
+    expectedByteCount: 9,
+  };
+  const dependencies = {
+    isVisible: (element) => element === editorElement,
+    createFormData: () => ({ getAll: () => serializedValues }),
+    byteLength: (value) => Buffer.byteLength(value, "utf8"),
+  };
+
+  // Model p0-14: AtCoder's earlier submit handler reads empty visible Ace.
+  form.addEventListener("submit", () => {
+    sourceField.value = "";
+    serializedValues = [""];
+  });
+  form.addEventListener("submit", (event) => {
+    if (!SOURCE_GUARD.serializedSourceMatches(input, dependencies)) {
+      event.preventDefault();
+    }
+  });
+
+  const submitted = form.dispatchEvent(new Event("submit", { cancelable: true }));
+  assert.equal(submitted, false);
 });
 
 test("keeps one submit tab active and can resume the pre-approval stage", () => {
@@ -214,6 +389,20 @@ test("fails closed on automation, account, form, and source mismatches", () => {
     navigator_webdriver: false,
   });
   assert.throws(() => formState.apply(formPrepared(10)), /submission_gate/);
+
+  const editorState = new VerificationState(9);
+  editorState.apply({ type: "bootstrap_ready", navigator_webdriver: false });
+  editorState.apply({ type: "compatibility_confirmed" });
+  editorState.apply({
+    type: "account_checked",
+    identity_count: 1,
+    identity_matches_expected: true,
+    navigator_webdriver: false,
+  });
+  assert.throws(
+    () => editorState.apply({ ...formPrepared(), plain_editor_mode: false }),
+    /submission_gate/,
+  );
 });
 
 test("rejects secret-bearing or unbounded event shapes", () => {
