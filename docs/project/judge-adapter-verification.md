@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる主要導線は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)、[`p0-22`](../verification/judge-adapter/results/2026-08-12-p0-22.md)で確認し、`V-01`〜`V-05`と`V-09`が合格。[`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)で再設計後の方式AによるCookie限定取得、本人照合、Keychain保存、新規プロセス再照合、後始末を確認し、`V-10`も合格。[`p1-01`](../verification/judge-adapter/results/2026-08-13-p1-01.md)で`p0-22`の提出IDを別プロセスから再照合し、追加提出なしで最終判定を再取得したため`V-06`も合格。[`p1-02`](../verification/judge-adapter/results/2026-08-13-p1-02.md)で通常観測とローカル制御を分け、期限を推測せずに認証失敗を分類できたため`V-07`も合格。[`p1-03`](../verification/judge-adapter/results/2026-08-13-p1-03.md)でCookie更新、明示期限、再起動後の本人照合、失効・競合・秘密情報保管庫障害の安全停止を確認し、`V-11`も合格。P0は5/5、P1は4/4で、MVP実装開始条件1〜3に対応する技術検証を充足）
+> 状態: 検証完了（方式Cによる主要導線は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)、[`p0-22`](../verification/judge-adapter/results/2026-08-12-p0-22.md)で確認し、`V-01`〜`V-05`と`V-09`が合格。[`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)で再設計後の方式AによるCookie限定取得、本人照合、Keychain保存、新規プロセス再照合、後始末を確認し、`V-10`も合格。[`p1-01`](../verification/judge-adapter/results/2026-08-13-p1-01.md)で`p0-22`の提出IDを別プロセスから再照合し、追加提出なしで最終判定を再取得したため`V-06`も合格。[`p1-02`](../verification/judge-adapter/results/2026-08-13-p1-02.md)で通常観測とローカル制御を分け、期限を推測せずに認証失敗を分類できたため`V-07`も合格。[`p1-03`](../verification/judge-adapter/results/2026-08-13-p1-03.md)でCookie更新、明示期限、再起動後の本人照合、失効・競合・秘密情報保管庫障害の安全停止を確認し、`V-11`も合格。[`p2-01`](../verification/judge-adapter/results/2026-08-13-p2-01.md)でジャッジ実行時間とメモリの単位正規化、欠損時の判定保存継続を確認し、`V-08`も合格。P0は5/5、P1は4/4、P2は2/2で、全11項目が合格。MVP実装開始条件1〜3に対応する技術検証を充足）
 >
 > 作成日: 2026年8月10日
 >
@@ -169,3 +169,5 @@ AtCoderへの提出上限は、日単位でもリポジトリの検証全体に�
 [`p1-02`](../verification/judge-adapter/results/2026-08-13-p1-02.md)では、Cookieなしの実サービス対照1件とローカル固定入力13件を使い、未認証、サーバー由来の明示期限を過ぎた状態、AtCoder・Cloudflare側の拒否、ページ構造変更、通信障害を分けました。期限不明のログイン誘導は未認証または期限切れに留め、推測で期限切れと断定しない境界も確認したため`V-07`は合格です。実サービスの期限切れとCookieの更新・失効は`V-11`へ残します。
 
 [`p1-03`](../verification/judge-adapter/results/2026-08-13-p1-03.md)では、方式Aの通常操作に伴う`GET /settings` 3回で`REVEL_SESSION`の値を変更する`Set-Cookie`と`Max-Age`を観測し、更新候補の本人照合後のKeychain置換、新規プロセスからの同一本人再照合を確認しました。期限なしを不明のまま扱う固定入力、明示期限切れと失効、世代付き更新競合、実Keychainの読取・書込障害を提出前停止へ関連付けたため`V-11`は合格です。P1は4/4となりました。
+
+[`p2-01`](../verification/judge-adapter/results/2026-08-13-p2-01.md)では、`p0-22`の`submission-A`を追加提出なしで再利用し、本人提出一覧の固定フィルタ・先頭1ページから最終判定`AC`、ジャッジ実行時間11 ms、メモリ9,172 KiBを取得しました。実行時間を11 ms、メモリを9,392,128 byteへ正規化し、固定入力では欠損・未知形式でも値を補わず判定保存を継続できたため`V-08`は合格です。ローカル送信元ファイルサイズとAtCoderのコード長表示が一致しないことも観測し、前者をリモート提出の識別条件に使わない制約を得ました。P2は2/2となり、全11項目が合格しました。
