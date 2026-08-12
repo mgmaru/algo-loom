@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる主要導線は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)、[`p0-22`](../verification/judge-adapter/results/2026-08-12-p0-22.md)で確認し、`V-01`〜`V-05`と`V-09`が合格。[`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)で再設計後の方式AによるCookie限定取得、本人照合、Keychain保存、新規プロセス再照合、後始末を確認し、`V-10`も合格。[`p1-01`](../verification/judge-adapter/results/2026-08-13-p1-01.md)で`p0-22`の提出IDを別プロセスから再照合し、追加提出なしで最終判定を再取得したため`V-06`も合格。P0は5/5、P1は2/4で、MVP実装開始条件1〜3に対応する技術検証を充足）
+> 状態: 検証計画（方式Cによる主要導線は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)、[`p0-22`](../verification/judge-adapter/results/2026-08-12-p0-22.md)で確認し、`V-01`〜`V-05`と`V-09`が合格。[`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)で再設計後の方式AによるCookie限定取得、本人照合、Keychain保存、新規プロセス再照合、後始末を確認し、`V-10`も合格。[`p1-01`](../verification/judge-adapter/results/2026-08-13-p1-01.md)で`p0-22`の提出IDを別プロセスから再照合し、追加提出なしで最終判定を再取得したため`V-06`も合格。[`p1-02`](../verification/judge-adapter/results/2026-08-13-p1-02.md)で通常観測とローカル制御を分け、期限を推測せずに認証失敗を分類できたため`V-07`も合格。P0は5/5、P1は3/4で、MVP実装開始条件1〜3に対応する技術検証を充足）
 >
 > 作成日: 2026年8月10日
 >
@@ -165,3 +165,5 @@ AtCoderへの提出上限は、日単位でもリポジトリの検証全体に�
 [`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)では、追加提出なしで方式Aの`V-10`を実サービス検証しました。CDP等を使わない空の可視専用Chrome、Cookie限定取得、同一本人の照合、Keychain保存、新規プロセス再照合、後始末が成立したため合格です。これによりP0は5/5となりました。`Set-Cookie`更新、失効、競合、秘密情報保管庫障害は`V-11`へ残します。
 
 [`p1-01`](../verification/judge-adapter/results/2026-08-13-p1-01.md)では、`p0-22`の所有者専用状態を、提出処理とは別に起動したプロセスから読み、追加提出なしで同じ提出IDの`FINAL`と最終判定`AC`を再取得しました。対象ID 1件のGETだけで回復できたため`V-06`は合格です。提出ID取得前の`REMOTE_STATUS_UNKNOWN`から一意な提出を復元する経路は、この合格根拠へ含めません。
+
+[`p1-02`](../verification/judge-adapter/results/2026-08-13-p1-02.md)では、Cookieなしの実サービス対照1件とローカル固定入力13件を使い、未認証、サーバー由来の明示期限を過ぎた状態、AtCoder・Cloudflare側の拒否、ページ構造変更、通信障害を分けました。期限不明のログイン誘導は未認証または期限切れに留め、推測で期限切れと断定しない境界も確認したため`V-07`は合格です。実サービスの期限切れとCookieの更新・失効は`V-11`へ残します。

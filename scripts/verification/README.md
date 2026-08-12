@@ -302,6 +302,40 @@ python3 -m unittest discover \
 
 `p1-01`では、`p0-22`の所有者専用状態を明示選択して実サービス実行しました。本人照合後、対象ID 1件だけの`FINAL`と最終判定`AC`を別プロセスから再取得し、POST、追加提出、提出一覧走査、自動再試行0件で`V-06`へ合格しました。記録確定後、実際の提出IDを持つ一時状態と匿名化済み一時結果を削除しました。
 
+## `atcoder_v07_auth_failures.py`
+
+`V-07`の認証失敗分類を、AtCoderへ障害を起こさない固定入力と、任意のCookieなし実サービス対照で検証します。認証情報を受け取る入口、POST、提出、自動再試行はありません。
+
+既定では外部通信を行わず、次の境界を13件の固定入力で確認します。
+
+- 認証情報なしを未認証、サーバー由来の明示期限を過ぎた状態を期限切れとして、外部通信前に停止する。
+- 期限情報のない既存認証情報がログイン画面へ誘導された場合は、未認証または期限切れのどちらかに留め、期限切れと推測しない。
+- HTTP 403、429、`cf-mitigated: challenge`をAtCoder・Cloudflare側の拒否として分け、自動再試行しない。
+- HTTP 200でもアカウント識別情報が0件、複数件、応答上限超過または想定外の内容種別なら、未認証ではなくページ構造変更として停止する。
+- 名前解決、TLS、タイムアウト、接続、HTTPプロトコルの障害を、HTTP応答による認証失敗と分ける。
+
+```console
+python3 scripts/verification/atcoder_v07_auth_failures.py
+```
+
+実サービス対照を追加する場合は、対話ターミナルで次を実行します。明示確認後に`https://atcoder.jp/settings`へCookieなしのGETを1回だけ送り、最初の応答をリダイレクト追従なしで分類します。
+
+```console
+python3 scripts/verification/atcoder_v07_auth_failures.py \
+  --live-unauthenticated \
+  --json-output /absolute/owner-only/path/v07-result.json
+```
+
+結果JSONはリポジトリ外の既存しない絶対パスへ`0600`で作成し、Cookie、生ヘッダー、生HTML、アカウント名を含めません。実セッションの期限切れを意図的に起こさず、サーバーが返していない期限を生成しません。期限が不明なログイン誘導を期限切れと断定できない制約は、結果へ明示的に残します。
+
+ローカルテストはAtCoder、Cloudflareへ接続せず、次で実行します。
+
+```console
+python3 -m unittest discover \
+  -s scripts/verification \
+  -p 'test_atcoder_v07_auth_failures.py'
+```
+
 ## `atcoder_v03_turnstile_probe.mjs`
 
 `p0-07`の静的HTML観測では確認できなかった、JavaScript実行後のTurnstile応答欄を調べる補助スクリプトです。macOS上のGoogle Chromeを、リポジトリ外に作る空の専用プロファイルと`--remote-debugging-pipe`で可視起動します。利用者がChrome内でログインとTurnstileを手動で完了した後、対象フォーム内の`cf-turnstile-response`が存在するか、値が空かどうかだけをブラウザ内で判定します。
