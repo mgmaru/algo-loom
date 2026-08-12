@@ -23,13 +23,13 @@ function pageIdentities() {
   panel.style.cssText =
     "position:relative;z-index:2147483647;margin:16px auto;padding:20px;max-width:760px;border:3px solid #2563eb;background:#eff6ff;color:#17202a;font:16px/1.6 system-ui,sans-serif";
   panel.innerHTML = `
-    <h2 style="margin-top:0">AlgoLoom V-10 認証確認</h2>
+    <h2 style="margin-top:0">AlgoLoom 方式A 認証確認（V-10/V-11）</h2>
     <p>この画面が期待する本人アカウントか目視確認してください。パスワードやTurnstileの値は拡張機能へ渡されません。</p>
     <label>期待するAtCoderアカウント名（画面には表示しません）<br><input id="algoloom-v10-identity" type="password" autocomplete="off" spellcheck="false"></label>
     <p><button id="algoloom-v10-check" type="button">本人アカウントを照合する</button></p>
     <p id="algoloom-v10-status">照合前です。</p>
     <button id="algoloom-v10-capture" type="button" disabled>REVEL_SESSIONだけを取り込む</button>
-    <p>取り込み後、ヘルパーは読み取り専用の本人照合を2回行います。提出は行いません。</p>
+    <p>取り込み後、ヘルパーは読み取り専用の本人照合と秘密情報保管庫の確認を行います。提出は行いません。</p>
   `;
   document.body.prepend(panel);
 
@@ -78,8 +78,8 @@ function pageIdentities() {
     status.textContent = "Cookie限定取得、本人照合、Keychain保存、再起動後確認を実行中です。";
     const response = await chrome.runtime.sendMessage({ type: "capture_session" });
     status.textContent = response?.ok
-      ? "V-10の観測が完了しました。この専用ブラウザを閉じてください。"
-      : "V-10の観測を完了できませんでした。再試行せずブラウザを閉じてください。";
+      ? "認証セッションの観測が完了しました。この専用ブラウザを閉じてください。"
+      : "認証セッションの観測を完了できませんでした。再試行せずブラウザを閉じてください。";
   }, { once: true });
 })().catch(() => {
   const panel = document.getElementById("algoloom-v10-panel");

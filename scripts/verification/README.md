@@ -88,6 +88,7 @@ python3 scripts/verification/atcoder_v03_submit.py \
 | `atcoder_v03_submit.py` | 方式Cによる1件提出と提出ID取得 | 当日の`V-02`再確認、`V-05`、明示承認を通過した場合だけPOSTを1回送る。製品へ組み込まない |
 | `atcoder_v03_browser_submit.mjs` | 通常の可視Chrome、人によるログイン・Turnstile・提出操作を使う1件提出と提出ID取得 | `--remote-debugging-pipe`を使わないV-03の再設計版。検証専用拡張を人が専用プロファイルへ読み込み、許可リスト化した結果だけをloopbackへ返す。製品へ組み込まない |
 | `atcoder_v10_session.mjs` | 方式Aの可視専用ブラウザ、Cookie限定取得、秘密情報保管、別プロセスでの本人再確認 | `REVEL_SESSION`だけを明示操作後に取得し、macOS Keychainへ一時保存するV-10検証専用経路。実行後にKeychain項目と専用プロファイルを削除する |
+| `atcoder_v11_cookie_lifecycle.mjs` | Cookie更新、明示期限、再起動、失効、更新競合、秘密情報保管庫障害 | V-10のCookie限定取得境界と世代付きKeychain更新を使うV-11検証専用経路。POSTと提出を行わない |
 | `atcoder_v04_integrated.py` | V-04合格観測用のV-04準備→V-03→即時V-04統合実行 | 新規提出前に方式Cの本人照合を済ませ、V-03状態の作成直後から同じIDだけを有限ポーリングする。`p0-22`で実サービス検証済み。`p0-21`の提出許可は消費済み |
 | `atcoder_v04_verdict.py` | V-03の提出ID1件による判定待ち・最終判定の確認 | 方式Cで本人を再確認し、対象IDだけを有限ポーリングする。実IDと生応答を保存しない。製品へ組み込まない |
 | `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | `p0-10`で`--remote-debugging-pipe`による自動化状態がCloudflareと非互換だと確認したため、AtCoderへ再接続しない。原因再現の参照コードとしてのみ保持する |
@@ -134,6 +135,45 @@ node --test scripts/verification/test_atcoder_v10_session.mjs
 ```
 
 このコードとローカルテストだけをV-10の実サービス証拠にはしません。匿名化済み実行記録を正とします。また、検証専用の手動読込拡張と一時コンパイルしたSecurity Frameworkヘルパーを、そのまま製品の配布・署名・Keychainアクセス境界として採用したとは扱いません。
+
+## `atcoder_v11_cookie_lifecycle.mjs`
+
+方式AのCookie更新、明示期限、失効、プロセス再起動、更新競合、macOS Keychain障害をV-11として検証するスクリプトです。まず固定入力と合成した秘密値だけでローカル検証を行います。
+
+```console
+node scripts/verification/atcoder_v11_cookie_lifecycle.mjs \
+  --local-only \
+  --json-output /absolute/owner-only/path/v11-local-result.json
+```
+
+実サービス観測を含める場合は、所有者専用権限のリポジトリ外ディレクトリに未作成の結果パスを指定します。
+
+```console
+node scripts/verification/atcoder_v11_cookie_lifecycle.mjs \
+  --live \
+  --json-output /absolute/owner-only/path/v11-live-result.json
+```
+
+実サービス経路はV-10と同じ検証専用拡張を使います。空の専用Chromeへ人が拡張を手動読込し、Cloudflare公式互換性、ログイン、Turnstile、本人アカウント、最後のCookie取り込みを操作します。ヘルパーは`GET /settings`だけを最大3回、各開始の間隔を2秒以上として実行し、リダイレクト追従と自動再試行を行いません。POST、提出、提出一覧走査、セッション維持を目的とする通信はありません。
+
+Cookie更新の安全境界は次のとおりです。
+
+- 応答ごとに`Set-Cookie`の有無、全体件数、`REVEL_SESSION`指示件数、値の変更有無、明示期限属性の有無と由来だけを匿名化済み結果へ残す。値、生ヘッダー、実際の期限時刻は残さない。
+- `REVEL_SESSION`指示は対象ドメイン、`Path=/`、`Secure`、`HttpOnly`を要求し、0件、1件、複数件を区別する。複数件または不正な属性では安全側で停止する。
+- `Expires`または`Max-Age`が返った場合だけサーバー由来の期限として保持する。どちらも返らない場合は期限不明のままとし、期限を生成しない。
+- 値が変わった場合は候補値で同じ本人アカウントを再照合してからKeychainを置換する。同じ値の場合も本人照合済みの初回応答を根拠に属性だけを更新できる。
+- Keychain項目にはランダムな世代を付け、Security Frameworkの`SecItemUpdate`へ現在世代を検索条件として渡す。先に別の更新が成立した場合、古い世代による置換を拒否して提出前に停止する。
+- 新規Node.jsプロセスはKeychainから更新後のレコードを読み、明示期限の事前検査後に同じ本人を再照合する。Cookieと期待アカウント名を引数や環境変数へ渡さない。
+- 明示期限切れ、`Max-Age=0`等の失効指示、ログイン誘導、更新競合、Keychainの読取・書込障害では提出前に停止し、平文ファイルへ切り替えない。
+- 終了時は今回の専用Chrome、専用プロファイル、一時Swift実行ファイル、loopback、正確なKeychain項目だけを削除する。ローカル削除をAtCoder側の失効とは扱わない。
+
+ローカルテストはAtCoderとCloudflareへ接続せず、Cookie指示の分類、期限非推測、失効、原子的な世代更新、競合、保管庫障害、提出前停止、秘密値非混入を確認します。
+
+```console
+node --test scripts/verification/test_atcoder_v11_cookie_lifecycle.mjs
+```
+
+[`atcoder_v11_keychain.swift`](atcoder_v11_keychain.swift)はV-11専用の一時Keychainヘルパーです。実行時にリポジトリ外へコンパイルし、レコードを標準入出力のバイト列として扱います。検証支援コードとローカルテストだけを実サービスの合格証拠または製品実装とは扱いません。
 
 ## `atcoder_v03_browser_submit.mjs`
 

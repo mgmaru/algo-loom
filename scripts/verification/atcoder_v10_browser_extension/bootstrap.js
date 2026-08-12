@@ -22,7 +22,7 @@
   root.style.cssText =
     "font:16px/1.6 system-ui,sans-serif;max-width:760px;margin:40px auto;padding:24px;color:#17202a";
   root.innerHTML = `
-    <h1>AlgoLoom V-10 検証</h1>
+    <h1>AlgoLoom 方式A 検証（V-10/V-11）</h1>
     <p>この空の専用ブラウザはリモートデバッグ、CDP、WebDriverを使用していません。</p>
     <p>最初にCloudflare公式互換性チェッカーを開き、人の操作で <strong>Diagnostics passed</strong> を確認してください。</p>
     <p><a href="https://browser-compat.turnstile.workers.dev/" target="_blank" rel="noreferrer noopener">公式互換性チェッカーを開く</a></p>

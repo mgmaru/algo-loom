@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AlgoLoom V-10 Verification Helper",
+  "name": "AlgoLoom V-10/V-11 Verification Helper",
   "version": "0.1.0",
   "description": "One-run helper for a human-operated AtCoder method-A verification.",
   "permissions": [
