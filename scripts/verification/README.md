@@ -269,6 +269,39 @@ python3 -m unittest discover \
 
 `p0-22`では統合スクリプトを実サービス実行し、新しい提出IDの取得13 ms後から同じIDだけをポーリングしました。判定待ち`WJ`を5回、最終判定`AC`を1回、UTC時刻付きで取得したため`V-04`は合格です。サーバー指定1秒より長い最小2秒待機を適用し、各通信上限も分離して実動したため`V-09`も合格です。`p0-21`の提出許可はこの実行で消費済みです。
 
+## `atcoder_v06_recovery.py`
+
+V-03が作成した所有者専用の一時状態を、提出処理とは別に起動したプロセスから読み、方式Cで本人アカウントを確認した後、同じ提出ID 1件だけの判定を再取得します。ソースコードを入力するオプション、提出処理、POST、提出一覧の走査、自動再試行はありません。結果JSONには`submission-A`だけを記録し、実際の提出ID、Cookie、アカウント名、生ヘッダー、生HTML、生JSONを保存しません。
+
+macOSでの自己検証には、リポジトリルートの対話ターミナルで次を実行します。
+
+```console
+python3 scripts/verification/atcoder_v06_recovery.py \
+  --state /absolute/owner-only/path/v03-state.json \
+  --guided-chrome
+```
+
+`--discover-state`は、`/private/tmp`とmacOSの利用者別一時ディレクトリにある、単独V-03とV-03→V-04統合実行の状態を両方検査します。有効な候補が厳密に1件の場合だけ自動選択し、0件または複数件なら外部通信前に停止します。
+
+実行時の境界は次のとおりです。
+
+- `V-04`と共通の固定スキーマでV-03状態を検査し、候補が1件の場合だけ自動選択する。
+- 通常のGoogle Chromeで本人アカウントと`REVEL_SESSION`対象行を人が確認し、値と期待アカウント名を非表示ダイアログから当該プロセスだけへ渡す。
+- `/settings`の本人照合成功後、前の応答完了から2秒以上空け、AtCoder公式`contest.js`が使う判定状態経路へ`sids[]`を1件だけ指定してGETする。
+- `Result`のキーが対象ID 1件だけで、対象ID付きの判定待ちまたは許可リスト内の最終判定を解釈できた場合だけ`V-06`を合格とする。
+- 接続5秒、1リクエスト20秒、応答256 KiB、判定GET 1回、リダイレクト0回、再試行0回、POST 0回を上限にする。
+- V-06の記録確定後、匿名化済み一時結果と実際の提出IDを持つ一時状態を削除する。
+
+ローカルテストはAtCoderへ接続しません。
+
+```console
+python3 -m unittest discover \
+  -s scripts/verification \
+  -p 'test_atcoder_v06_recovery.py'
+```
+
+`p1-01`では、`p0-22`の所有者専用状態を明示選択して実サービス実行しました。本人照合後、対象ID 1件だけの`FINAL`と最終判定`AC`を別プロセスから再取得し、POST、追加提出、提出一覧走査、自動再試行0件で`V-06`へ合格しました。記録確定後、実際の提出IDを持つ一時状態と匿名化済み一時結果を削除しました。
+
 ## `atcoder_v03_turnstile_probe.mjs`
 
 `p0-07`の静的HTML観測では確認できなかった、JavaScript実行後のTurnstile応答欄を調べる補助スクリプトです。macOS上のGoogle Chromeを、リポジトリ外に作る空の専用プロファイルと`--remote-debugging-pipe`で可視起動します。利用者がChrome内でログインとTurnstileを手動で完了した後、対象フォーム内の`cf-turnstile-response`が存在するか、値が空かどうかだけをブラウザ内で判定します。

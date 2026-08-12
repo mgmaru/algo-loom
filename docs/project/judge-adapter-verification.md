@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる主要導線は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)、[`p0-22`](../verification/judge-adapter/results/2026-08-12-p0-22.md)で確認し、`V-01`〜`V-05`と`V-09`が合格。[`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)で再設計後の方式AによるCookie限定取得、本人照合、Keychain保存、新規プロセス再照合、後始末を確認し、`V-10`も合格。P0は5/5で、MVP実装開始条件1〜3に対応する技術検証を充足）
+> 状態: 検証計画（方式Cによる主要導線は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)、[`p0-22`](../verification/judge-adapter/results/2026-08-12-p0-22.md)で確認し、`V-01`〜`V-05`と`V-09`が合格。[`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)で再設計後の方式AによるCookie限定取得、本人照合、Keychain保存、新規プロセス再照合、後始末を確認し、`V-10`も合格。[`p1-01`](../verification/judge-adapter/results/2026-08-13-p1-01.md)で`p0-22`の提出IDを別プロセスから再照合し、追加提出なしで最終判定を再取得したため`V-06`も合格。P0は5/5、P1は2/4で、MVP実装開始条件1〜3に対応する技術検証を充足）
 >
 > 作成日: 2026年8月10日
 >
@@ -163,3 +163,5 @@ AtCoderへの提出上限は、日単位でもリポジトリの検証全体に�
 [`p0-21`](../verification/judge-adapter/results/2026-08-12-p0-21.md)により、`abc300_a`、`python-cpython`、[`atcoder_v04_integrated.py`](../../scripts/verification/atcoder_v04_integrated.py)を使い、V-03の提出ID取得直後からV-04の判定待ちと最終判定を観測する実サービス検証を1回承認しました。この承認で許可した新規提出は最大1件、自動再送と同一承認内の再提出は0回です。[`p0-22`](../verification/judge-adapter/results/2026-08-12-p0-22.md)でこの承認を使って1件を提出し、同じ提出IDの判定待ちと最終判定を取得して`V-04`へ合格しました。承認は消費済みであり、この記述を別の提出許可として再利用しません。
 
 [`p0-23`](../verification/judge-adapter/results/2026-08-12-p0-23.md)では、追加提出なしで方式Aの`V-10`を実サービス検証しました。CDP等を使わない空の可視専用Chrome、Cookie限定取得、同一本人の照合、Keychain保存、新規プロセス再照合、後始末が成立したため合格です。これによりP0は5/5となりました。`Set-Cookie`更新、失効、競合、秘密情報保管庫障害は`V-11`へ残します。
+
+[`p1-01`](../verification/judge-adapter/results/2026-08-13-p1-01.md)では、`p0-22`の所有者専用状態を、提出処理とは別に起動したプロセスから読み、追加提出なしで同じ提出IDの`FINAL`と最終判定`AC`を再取得しました。対象ID 1件のGETだけで回復できたため`V-06`は合格です。提出ID取得前の`REMOTE_STATUS_UNKNOWN`から一意な提出を復元する経路は、この合格根拠へ含めません。
