@@ -86,7 +86,8 @@ python3 scripts/verification/atcoder_v03_submit.py \
 |---|---|---|
 | `atcoder_v02_session_check.py` | 方式Cのアカウント確認 | `p0-04`相当の読み取り専用検証を再現する。製品へ組み込まない |
 | `atcoder_v03_submit.py` | 方式Cによる1件提出と提出ID取得 | 当日の`V-02`再確認、`V-05`、明示承認を通過した場合だけPOSTを1回送る。製品へ組み込まない |
-| `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | 対象提出フォームの送信をページ読み込み前から遮断し、応答欄の存在と値の有無だけを観測する。Cookie、トークン値、ソースコードを取得せず、`V-03`または`V-10`の合格証拠には単独で使用しない |
+| `atcoder_v03_turnstile_probe.mjs` | 可視の専用ブラウザにおけるTurnstile実行後状態の読み取り専用観測 | `p0-10`で`--remote-debugging-pipe`による自動化状態がCloudflareと非互換だと確認したため、AtCoderへ再接続しない。原因再現の参照コードとしてのみ保持する |
+| `cloudflare_browser_local_diagnostic.mjs` | 現行CDP条件のローカル信号確認と、通常ChromeによるCloudflare公式互換性対照 | 既定モードは外部通信なし。対照モードは公式互換性チェッカーだけを開く。AtCoder、Cookie、Storage、CDP Network領域を扱わない |
 | `atcoder-login.sh` | `online-judge-tools`のパスワード入力型ログイン | `p0-01`・`p0-02`の過去経路を確認するために残す。Turnstile下の再認証手段として推奨しない |
 
 ## `atcoder_v03_turnstile_probe.mjs`
@@ -116,4 +117,31 @@ node scripts/verification/atcoder_v03_turnstile_probe.mjs \
 node --test scripts/verification/test_atcoder_v03_turnstile_probe.mjs
 ```
 
-`p0-08`の実行時版は、対象提出URLへの最初の移動前に提出防止コードを設定したため、ログイン画面にも同じJavaScript実行環境の変更が存在しました。ログインフォーム自体は送信対象外としていましたが、Cloudflare判定へ影響しなかったとは証明できません。現在の再利用版は、ログイン中にはページへスクリプトを注入せず、本人のログイン完了を確認した後だけ提出防止を設定する二段階へ修正しています。この修正版は実サービスへ再接続しておらず、`p0-08`の観測結果を遡って変更しません。
+`p0-08`の実行時版は、対象提出URLへの最初の移動前に提出防止コードを設定したため、ログイン画面にも同じJavaScript実行環境の変更が存在しました。ログインフォーム自体は送信対象外としていましたが、Cloudflare判定へ影響しなかったとは証明できません。現在の再利用版は、ログイン中にはページへスクリプトを注入せず、本人のログイン完了を確認した後だけ提出防止を設定する二段階へ修正しています。`p0-09`でこの版を実サービスへ1回再接続しましたが、Cloudflare検証は同じ段階で失敗しました。
+
+[`p0-10`](../../docs/verification/judge-adapter/results/2026-08-12-p0-10.md)では、この再利用版と同じ`--remote-debugging-pipe`、CDP接続、ターゲット接続、ページ移動をローカルで再現し、`navigator.webdriver: true`を確認しました。Cloudflare公式互換性チェッカーはこの状態を自動化ブラウザとして不合格にします。したがってこのスクリプトをAtCoderへ再接続せず、`navigator.webdriver`の隠蔽やstealth設定も追加しません。
+
+## `cloudflare_browser_local_diagnostic.mjs`
+
+現行V-03観測ヘルパーのブラウザ制御条件と、CDPなしの通常Chromeを安全に比較する診断スクリプトです。
+
+既定モードは空の一時プロファイルでChromeを起動し、外部通信のない`data:` URLに対して現行ヘルパーと同じ`--remote-debugging-pipe`、`Target.attachToTarget`、`Page.navigate`を実行します。外へ返すのはJavaScript実行、Cookie利用可否、`navigator.webdriver`の3つの真偽値だけです。
+
+```console
+node scripts/verification/cloudflare_browser_local_diagnostic.mjs
+```
+
+対照モードは別の空プロファイルでCloudflare公式互換性チェッカーだけを開きます。リモートデバッグ、CDP、開発者ツールを使用しません。結果は利用者が画面で確認し、スクリプトはDOM、画面、ネットワーク応答を読み取りません。
+
+```console
+node scripts/verification/cloudflare_browser_local_diagnostic.mjs \
+  --manual-compatibility
+```
+
+いずれのモードもAtCoderへ接続せず、Cookie、Storage、生HTML、HTTPヘッダーを取得しません。終了またはSIGINT・SIGTERM時に専用Chromeと今回の一時プロファイルだけを後始末します。これは検知回避ツール、Cloudflare通過手段、製品用ブラウザランチャーではありません。
+
+ローカルテストは外部通信せず、次で実行します。
+
+```console
+node --test scripts/verification/test_cloudflare_browser_local_diagnostic.mjs
+```

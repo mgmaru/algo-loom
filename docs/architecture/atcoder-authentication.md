@@ -2,7 +2,7 @@
 
 > 対象: MVPで利用者本人のAtCoderセッションを確立、確認、保管、失効処理する境界
 >
-> 状態: 認証方式の正本。方式Cを技術検証用、方式AをMVPの製品候補として採用する
+> 状態: 認証方式の正本。方式Cは技術検証用。方式Aの現行CDP候補は不適合とし、通常ブラウザ状態を維持するCookie限定取得境界を再設計する
 >
 > 決定日: 2026年8月11日
 >
@@ -23,11 +23,11 @@
 MVPは次の二段階で認証方式を確定します。
 
 1. `V-02`以降の技術検証では、**方式C**として、利用者が通常のブラウザでログインした後に`REVEL_SESSION`を検証用クライアントへ手動で取り込みます。方式Cの`V-02`は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)で合格しました。
-2. MVP製品では、**方式A**として、AlgoLoomが可視の専用ブラウザを起動し、利用者が手動でログインとTurnstileを完了した後、ローカルヘルパーが`REVEL_SESSION`だけを取得してOSの秘密情報保管庫へ保存する方式を第一候補とします。
+2. MVP製品では、**方式A**として、空の専用可視ブラウザで利用者が手動ログインし、`REVEL_SESSION`だけをOSの秘密情報保管庫へ渡す目標を維持します。ただし現行の`--remote-debugging-pipe`とCDPによる候補実装は不適合です。Cloudflare保護ページをリモート制御状態にしない取り込み境界を再設計するまで、方式Aを実装候補として確定しません。
 
 方式Cでセッションを取り込めただけでは`V-02`合格ではありません。同じセッションから現在のアカウント識別情報を一意に取得し、未認証状態と区別し、期待する本人アカウントと一致して初めて合格です。
 
-方式Aは設計上の採用候補であり、実証済みではありません。[`p0-08`](../verification/judge-adapter/results/2026-08-12-p0-08.md)では可視専用ブラウザのログイン時にCloudflare検証が失敗し、交絡要因を残したまま回避や再試行をせず中止しました。専用ブラウザで通常のログインが成立し、既存ブラウザのプロファイルへ触れず、必要なCookieだけを安全に保存できることを`V-10`で確認するまで、MVP実装開始条件を満たしたと扱いません。
+方式Aは実証済みではありません。`p0-08`と[`p0-09`](../verification/judge-adapter/results/2026-08-12-p0-09.md)では可視専用ブラウザのログイン時にCloudflare検証が失敗しました。[`p0-10`](../verification/judge-adapter/results/2026-08-12-p0-10.md)で、現行ヘルパー相当では`navigator.webdriver: true`となり、CDPなしの通常ChromeはCloudflare公式互換性チェッカーへ合格することを確認しました。したがって現在のCDP境界では`V-10`を満たせません。通常ブラウザ状態を維持した新しい境界で、ログイン、必要Cookieだけの取り込み、同一アカウント確認、後始末を実証するまで、MVP実装開始条件を満たしたと扱いません。
 
 ## 1. 認証の責任分担
 
@@ -76,7 +76,7 @@ CoreとCLIは生のCookie値を受け取りません。`AtCoderSessionProvider`�
 1. 利用者が認証設定を明示的に開始します。`submit`の途中でブラウザを暗黙に起動しません。
 2. AlgoLoomは可視のブラウザを、空の専用プロファイルで起動します。
 3. 利用者がブラウザ上でAtCoderのユーザー名・パスワードを入力し、必要なTurnstile操作を手動で完了します。
-4. 利用者が認証結果の取り込みを明示すると、ローカルヘルパーがChrome DevTools Protocol等のブラウザ公式境界から`REVEL_SESSION`だけを読み取ります。
+4. 利用者が認証結果の取り込みを明示すると、ローカルヘルパーが再設計後の許可された境界から`REVEL_SESSION`だけを読み取ります。この境界は未確定であり、Cloudflare保護ページをリモート制御状態にするCDPは使用しません。
 5. `JudgeAdapter`が同じセッションでアカウント識別情報を確認します。
 6. 期待するアカウントと一致した場合だけOSの秘密情報保管庫へ保存し、専用ブラウザと一時プロファイルを終了・削除します。
 
@@ -84,8 +84,9 @@ CoreとCLIは生のCookie値を受け取りません。`AtCoderSessionProvider`�
 
 - 利用者の既存ブラウザプロファイル、履歴、保存パスワード、拡張機能、他サイトのCookieを探索または複製しません。
 - 非標準の専用`user-data-dir`を使用し、認証ヘルパーの子プロセスとして起動します。
-- ローカル外から接続できるデバッグポートを開きません。対応できる場合はpipeを使い、接続能力を認証ヘルパーのプロセスへ限定します。
+- Cloudflare保護ページの表示と操作中にCDP、WebDriver、リモートデバッグのpipeまたはportを使用しません。ローカル限定でも`navigator.webdriver`が真になる経路は不適合です。
 - ヘッドレス化、ブラウザ指紋の偽装、stealth設定、Turnstileのクリック自動化を行いません。
+- `navigator.webdriver`を隠すフラグやスクリプト、AutomationControlledの無効化、ユーザーエージェント偽装を行いません。
 - 可視ブラウザで利用者が操作してもAtCoderまたはCloudflareから拒否される場合があります。その場合は自動化検知を回避せず、方式Aを不合格として停止します。
 - タイムアウト、利用者によるウィンドウ終了、ヘルパー異常終了を通常の中断状態として扱い、孤児プロセスと一時プロファイルを残さないようにします。
 
@@ -176,6 +177,8 @@ AtCoderが`Set-Cookie`を返した場合は、HTTPクライアントのCookie ja
 
 - ユーザー名・パスワードをAlgoLoomへ入力または保存する方式
 - フォームPOST、Selenium等による無人ログイン
+- Cloudflare保護ページを`--remote-debugging-pipe`、リモートデバッグport、CDP、WebDriverで制御する方式
+- `navigator.webdriver`や他の自動化信号を隠蔽する方式
 - CAPTCHA・Turnstileの自動突破または回避
 - 利用者の既存ブラウザプロファイルからのCookie探索
 - 他人のCookie、共有セッション、クラウド経由のセッション受け渡し
@@ -191,3 +194,6 @@ AtCoderが`Set-Cookie`を返した場合は、HTTPクライアントのCookie ja
 - [Chrome DevTools Protocol: Storage.getCookies](https://chromedevtools.github.io/devtools-protocol/tot/Storage/#method-getCookies)
 - [Chromeのリモートデバッグに関する変更](https://developer.chrome.com/blog/remote-debugging-port)
 - [Cloudflare Turnstileの自動テストに関する説明](https://developers.cloudflare.com/turnstile/troubleshooting/testing/)
+- [Cloudflare Challenge solve issues](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/)
+- [Cloudflareの対応ブラウザ](https://developers.cloudflare.com/cloudflare-challenges/reference/supported-browsers/)
+- [W3C WebDriver: `navigator.webdriver`](https://www.w3.org/TR/webdriver1/#interface)
