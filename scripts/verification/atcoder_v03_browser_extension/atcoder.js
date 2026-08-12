@@ -253,7 +253,7 @@
     if (sourceWrappers.length !== 1) throw new Error("source_wrapper_not_unique");
     if (wrappers.length !== 1) throw new Error("language_wrapper_not_unique");
     const sourceFields = document.querySelectorAll(
-      'textarea#plain-textarea.plain-textarea[name="sourceCode"]',
+      'textarea#plain-textarea[name="sourceCode"]',
     );
     const editorElements = document.querySelectorAll("#editor");
     const editorToggles = document.querySelectorAll(".btn-toggle-editor");
@@ -262,9 +262,9 @@
     if (editorToggles.length !== 1) throw new Error("source_editor_toggle_not_unique");
     if (
       !form.contains(sourceWrappers[0]) ||
-      !sourceWrappers[0].contains(sourceFields[0]) ||
-      !sourceWrappers[0].contains(editorElements[0]) ||
-      !sourceWrappers[0].contains(editorToggles[0])
+      !form.contains(sourceFields[0]) ||
+      !form.contains(editorElements[0]) ||
+      !form.contains(editorToggles[0])
     ) {
       throw new Error("source_editor_structure_changed");
     }

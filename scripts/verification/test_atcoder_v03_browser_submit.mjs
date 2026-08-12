@@ -138,6 +138,22 @@ test("requires the visible plain editor and rechecks serialized source before se
   assert.match(SOURCE_GUARD_SOURCE, /new FormData\(value\)/);
   assert.match(SOURCE_GUARD_SOURCE, /classList\.contains\("active"\)/);
   assert.match(CONTENT_SOURCE, /document\.querySelectorAll\("\.btn-toggle-editor"\)/);
+  assert.match(
+    CONTENT_SOURCE,
+    /textarea#plain-textarea\[name=\\?"sourceCode\\?"\]/,
+  );
+  assert.doesNotMatch(
+    CONTENT_SOURCE,
+    /textarea#plain-textarea\.plain-textarea/,
+  );
+  assert.match(CONTENT_SOURCE, /!form\.contains\(sourceWrappers\[0\]\)/);
+  assert.match(CONTENT_SOURCE, /!form\.contains\(sourceFields\[0\]\)/);
+  assert.match(CONTENT_SOURCE, /!form\.contains\(editorElements\[0\]\)/);
+  assert.match(CONTENT_SOURCE, /!form\.contains\(editorToggles\[0\]\)/);
+  assert.doesNotMatch(
+    CONTENT_SOURCE,
+    /sourceWrappers\[0\]\.contains\((?:sourceFields|editorElements|editorToggles)/,
+  );
   assert.match(CONTENT_SOURCE, /return "source_not_synchronized"/);
   assert.ok(
     CONTENT_SOURCE.indexOf("const failure = preparationFailure()") <

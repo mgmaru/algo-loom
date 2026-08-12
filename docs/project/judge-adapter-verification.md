@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる`V-02`は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、`V-05`は[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)で合格。[`p0-10`](../verification/judge-adapter/results/2026-08-12-p0-10.md)で`--remote-debugging-pipe`方式をCloudflare非互換とし、[`p0-11`](../verification/judge-adapter/results/2026-08-12-p0-11.md)で通常ChromeのV-03経路を作成。[`p0-14`](../verification/judge-adapter/results/2026-08-12-p0-14.md)ではCDPなしでCloudflare互換性、本人アカウント、フォーム、CPython、明示承認まで成立したが、フォーム`submit`イベント後にソース空欄が報告され、結果ページ・提出IDを取得できなかった。[`p0-15`](../verification/judge-adapter/results/2026-08-12-p0-15.md)でAceと非表示の送信用欄の同期不備を原因と特定し、検証支援コードを修正。追加提出は行っておらず、`V-03`は送信状態不明の未合格、`V-04`は未実施、再設計後の`V-10`は未合格）
+> 状態: 検証計画（方式Cによる`V-02`は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、`V-05`は[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)で合格。[`p0-10`](../verification/judge-adapter/results/2026-08-12-p0-10.md)で`--remote-debugging-pipe`方式をCloudflare非互換とし、[`p0-11`](../verification/judge-adapter/results/2026-08-12-p0-11.md)で通常ChromeのV-03経路を作成。[`p0-15`](../verification/judge-adapter/results/2026-08-12-p0-15.md)でAceと送信用欄の同期不備を修正し、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)で現行DOMに合わせた過剰な構造条件の修正後、人による1件の提出が受理されAtCoder発行の提出IDを取得したため`V-03`は合格。`V-04`は未実施、再設計後の`V-10`は未合格）
 >
 > 作成日: 2026年8月10日
 >
