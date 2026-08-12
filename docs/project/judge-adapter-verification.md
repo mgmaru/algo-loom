@@ -2,7 +2,7 @@
 
 > 対象: MVPの実装を開始する前に確認する、現在のAtCoderに対する`JudgeAdapter`の技術的成立性
 >
-> 状態: 検証計画（方式Cによる`V-02`は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、`V-05`は[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)で合格。[`p0-10`](../verification/judge-adapter/results/2026-08-12-p0-10.md)で`--remote-debugging-pipe`方式をCloudflare非互換とし、[`p0-11`](../verification/judge-adapter/results/2026-08-12-p0-11.md)で通常ChromeのV-03経路を作成。[`p0-15`](../verification/judge-adapter/results/2026-08-12-p0-15.md)でAceと送信用欄の同期不備を修正し、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)で現行DOMに合わせた過剰な構造条件の修正後、人による1件の提出が受理されAtCoder発行の提出IDを取得したため`V-03`は合格。[`p0-17`](../verification/judge-adapter/results/2026-08-12-p0-17.md)では同じ提出IDの最終判定を時刻付きで取得したが判定待ちを観測できず、`V-04`は一部観測の未合格。再設計後の`V-10`も未合格）
+> 状態: 検証計画（方式Cによる`V-02`は[`p0-04`](../verification/judge-adapter/results/2026-08-11-p0-04.md)、`V-05`は[`p0-07`](../verification/judge-adapter/results/2026-08-12-p0-07.md)で合格。[`p0-10`](../verification/judge-adapter/results/2026-08-12-p0-10.md)で`--remote-debugging-pipe`方式をCloudflare非互換とし、[`p0-11`](../verification/judge-adapter/results/2026-08-12-p0-11.md)で通常ChromeのV-03経路を作成。[`p0-15`](../verification/judge-adapter/results/2026-08-12-p0-15.md)でAceと送信用欄の同期不備を修正し、[`p0-16`](../verification/judge-adapter/results/2026-08-12-p0-16.md)で現行DOMに合わせた過剰な構造条件の修正後、人による1件の提出が受理されAtCoder発行の提出IDを取得したため`V-03`は合格。[`p0-17`](../verification/judge-adapter/results/2026-08-12-p0-17.md)では同じ提出IDの最終判定を時刻付きで取得したが判定待ちを観測できず、`V-04`は一部観測の未合格。[`p0-18`](../verification/judge-adapter/results/2026-08-12-p0-18.md)でGoogle Chrome固定の自己検証導線へ修正したが、実サービス証拠と合否は変更していない。再設計後の`V-10`も未合格）
 >
 > 作成日: 2026年8月10日
 >

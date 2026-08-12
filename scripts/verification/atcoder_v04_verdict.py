@@ -39,9 +39,13 @@ import atcoder_v03_submit as v03
 
 HOST = "atcoder.jp"
 SETTINGS_PATH = "/settings"
+SETTINGS_URL = "https://atcoder.jp/settings"
 STATUS_PATH_TEMPLATE = "/contests/{contest_id}/submissions/me/status/json"
 SUBMISSION_ALIAS = "submission-A"
 STATE_PURPOSE = "temporary-state-for-V-04-and-V-06"
+STATE_DISCOVERY_ROOT = Path("/private/tmp")
+STATE_DISCOVERY_PATTERN = "algoloom-v03-*/v03-browser-state-*.json"
+GOOGLE_CHROME_APPLICATION = "Google Chrome"
 MAX_STATE_BYTES = 4096
 MAX_RESPONSE_BYTES = 256 * 1024
 MAX_STATUS_HTML_CHARACTERS = 32 * 1024
@@ -138,6 +142,30 @@ def validate_input_state_path(path: Path) -> Tuple[Optional[Path], Optional[str]
     return resolved, None
 
 
+def discover_temporary_state_path(
+    root: Path = STATE_DISCOVERY_ROOT,
+) -> Tuple[Optional[Path], Optional[str]]:
+    candidates = []  # type: List[Path]
+    try:
+        paths = list(root.glob(STATE_DISCOVERY_PATTERN))
+    except OSError:
+        return None, "state discovery root cannot be inspected"
+    for path in paths:
+        if path.is_symlink():
+            continue
+        state, reason = read_temporary_state(path)
+        if state is None or reason is not None:
+            continue
+        resolved = path.resolve(strict=True)
+        if resolved not in candidates:
+            candidates.append(resolved)
+    if not candidates:
+        return None, "no valid V-03 temporary state was discovered"
+    if len(candidates) != 1:
+        return None, "multiple valid V-03 temporary states were discovered"
+    return candidates[0], None
+
+
 def validate_output_path(path: Path) -> Tuple[Optional[Path], Optional[str]]:
     if not path.is_absolute():
         return None, "output path must be absolute"
@@ -157,6 +185,11 @@ def validate_output_path(path: Path) -> Tuple[Optional[Path], Optional[str]]:
     if resolved.exists():
         return None, "output path already exists"
     return resolved, None
+
+
+def default_output_path(state_path: Path) -> Path:
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    return state_path.parent / ("v04-guided-result-" + timestamp + ".json")
 
 
 def read_temporary_state(path: Path) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
@@ -492,6 +525,7 @@ def build_result(
     account_observation: Dict[str, Any],
     status_observations: List[Dict[str, Any]],
     waits_ms: List[int],
+    browser_setup: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     pending_observations = [
         item for item in status_observations if item.get("classification") == "pending"
@@ -573,6 +607,11 @@ def build_result(
             "request_timeout_ms": int(REQUEST_TIMEOUT_SECONDS * 1000),
             "max_response_bytes": MAX_RESPONSE_BYTES,
         },
+        "browser_setup": browser_setup or {
+            "workflow": "not_recorded",
+            "browser_cookie_database_read_by_helper": False,
+            "devtools_console_command_required": False,
+        },
         "account_observation": account_observation,
         "status_observations": status_observations,
         "waits_ms": waits_ms,
@@ -628,17 +667,93 @@ def safe_account_observation(observation: Dict[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in observation.items() if key in allowed}
 
 
+def chrome_guidance_text() -> str:
+    return "\n".join(
+        [
+            "使用するブラウザはGoogle Chromeです。Safariは使用しません。",
+            "V-03の空の専用Chromeプロファイルは終了時に削除済みです。",
+            "V-04の方式Cでは、普段使う通常のGoogle Chromeプロファイルを使います。",
+            "",
+            "手順1: スクリプトがGoogle Chromeで次を開きます。",
+            "  https://atcoder.jp/settings",
+            "- ログイン画面が出た場合: Chrome上で本人が通常どおりログインし、",
+            "  必要なTurnstileも本人が操作してから/settingsへ戻ります。",
+            "- /settingsが出た場合: 画面上のアカウントが期待する本人か確認します。",
+            "- 別アカウントならChromeのプロファイルまたはアカウントを切り替えます。",
+            "",
+            "手順2: 同じChromeウインドウでCookieのValue列だけをコピーします。",
+            "1. ⌥⌘Iを押してChrome DevToolsを開く。",
+            "2. DevTools上部のApplicationを開く。見えなければ >> から選ぶ。",
+            "3. 左側のStorage > Cookies > https://atcoder.jpを開く。",
+            "4. Name=REVEL_SESSION、Domain=atcoder.jp、Path=/の行が1件か確認する。",
+            "5. その行のValueセルだけをコピーする。REVEL_SESSION=は含めない。",
+            "6. 次の非表示入力ダイアログへ貼り付ける。",
+            "",
+            "ブラウザのConsoleではコマンドやJavaScriptを一切実行しません。",
+            "スクリプトはChromeのCookie DBやクリップボードを自動読取しません。",
+        ]
+    )
+
+
+def launch_google_chrome_settings() -> Tuple[Dict[str, Any], Optional[str]]:
+    observation = {
+        "workflow": "guided-google-chrome-method-C",
+        "required_browser": GOOGLE_CHROME_APPLICATION,
+        "browser_profile_kind": "normal-user-profile",
+        "settings_url": SETTINGS_URL,
+        "settings_url_launch_requested": True,
+        "settings_url_launch_succeeded": False,
+        "login_state_confirmed_by_user": False,
+        "cookie_row_confirmed_by_user": False,
+        "browser_cookie_database_read_by_helper": False,
+        "clipboard_read_by_helper": False,
+        "devtools_console_command_required": False,
+        "browser_closed_by_helper": False,
+    }  # type: Dict[str, Any]
+    try:
+        completed = subprocess.run(
+            [
+                "/usr/bin/open",
+                "-a",
+                GOOGLE_CHROME_APPLICATION,
+                SETTINGS_URL,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return observation, "google_chrome_launch_failed"
+    if completed.returncode != 0:
+        return observation, "google_chrome_launch_failed"
+    observation["settings_url_launch_succeeded"] = True
+    return observation, None
+
+
 def read_confirmation(
-    prompt: str, expected: str, *, macos_gui_input: bool
+    prompt: str,
+    expected: str,
+    *,
+    macos_gui_input: bool,
+    title: str = "AlgoLoom V-04",
+    confirm_label: str = "Confirm",
 ) -> bool:
     if not macos_gui_input:
         return input(prompt).strip() == expected
     escaped_prompt = prompt.replace("\\", "\\\\").replace('"', '\\"')
+    escaped_title = title.replace("\\", "\\\\").replace('"', '\\"')
+    escaped_label = confirm_label.replace("\\", "\\\\").replace('"', '\\"')
     apple_script = (
         'display dialog "'
         + escaped_prompt
-        + '" buttons {"Cancel", "Confirm"} '
-        + 'default button "Confirm" cancel button "Cancel"'
+        + '" with title "'
+        + escaped_title
+        + '" buttons {"Cancel", "'
+        + escaped_label
+        + '"} default button "'
+        + escaped_label
+        + '" cancel button "Cancel"'
     )
     try:
         completed = subprocess.run(
@@ -653,13 +768,21 @@ def read_confirmation(
     return completed.returncode == 0
 
 
-def read_hidden_value(prompt: str, *, macos_gui_input: bool) -> Optional[str]:
+def read_hidden_value(
+    prompt: str,
+    *,
+    macos_gui_input: bool,
+    title: str = "AlgoLoom V-04",
+) -> Optional[str]:
     if not macos_gui_input:
         return getpass.getpass(prompt)
     escaped_prompt = prompt.replace("\\", "\\\\").replace('"', '\\"')
+    escaped_title = title.replace("\\", "\\\\").replace('"', '\\"')
     apple_script = (
         'text returned of (display dialog "'
         + escaped_prompt
+        + '" with title "'
+        + escaped_title
         + '" default answer "" with hidden answer '
         + 'buttons {"Cancel", "OK"} default button "OK" cancel button "Cancel")'
     )
@@ -678,11 +801,14 @@ def read_hidden_value(prompt: str, *, macos_gui_input: bool) -> Optional[str]:
     return completed.stdout.rstrip("\r\n")
 
 
-def read_cookie_value(*, macos_gui_input: bool) -> Optional[str]:
+def read_cookie_value(
+    *, macos_gui_input: bool, title: str = "AlgoLoom V-04"
+) -> Optional[str]:
     for _ in range(3):
         value = read_hidden_value(
             "REVEL_SESSIONのValue列だけを入力してください。値は表示・保存されません。",
             macos_gui_input=macos_gui_input,
+            title=title,
         )
         if value is None:
             return None
@@ -699,79 +825,163 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="AtCoder JudgeAdapter V-04の判定状態を安全に観測します。"
     )
-    parser.add_argument(
+    state_group = parser.add_mutually_exclusive_group(required=True)
+    state_group.add_argument(
         "--state",
-        required=True,
         type=Path,
         help="V-03が作成した所有者専用一時状態ファイル。",
     )
+    state_group.add_argument(
+        "--discover-state",
+        action="store_true",
+        help="/private/tmp内から所有者専用のV-03一時状態を1件だけ検出します。",
+    )
     parser.add_argument(
         "--json-output",
-        required=True,
         type=Path,
-        help="匿名化済み結果の未作成パス。リポジトリ外だけを許可します。",
+        help=(
+            "匿名化済み結果の未作成パス。省略時はV-03一時状態と同じ"
+            "所有者専用ディレクトリへ自動作成します。"
+        ),
+    )
+    parser.add_argument(
+        "--guided-chrome",
+        action="store_true",
+        help=(
+            "macOSのGoogle Chromeを明示起動し、ログイン確認、DevTools、"
+            "秘密入力を段階的に案内します。"
+        ),
     )
     parser.add_argument(
         "--macos-gui-input",
+        dest="guided_chrome",
         action="store_true",
-        help="秘密入力だけをmacOSの非表示ダイアログで受け取ります。",
+        help=argparse.SUPPRESS,
     )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    if args.macos_gui_input and platform.system() != "Darwin":
-        print("macOS以外ではGUI秘密入力を使用できません。", file=sys.stderr)
+    if args.guided_chrome and platform.system() != "Darwin":
+        print("macOS以外ではGoogle Chromeガイドを使用できません。", file=sys.stderr)
         return 64
-    if not args.macos_gui_input and not sys.stdin.isatty():
+    if not args.guided_chrome and not sys.stdin.isatty():
         print(
             "対話ターミナルではないため、秘密情報の非表示入力を保証できません。",
             file=sys.stderr,
         )
         return 64
-    state, state_error = read_temporary_state(args.state)
+    if args.discover_state:
+        state_path, state_path_error = discover_temporary_state_path()
+        if state_path is None:
+            print("一時状態を検出できません:", state_path_error, file=sys.stderr)
+            print("--stateで対象ファイルを明示してください。", file=sys.stderr)
+            return 64
+        state_selection = "auto-discovered-single-owner-only-state"
+    else:
+        state_path = args.state
+        state_selection = "explicit-owner-only-state"
+    state, state_error = read_temporary_state(state_path)
     if state is None:
         print("一時状態を受理できません:", state_error, file=sys.stderr)
         return 64
-    _, output_error = validate_output_path(args.json_output)
+    output_path = args.json_output or default_output_path(state_path)
+    _, output_error = validate_output_path(output_path)
     if output_error is not None:
         print("JSON保存先を受理できません:", output_error, file=sys.stderr)
         return 64
 
     started_at = utc_now()
+    browser_setup = {
+        "workflow": "manual-browser-not-launched-by-helper",
+        "required_browser": None,
+        "browser_profile_kind": "user-confirmed-session",
+        "settings_url": SETTINGS_URL,
+        "settings_url_launch_requested": False,
+        "settings_url_launch_succeeded": False,
+        "login_state_confirmed_by_user": False,
+        "cookie_row_confirmed_by_user": False,
+        "browser_cookie_database_read_by_helper": False,
+        "clipboard_read_by_helper": False,
+        "devtools_console_command_required": False,
+        "browser_closed_by_helper": False,
+        "state_selection": state_selection,
+    }  # type: Dict[str, Any]
     print("\nAlgoLoom V-04 判定確認・読み取り専用検証")
     print("対象はV-03のsubmission-Aだけです。実際の提出IDは表示・保存しません。")
     print("POST、追加提出、ページ列の走査、自動再試行は行いません。")
-    print("\n先に通常のブラウザで次を実施してください。")
-    print("1. https://atcoder.jp/settings を再読み込みする。")
-    print("2. ログイン画面へ移動せず、期待する本人アカウントだと確認する。")
-    print("3. atcoder.jp、Path=/のREVEL_SESSIONを1件だけ選ぶ。")
-    print("4. その行のValue列だけをコピーする。")
-    if not read_confirmation(
-        "通常のブラウザでsettingsを再読み込みし、本人アカウントであることと、"
-        "atcoder.jp・Path=/のREVEL_SESSIONが1件であることを確認してください。"
-        "確認できた場合だけ続行します。",
-        "CONFIRMED",
-        macos_gui_input=args.macos_gui_input,
-    ):
-        print("確認されなかったため、外部通信なしで中止しました。")
-        return 2
+    print("ブラウザのConsoleで実行するコマンドやJavaScriptはありません。")
+    if args.guided_chrome:
+        launched_setup, launch_error = launch_google_chrome_settings()
+        launched_setup["state_selection"] = state_selection
+        browser_setup = launched_setup
+        if launch_error is not None:
+            print("Google Chromeを起動できませんでした:", launch_error, file=sys.stderr)
+            print("Safariや他のブラウザへ自動で切り替えません。", file=sys.stderr)
+            return 2
+        print("\nGoogle Chromeで/settingsを明示的に開きました。")
+        print(chrome_guidance_text())
+        if not read_confirmation(
+            "Google Chromeの/settingsを確認してください。ログイン画面なら本人が"
+            "通常どおりログインし、/settingsへ戻って期待する本人アカウントが"
+            "表示された後だけ『Chromeログイン確認済み』を押してください。",
+            "CHROME LOGIN CONFIRMED",
+            macos_gui_input=True,
+            title="AlgoLoom V-04: 手順1/4 Chromeログイン",
+            confirm_label="Chromeログイン確認済み",
+        ):
+            print("Chromeのログイン状態が確認されなかったため停止しました。")
+            return 2
+        browser_setup["login_state_confirmed_by_user"] = True
+        if not read_confirmation(
+            "同じGoogle Chromeで⌥⌘Iを押し、Application > Storage > Cookies > "
+            "https://atcoder.jpを開いてください。Name=REVEL_SESSION、"
+            "Domain=atcoder.jp、Path=/の行が1件であることを確認し、Valueセル"
+            "だけをコピーしてください。Consoleには何も入力しません。コピー後だけ"
+            "『CookieのValueをコピー済み』を押してください。",
+            "COOKIE VALUE COPIED",
+            macos_gui_input=True,
+            title="AlgoLoom V-04: 手順2/4 Cookie確認",
+            confirm_label="CookieのValueをコピー済み",
+        ):
+            print("ChromeのCookie対象行が確認されなかったため停止しました。")
+            return 2
+        browser_setup["cookie_row_confirmed_by_user"] = True
+    else:
+        print("\nこの入口はブラウザを起動しません。")
+        print("macOSで自己検証する場合は--guided-chromeを使用してください。")
+        print("通常ブラウザで/settingsへログイン済みであることと、")
+        print("REVEL_SESSIONの対象行を確認してから続行します。")
+        if not read_confirmation(
+            "通常ブラウザの/settingsで本人アカウントと、atcoder.jp・Path=/の"
+            "REVEL_SESSIONが1件であることを確認した場合だけCONFIRMEDと入力: ",
+            "CONFIRMED",
+            macos_gui_input=False,
+        ):
+            print("確認されなかったため、検証支援コードのHTTP通信なしで停止しました。")
+            return 2
+        browser_setup["login_state_confirmed_by_user"] = True
+        browser_setup["cookie_row_confirmed_by_user"] = True
 
+    cookie_value = read_cookie_value(
+        macos_gui_input=args.guided_chrome,
+        title="AlgoLoom V-04: 手順3/4 Cookie貼り付け",
+    )
+    if cookie_value is None:
+        print("Cookie入力を受理できないため、外部通信なしで中止しました。")
+        return 2
     expected_identity = read_hidden_value(
         "期待するAtCoderアカウント名を入力してください。値は表示・保存されません。",
-        macos_gui_input=args.macos_gui_input,
+        macos_gui_input=args.guided_chrome,
+        title="AlgoLoom V-04: 手順4/4 アカウント名",
     )
     if (
         expected_identity is None
         or v02.ACCOUNT_PATTERN.fullmatch(expected_identity) is None
     ):
+        cookie_value = None
         print("アカウント名の形式を受理できないため、外部通信なしで中止しました。")
-        return 2
-    cookie_value = read_cookie_value(macos_gui_input=args.macos_gui_input)
-    if cookie_value is None:
-        expected_identity = ""
-        print("Cookie入力を受理できないため、外部通信なしで中止しました。")
         return 2
 
     print("\n送信予定:")
@@ -784,7 +994,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "最大10回送ります。POST・追加提出・自動再試行はありません。"
         "V-04を実行しますか。",
         "RUN V-04",
-        macos_gui_input=args.macos_gui_input,
+        macos_gui_input=args.guided_chrome,
+        title="AlgoLoom V-04: 通信確認",
+        confirm_label="読み取り専用GETを実行",
     ):
         cookie_value = None
         expected_identity = ""
@@ -806,10 +1018,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     safe_account = safe_account_observation(account_observation)
     if account_class != "ready" or cookie_value is None:
         cookie_value = None
-        result = build_result(started_at, state, safe_account, [], [])
-        write_json_exclusive(args.json_output, result)
+        result = build_result(
+            started_at, state, safe_account, [], [], browser_setup
+        )
+        write_json_exclusive(output_path, result)
         print("本人アカウントを確認できないため、判定GETを送らず停止しました。")
-        print("匿名化済みJSONを指定先へ保存しました。")
+        print("匿名化済みJSONを保存しました:", output_path)
         return 1
 
     waits_ms = [wait_for_interval(settings_result.finished_monotonic, None)]
@@ -841,8 +1055,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         safe_account,
         observations,
         waits_ms,
+        browser_setup,
     )
-    write_json_exclusive(args.json_output, result)
+    write_json_exclusive(output_path, result)
     print("\n観測結果:")
     print("  アカウント照合: 一致")
     print("  判定GET回数:", len(observations))
@@ -852,7 +1067,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("  V-04:", result["v04"])
     if result["completion"] == "final_observed_pending_not_observed":
         print("  判定待ちは実サービスで観測していないため、V-04合格にはしません。")
-    print("匿名化済みJSONを指定先へ保存しました。")
+    print("匿名化済みJSONを保存しました:", output_path)
     print("Cookie、アカウント名、実際の提出ID、生応答は保存していません。")
     return 0 if result["v04"] == "pass" else 1
 

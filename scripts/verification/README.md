@@ -135,26 +135,38 @@ node --test scripts/verification/test_atcoder_v03_browser_submit.mjs
 
 V-03が作成した所有者専用一時状態から実際の提出IDを読み、方式Cで本人アカウントを再確認した後、そのID1件だけの判定を時刻付きで観測します。結果JSONには`submission-A`だけを記録し、実際の提出ID、Cookie、アカウント名、生ヘッダー、生HTML、生JSONは保存しません。
 
-所有者だけがアクセスできるリポジトリ外のディレクトリで、V-03の一時状態と未作成の結果パスを指定します。
+macOSでの自己検証には、リポジトリルートの**ターミナル**で次の1コマンドを実行します。ブラウザのConsoleで実行するコマンドやJavaScriptはありません。
 
 ```console
 python3 scripts/verification/atcoder_v04_verdict.py \
-  --state /absolute/owner-only/path/v03-state.json \
-  --json-output /absolute/owner-only/path/v04-result.json
+  --discover-state \
+  --guided-chrome
 ```
 
-macOSでは、確認文以外の秘密入力をターミナル出力へ出さないダイアログで受け取れます。値は引数、環境変数、ファイルへ渡しません。
+この入口は`/usr/bin/open -a "Google Chrome" https://atcoder.jp/settings`相当でGoogle Chromeを明示起動し、既定ブラウザやSafariへ切り替えません。V-03で使った空の専用Chromeプロファイルは終了時に削除済みのため、V-04の方式Cでは通常のGoogle Chromeプロファイルを使います。Chromeが既に起動中なら、開いた`/settings`が期待する本人アカウントか必ず画面で確認します。
+
+Chromeでは次の順に操作します。
+
+1. `/settings`がログイン画面なら、本人が通常どおりログインし、表示された場合はTurnstileも本人が操作してから`/settings`へ戻る。既に設定画面なら再ログインせず、表示アカウントだけを確認する。別アカウントならChromeプロファイルまたはAtCoderアカウントを切り替える。
+2. 同じChromeウインドウで`⌥⌘I`を押し、DevToolsの`Application`を開く。タブが見えなければ`>>`から選ぶ。
+3. `Storage > Cookies > https://atcoder.jp`を開き、`Name=REVEL_SESSION`、`Domain=atcoder.jp`、`Path=/`の行が1件だけであることを確認する。
+4. その行の`Value`セルだけをコピーする。`REVEL_SESSION=`は含めず、続く非表示ダイアログへ貼り付ける。
+5. 期待アカウント名を非表示ダイアログへ入力し、最後の「読み取り専用GETを実行」を押す。
+
+スクリプトはChromeのCookieデータベースとクリップボードを自動で読みません。また、通常のChromeを閉じたり、プロファイルを削除したりしません。Cookie値と期待アカウント名は引数、環境変数、結果ファイルへ渡さず、非表示ダイアログの入力として当該プロセスだけが保持します。
+
+`--discover-state`は`/private/tmp/algoloom-v03-*/v03-browser-state-*.json`のうち、所有者と権限を検査できた状態が1件だけの場合に限り選択します。0件または複数件なら外部通信前に停止するため、対象を次のように絶対パスで明示します。`--json-output`を省略すると、匿名化済み結果を状態ファイルと同じ所有者専用ディレクトリへ新規作成します。
 
 ```console
 python3 scripts/verification/atcoder_v04_verdict.py \
   --state /absolute/owner-only/path/v03-state.json \
-  --json-output /absolute/owner-only/path/v04-result.json \
-  --macos-gui-input
+  --guided-chrome
 ```
 
 実行時の境界は次のとおりです。
 
 - V-03の一時状態を、リポジトリ外、所有者専用、固定スキーマ、最大4 KiBとして検査する。
+- `--guided-chrome`ではGoogle Chromeと`/settings`を明示し、ログイン要否、本人アカウント、Cookie対象行を別々のダイアログで確認する。Safariへのfallback、Cookie DB・クリップボードの自動読取、Consoleでのコマンド実行は行わない。
 - `REVEL_SESSION`と期待アカウント名を非表示の対話入力だけで受け取り、`/settings`で本人との一致を確認する。
 - AtCoder公式`contest.js`が使用する判定状態経路へ`sids[]`を1件だけ渡し、提出一覧と他の提出IDを走査しない。
 - 対象ID付きの`waiting-judge`だけを`VERDICT_PENDING`、許可リスト内で一意な判定コードだけを`FINAL`として扱う。
@@ -170,7 +182,7 @@ python3 -m unittest discover \
   -p 'test_atcoder_v04_verdict.py'
 ```
 
-`p0-17`では、同じ提出IDの最終判定を取得時刻付きで観測しましたが、V-04開始時には判定待ちが終了していました。ローカルテストや現在のコードを、未観測の判定待ちの実サービス証拠にはしません。
+`p0-17`では、同じ提出IDの最終判定を取得時刻付きで観測しましたが、V-04開始時には判定待ちが終了していました。`p0-18`では曖昧だったブラウザと手動操作の導線だけを上記のGoogle Chrome固定フローへ修正しました。既存の`submission-A`を再確認しても過去の判定待ちは復元できないため、ローカルテストや現在のコードを未観測の判定待ちの実サービス証拠にはせず、`V-04`は未合格のままです。
 
 ## `atcoder_v03_turnstile_probe.mjs`
 

@@ -53,6 +53,40 @@ class TemporaryStateTest(unittest.TestCase):
         self.assertIsNone(value)
         self.assertEqual(reason, "state submission ID is invalid")
 
+    def test_discovers_exactly_one_owner_only_v03_browser_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run_directory = root / "algoloom-v03-one"
+            run_directory.mkdir(mode=0o700)
+            path = run_directory / "v03-browser-state-1.json"
+            path.write_text(json.dumps(temporary_state()), encoding="utf-8")
+            path.chmod(0o600)
+            discovered, reason = target.discover_temporary_state_path(root)
+        self.assertIsNone(reason)
+        self.assertEqual(discovered, path.resolve())
+
+    def test_rejects_ambiguous_state_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for index in (1, 2):
+                run_directory = root / f"algoloom-v03-{index}"
+                run_directory.mkdir(mode=0o700)
+                path = run_directory / f"v03-browser-state-{index}.json"
+                path.write_text(json.dumps(temporary_state()), encoding="utf-8")
+                path.chmod(0o600)
+            discovered, reason = target.discover_temporary_state_path(root)
+        self.assertIsNone(discovered)
+        self.assertEqual(
+            reason, "multiple valid V-03 temporary states were discovered"
+        )
+
+    def test_default_output_stays_with_owner_only_state(self) -> None:
+        state_path = Path("/private/tmp/example/state.json")
+        output_path = target.default_output_path(state_path)
+        self.assertEqual(output_path.parent, state_path.parent)
+        self.assertTrue(output_path.name.startswith("v04-guided-result-"))
+        self.assertEqual(output_path.suffix, ".json")
+
 
 class StatusPayloadTest(unittest.TestCase):
     def test_classifies_pending_for_exact_submission(self) -> None:
@@ -266,6 +300,117 @@ class EntryPointSafetyTest(unittest.TestCase):
             )
         self.assertTrue(confirmed)
         self.assertEqual(run.call_args.args[0][0], "/usr/bin/osascript")
+
+    def test_guidance_names_chrome_login_devtools_and_no_console_command(self) -> None:
+        guidance = target.chrome_guidance_text()
+        for expected in (
+            "Google Chrome",
+            "Safariは使用しません",
+            "通常のGoogle Chromeプロファイル",
+            "ログイン画面が出た場合",
+            "⌥⌘I",
+            "Application",
+            "Storage > Cookies",
+            "REVEL_SESSION",
+            "ConsoleではコマンドやJavaScriptを一切実行しません",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, guidance)
+
+    def test_launches_settings_with_google_chrome_and_never_safari(self) -> None:
+        completed = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(target.subprocess, "run", return_value=completed) as run:
+            observation, reason = target.launch_google_chrome_settings()
+        self.assertIsNone(reason)
+        arguments = run.call_args.args[0]
+        self.assertEqual(arguments, [
+            "/usr/bin/open",
+            "-a",
+            "Google Chrome",
+            "https://atcoder.jp/settings",
+        ])
+        self.assertNotIn("Safari", arguments)
+        self.assertNotIn("--remote-debugging-pipe", arguments)
+        self.assertTrue(observation["settings_url_launch_succeeded"])
+        self.assertEqual(observation["browser_profile_kind"], "normal-user-profile")
+        self.assertFalse(observation["browser_cookie_database_read_by_helper"])
+
+    def test_recommended_args_need_no_state_or_output_path(self) -> None:
+        args = target.parse_args(["--discover-state", "--guided-chrome"])
+        self.assertTrue(args.discover_state)
+        self.assertTrue(args.guided_chrome)
+        self.assertIsNone(args.state)
+        self.assertIsNone(args.json_output)
+
+    def test_guided_chrome_launch_failure_stops_before_http_client(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            root.chmod(0o700)
+            state_path = root / "state.json"
+            state_path.write_text(json.dumps(temporary_state()), encoding="utf-8")
+            state_path.chmod(0o600)
+            with mock.patch.object(target.platform, "system", return_value="Darwin"):
+                with mock.patch.object(
+                    target,
+                    "launch_google_chrome_settings",
+                    return_value=({}, "google_chrome_launch_failed"),
+                ):
+                    with mock.patch.object(target.v03, "bounded_request") as request:
+                        with mock.patch.object(target.sys, "stderr", new=io.StringIO()):
+                            self.assertEqual(target.main([
+                                "--state",
+                                str(state_path),
+                                "--guided-chrome",
+                            ]), 2)
+        request.assert_not_called()
+
+    def test_cookie_dialog_precedes_account_dialog_after_copy_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            root.chmod(0o700)
+            state_path = root / "state.json"
+            state_path.write_text(json.dumps(temporary_state()), encoding="utf-8")
+            state_path.chmod(0o600)
+            browser_setup = {
+                "workflow": "guided-google-chrome-method-C",
+                "settings_url_launch_succeeded": True,
+            }
+            with mock.patch.object(target.platform, "system", return_value="Darwin"):
+                with mock.patch.object(
+                    target,
+                    "launch_google_chrome_settings",
+                    return_value=(browser_setup, None),
+                ):
+                    with mock.patch.object(
+                        target, "read_confirmation", return_value=True
+                    ) as confirmation:
+                        with mock.patch.object(
+                            target, "read_cookie_value", return_value=None
+                        ) as cookie_input:
+                            with mock.patch.object(
+                                target, "read_hidden_value"
+                            ) as account_input:
+                                with mock.patch.object(
+                                    target.v03, "bounded_request"
+                                ) as request:
+                                    self.assertEqual(target.main([
+                                        "--state",
+                                        str(state_path),
+                                        "--guided-chrome",
+                                    ]), 2)
+        cookie_input.assert_called_once_with(
+            macos_gui_input=True,
+            title="AlgoLoom V-04: 手順3/4 Cookie貼り付け",
+        )
+        self.assertEqual(
+            [call.kwargs["title"] for call in confirmation.call_args_list],
+            [
+                "AlgoLoom V-04: 手順1/4 Chromeログイン",
+                "AlgoLoom V-04: 手順2/4 Cookie確認",
+            ],
+        )
+        account_input.assert_not_called()
+        request.assert_not_called()
 
 
 if __name__ == "__main__":
