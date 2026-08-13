@@ -38,7 +38,19 @@ flowchart LR
     style S2 fill:#e5e7eb,stroke:#9ca3af
     style S3 fill:#e5e7eb,stroke:#9ca3af
     style S4 fill:#dcfce7,stroke:#16a34a,stroke-width:3px
+    style S5 fill:#ffffff,stroke:#9ca3af,stroke-dasharray: 4 4
+    style S6 fill:#ffffff,stroke:#9ca3af,stroke-dasharray: 4 4
+    style S7 fill:#ffffff,stroke:#9ca3af,stroke-dasharray: 4 4
+    style S8 fill:#ffffff,stroke:#9ca3af,stroke-dasharray: 4 4
 ```
+
+図の凡例を次に示します。色だけで区別せず、枠線でも区別できるようにしています。
+
+| 図の表示 | 意味 | 該当する工程 |
+|---|---|---|
+| 緑の塗り・太い実線枠 | 本書が扱う範囲 | 4 |
+| 灰色の塗り・実線枠 | 完了済み。本書の対象外 | 1〜3 |
+| 塗りなし・破線枠 | 未着手。本書の対象外 | 5〜8 |
 
 ### 0.1. 本書の開始と完了
 
@@ -93,10 +105,24 @@ flowchart TD
     P1 -.回答後に反映.-> P4
     P4 --> P5[フェーズ5 実装開始条件の充足確認]
 
-    style P0 fill:#dbeafe,stroke:#2563eb
-    style P2 fill:#fee2e2,stroke:#dc2626
-    style P3 fill:#dcfce7,stroke:#16a34a
+    style P0 fill:#dbeafe,stroke:#2563eb,stroke-width:3px
+    style P1 fill:#ffffff,stroke:#9ca3af
+    style P2 fill:#fee2e2,stroke:#dc2626,stroke-width:3px
+    style P3 fill:#dcfce7,stroke:#16a34a,stroke-width:3px
+    style P4 fill:#ffffff,stroke:#9ca3af
+    style P5 fill:#ffffff,stroke:#9ca3af
 ```
+
+図の凡例を次に示します。
+
+| 図の表示 | 意味 | 該当するフェーズ |
+|---|---|---|
+| 青の塗り・太枠 | 他のフェーズの前提。最初に完了させる | 0 |
+| 赤の塗り・太枠 | 不合格ならMVPの範囲と価値仮説を再検討する | 2 |
+| 緑の塗り・太枠 | 実装開始条件4〜9を直接満たす | 3 |
+| 塗りなし・細枠 | 上記のいずれにも該当しない | 1、4、5 |
+| 実線の矢印 | 先に完了させる必要がある依存 | ― |
+| 破線の矢印 | 完了を待たずに進め、結果が出た時点で反映する依存 | ― |
 
 フェーズ1とフェーズ2は、フェーズ3と並行して進められます。フェーズ1の回答待ちで他の作業を止めません。
 
